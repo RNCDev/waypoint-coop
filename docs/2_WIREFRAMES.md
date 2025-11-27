@@ -15,9 +15,10 @@
     *   **Status:** "Valid JSON" (Green Check) or "Syntax Error" (Red Alert).
 
 *   **Bottom Bar: The Envelope**
+    *   **Dropdown:** `Publisher Entity` (e.g., "Genii Admin") - *Auto-filled*
+    *   **Dropdown:** `On Behalf Of` (e.g., "Kleiner Perkins") - *If applicable*
     *   **Dropdown:** `Select Asset` (e.g., "Fund IV", "Co-Invest A")
-    *   **Dropdown:** `Period` (Optional, e.g., "Q3 2025")
-    *   **Input:** `Type` (Autocomplete text, e.g., "Capital Call")
+    *   **Input:** `Tags` (Optional metadata: "Q3", "CapCall")
     *   **Toggle:** `Embargo Release` (Optional date picker)
     *   **Primary Button:** [SIGN & PUBLISH] (High contrast color)
 
@@ -25,9 +26,10 @@
 **Layout:** Data Table
 
 *   **Columns:**
+    *   ID
     *   Date Sent
     *   Asset
-    *   Type
+    *   Tags
     *   Version (v1, v2)
     *   Status (Delivered, Revoked)
     *   Actions (View, Correct, Revoke)

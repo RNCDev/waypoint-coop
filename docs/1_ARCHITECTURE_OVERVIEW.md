@@ -10,7 +10,7 @@ graph LR
     WP -- Timestamp & Sign --> Ledger[Immutable Ledger]
     WP -- Routes Notification --> LP[Limited Partner]
     LP -- Pulls Data --> WP
-    LP -- Delegates View --> Auditor[Third Party]
+    LP -- Delegates View --> Delegate[Analytics Agent / Auditor]
 ```
 
 ---
@@ -24,21 +24,22 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
 
 ```json
 {
-  "envelope_id": "uuid-v4",
-  "publisher_id": "org_gp_001",
-  "asset_id": "fund_iv_growth", // Generalized from 'fund_id'
-  "timestamp": "2025-11-27T10:00:00Z",
-  "period": "2025-Q3", // Optional, null if not applicable
-  "data_type": "CAPITAL_CALL", // Open string, not an enum
+  "envelope_id": 1001001, // BigInt (Snowflake or Auto-Inc)
+  "publisher_id": 5050, // Numeric ID for the entity publishing
+  "user_id": 8812, // Numeric ID for the specific user
+  "asset_owner_id": 2020, // Numeric ID for the Asset Owner (GP)
+  "asset_id": 3001, // Numeric ID for the Asset (Fund/Co-Invest)
+  "timestamp": "2025-11-27T10:00:00.000Z", // ISO 8601 UTC String (Strict)
   "version": 1,
-  "recipient_scope": "ALL_LPS" // or specific array of LP IDs
+  "recipient_scope": [7001, 7002] // Array of Recipient Entity IDs (LPs)
 }
 ```
 
 **Validation Rules:**
-*   `publisher_id` must match the authenticated session.
-*   `asset_id` must be registered to the Publisher.
-*   `period` is optional.
+*   `publisher_id` must match the authenticated session's Organization.
+*   `asset_owner_id` must have delegated publishing rights to `publisher_id`.
+*   `timestamp` must be a valid ISO 8601 string in UTC (Z-terminated).
+*   **Metadata:** `period` and `data_type` are NOT enforced in the core routing envelope. They can be tagged in the payload or inferred later.
 
 ### 2. The Payload (Loose)
 The "Body" of the transaction. Flexible to accommodate various GP internal formats.
@@ -100,4 +101,3 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 2.  **Immutability:** Once a `version` is committed, it cannot be changed. Updates are strictly `version + 1`.
 3.  **Transport:** TLS 1.3 for all data in transit.
 4.  **At Rest:** AES-256 encryption for stored payloads.
-
