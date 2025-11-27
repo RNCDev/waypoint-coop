@@ -15,9 +15,9 @@
     *   **Status:** "Valid JSON" (Green Check) or "Syntax Error" (Red Alert).
 
 *   **Bottom Bar: The Envelope**
-    *   **Dropdown:** `Select Fund` (e.g., "Fund IV")
-    *   **Dropdown:** `Period` (e.g., "Q3 2025")
-    *   **Dropdown:** `Type` (e.g., "Capital Call")
+    *   **Dropdown:** `Select Asset` (e.g., "Fund IV", "Co-Invest A")
+    *   **Dropdown:** `Period` (Optional, e.g., "Q3 2025")
+    *   **Input:** `Type` (Autocomplete text, e.g., "Capital Call")
     *   **Toggle:** `Embargo Release` (Optional date picker)
     *   **Primary Button:** [SIGN & PUBLISH] (High contrast color)
 
@@ -26,7 +26,7 @@
 
 *   **Columns:**
     *   Date Sent
-    *   Fund
+    *   Asset
     *   Type
     *   Version (v1, v2)
     *   Status (Delivered, Revoked)

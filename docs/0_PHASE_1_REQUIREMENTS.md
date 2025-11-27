@@ -14,7 +14,7 @@ To build the "Global Data Clearinghouse" for private market data—a secure, imm
 
 ### 1. General Partner (The Publisher)
 *   **Smart Paste:** As a GP, I want to copy a table from Excel and paste it into the "Composer" so that it is instantly converted to a JSON payload without manual coding.
-*   **Publish to Network:** As a GP, I want to define the "Envelope" (Fund, Period, Type) and cryptographically sign the packet to publish it to the network.
+*   **Publish to Network:** As a GP, I want to define the "Envelope" (Asset ID, optional Period, Data Type) and cryptographically sign the packet to publish it to the network.
 *   **Correction (Append-Only):** As a GP, I want to issue a correction for a previously sent packet, creating a new version (v2) while preserving the original (v1) for the audit trail.
 *   **Delegation Approval:** As a GP, I want to approve or reject an LP's request to delegate access to a third party (e.g., Auditor), ensuring I maintain control over who sees my data.
 

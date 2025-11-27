@@ -26,10 +26,10 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
 {
   "envelope_id": "uuid-v4",
   "publisher_id": "org_gp_001",
-  "fund_id": "fund_iv_growth",
+  "asset_id": "fund_iv_growth", // Generalized from 'fund_id'
   "timestamp": "2025-11-27T10:00:00Z",
-  "period": "2025-Q3",
-  "data_type": "CAPITAL_CALL",
+  "period": "2025-Q3", // Optional, null if not applicable
+  "data_type": "CAPITAL_CALL", // Open string, not an enum
   "version": 1,
   "recipient_scope": "ALL_LPS" // or specific array of LP IDs
 }
@@ -37,8 +37,8 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
 
 **Validation Rules:**
 *   `publisher_id` must match the authenticated session.
-*   `fund_id` must be registered to the Publisher.
-*   `period` must follow ISO standards.
+*   `asset_id` must be registered to the Publisher.
+*   `period` is optional.
 
 ### 2. The Payload (Loose)
 The "Body" of the transaction. Flexible to accommodate various GP internal formats.
