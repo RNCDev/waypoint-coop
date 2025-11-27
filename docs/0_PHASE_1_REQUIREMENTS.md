@@ -17,10 +17,13 @@ To build the "Global Data Clearinghouse" for private market data—a secure, imm
 *   **Publish to Network:** As a Publisher, I want to define the "Envelope" (Publisher ID, Asset Owner ID, Asset ID) and cryptographically sign the packet with a strict UTC timestamp. (Note: Data Type and Period are flexible metadata, not core routing constraints).
 *   **Correction (Append-Only):** As a GP, I want to issue a correction for a previously sent packet, creating a new version (v2) while preserving the original (v1) for the audit trail.
 *   **Delegation Approval:** As an Asset Owner (GP), I want to approve or reject an LP's request to delegate access to a third party (e.g., Analytics Agent, Auditor), ensuring I maintain control over who sees my data.
+*   **Excel Templates:** As a Publisher, I want to download a basic Excel template with standard headers so I know how to format my data before pasting it.
 
 ### 2. Limited Partner (The Subscriber)
 *   **The Ledger:** As an LP (or my delegated Analytics Agent), I want a chronological feed of all data events.
 *   **Data View:** As an LP, I want to click a ledger item to view the structured JSON data in a human-readable table format.
+*   **Read Receipts:** As a Subscriber, I understand that viewing a packet generates a "Read Receipt" visible to the Publisher, confirming delivery.
+*   **Magic Link Onboarding:** As a delegated third-party (e.g., Auditor), I want to access shared data via a secure email link without needing to go through a full platform registration flow.
 *   **Notification Config:** As an LP, I want to configure alerts (Email, Webhook, SMS) based on data type (e.g., "Alert me for Capital Calls, digest for Quarterly Reports").
 *   **Provenance Check:** As an LP, I want to see the cryptographic signature and timestamp for every data packet to verify it hasn't been tampered with.
 

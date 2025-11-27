@@ -31,7 +31,8 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
   "asset_id": 3001, // Numeric ID for the Asset (Fund/Co-Invest)
   "timestamp": "2025-11-27T10:00:00.000Z", // ISO 8601 UTC String (Strict)
   "version": 1,
-  "recipient_scope": [7001, 7002] // Array of Recipient Entity IDs (LPs)
+  "recipient_scope": [7001, 7002], // Array of Recipient Entity IDs (LPs)
+  "read_receipt_required": true // Boolean: signals system to track 'View' events
 }
 ```
 

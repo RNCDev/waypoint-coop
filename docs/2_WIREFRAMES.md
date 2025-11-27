@@ -7,6 +7,7 @@
 
 *   **Left Panel: Data Input**
     *   **Tabs:** `Smart Paste` | `Raw JSON`
+    *   **Helper:** "Need a starting point? [Download Standard Excel Template]"
     *   **Action Area:** Large text area. Placeholder: "Paste Excel data here..."
     *   **Controls:** [Clear] [Parse Data]
 
@@ -47,7 +48,7 @@
     *   **Status Badge:** `Verified Publisher`
     *   **Action:** [Expand Details]
 *   **Expanded View:**
-    *   **Metadata:** "Published by GP_Name at 10:42 AM via Waypoint."
+    *   **Metadata:** "Published by GP_Name at 10:42 AM via Waypoint. [Read Receipt Sent]"
     *   **Payload:** Read-only data table.
     *   **Tools:** [Download JSON] [Print/PDF]
 
@@ -56,7 +57,8 @@
 
 *   **"My Delegates" Section:**
     *   List of external users (Auditors, Tax).
-    *   Button: [Add Delegate] -> Form (Email, Scope: "Tax Data Only", Fund: "All").
+    *   Button: [Add Delegate] -> Form (Email, Scope).
+    *   **Action:** System sends "Magic Link" to delegate email. No password setup required for read-only access.
     *   Status: "Pending GP Approval", "Active", "Rejected".
 
 ---
@@ -78,3 +80,28 @@
     *   Status: `Verified`, `Pending`, `Suspended`.
     *   Linked Funds.
 
+---
+
+## 4. Backend Architecture (Build Specs)
+
+### A. Tech Stack (Demonstration Phase)
+*   **Goal:** Visually stunning, fast, "silky smooth" interactions to impress funders/clients.
+*   **Framework:** **Next.js (App Router)** - Handles both Frontend UI and lightweight Backend API routes.
+*   **Styling:** **Tailwind CSS** - Utility-first styling for rapid layout.
+*   **UI Components:** **shadcn/ui** - High-quality, accessible components (Radix UI + Tailwind) for a polished "Stripe-like" aesthetic.
+*   **Animation:** **Framer Motion** - For smooth transitions, hover effects, and layout animations (making it feel "expensive").
+*   **Database:** **SQLite** (via **Prisma ORM**) - Zero-config local file database (`waypoint.db`) that mimics a full SQL environment.
+*   **Icons:** **Lucide React** - Clean, consistent vector iconography.
+
+### B. Database (SQLite Schema)
+*   **File:** `prisma/schema.prisma` -> `dev.db`
+*   **Core Models:**
+    *   `Organization`: ID, Name, Type (GP/LP/Delegate), ImageURL.
+    *   `User`: ID, OrgID, Name, Email, Role.
+    *   `Asset`: ID, OwnerID, Name, Type.
+    *   `Envelope`: ID, PublisherID, AssetID, Status, Hash.
+    *   `Payload`: ID, EnvelopeID, Data (JSON).
+
+### C. Authentication (Mock)
+*   **Strategy:** Simple "Persona Switcher" for the demo.
+*   **Mechanism:** A global context allowing the user to "Act As" Alice (GP), Bob (LP), or Charlie (Auditor) instantly to demonstrate different views.
