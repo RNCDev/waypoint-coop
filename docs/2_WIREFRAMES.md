@@ -86,22 +86,56 @@
 
 ### A. Tech Stack (Demonstration Phase)
 *   **Goal:** Visually stunning, fast, "silky smooth" interactions to impress funders/clients.
-*   **Framework:** **Next.js (App Router)** - Handles both Frontend UI and lightweight Backend API routes.
+*   **Framework:** **Next.js 14+ (App Router)** - Handles both Frontend UI and lightweight Backend API routes.
 *   **Styling:** **Tailwind CSS** - Utility-first styling for rapid layout.
 *   **UI Components:** **shadcn/ui** - High-quality, accessible components (Radix UI + Tailwind) for a polished "Stripe-like" aesthetic.
 *   **Animation:** **Framer Motion** - For smooth transitions, hover effects, and layout animations (making it feel "expensive").
-*   **Database:** **SQLite** (via **Prisma ORM**) - Zero-config local file database (`waypoint.db`) that mimics a full SQL environment.
 *   **Icons:** **Lucide React** - Clean, consistent vector iconography.
+*   **State Management:** **Zustand** or **React Context** - For client-side state (persona switching, UI state).
+*   **Forms:** **React Hook Form** - For form handling and validation.
+*   **Data Parsing:** **Papa Parse** - For CSV/TSV parsing in Smart Paste feature.
+*   **Date Handling:** **date-fns** - For date formatting and manipulation.
 
-### B. Database (SQLite Schema)
-*   **File:** `prisma/schema.prisma` -> `dev.db`
-*   **Core Models:**
-    *   `Organization`: ID, Name, Type (GP/LP/Delegate), ImageURL.
-    *   `User`: ID, OrgID, Name, Email, Role.
-    *   `Asset`: ID, OwnerID, Name, Type.
-    *   `Envelope`: ID, PublisherID, AssetID, Status, Hash.
-    *   `Payload`: ID, EnvelopeID, Data (JSON).
+### B. Database & Storage Strategy
+*   **Local Development:** **SQLite** (via **Prisma ORM**) - Zero-config local file database (`waypoint.db`).
+    *   **File:** `prisma/schema.prisma` -> `dev.db`
+    *   **Core Models:**
+        *   `Organization`: ID, Name, Type (GP/LP/Delegate), ImageURL, Status.
+        *   `User`: ID, OrgID, Name, Email, Role.
+        *   `Asset`: ID, OwnerID, PublisherID, Name, Type.
+        *   `Envelope`: ID, PublisherID, AssetID, AssetOwnerID, Timestamp, Version, Status, Hash, RecipientScope (JSON array).
+        *   `Payload`: ID, EnvelopeID, Data (JSON blob).
+        *   `Delegation`: ID, SubscriberID, DelegateID, AssetScope (JSON array), TypeScope (JSON array), Status, GPApprovalStatus.
+        *   `ReadReceipt`: ID, EnvelopeID, UserID, ViewedAt.
+*   **Vercel Deployment:** **In-Memory Storage** - Data resets on each serverless function invocation.
+    *   Mock data seeded on each API route call for consistent demo experience.
+    *   Simulates full database behavior without persistent storage complexity.
 
-### C. Authentication (Mock)
+### C. Data Seeding Strategy
+*   **Approach:** Always reset to mock data on startup/load for consistent demos.
+*   **Local:** Seed script runs on `npm run dev` startup (or via flag: `npm run dev:seed`).
+*   **Vercel:** Mock data loaded on each API route invocation.
+*   **Source:** All mock data from `docs/3_MOCK_DATA.md` (Organizations, Users, Assets, Envelopes, Payloads, Delegations).
+
+### D. Cryptographic Signing
+*   **Phase 1 Approach:** **Simulated Signing** - Generate deterministic hash based on envelope + payload content.
+*   **Implementation:** Use Node.js `crypto` module to create SHA-256 hash of `JSON.stringify(envelope + payload)`.
+*   **Purpose:** Demonstrate immutability concept without full PKI infrastructure.
+*   **Future:** Can be upgraded to real cryptographic signing (RSA/ECDSA) in later phases.
+
+### E. Authentication (Mock)
 *   **Strategy:** Simple "Persona Switcher" for the demo.
-*   **Mechanism:** A global context allowing the user to "Act As" Alice (GP), Bob (LP), or Charlie (Auditor) instantly to demonstrate different views.
+*   **Mechanism:** A global context allowing the user to "Act As" different personas instantly:
+    *   **Alice Admin** (Publisher: Genii Admin Services)
+    *   **Bob GP** (Asset Owner: Kleiner Perkins)
+    *   **Charlie LP** (Subscriber: State of Ohio Pension)
+    *   **Dana Delegate** (Auditor: Deloitte)
+*   **UI:** Dropdown/selector in top navigation bar for instant role switching.
+*   **No Password:** All personas accessible for demo purposes.
+
+### F. Deployment
+*   **Local:** `npm run dev` - Full Next.js dev server with SQLite database.
+*   **Vercel:** Automatic deployment via GitHub integration (RNCDev account).
+    *   Serverless API routes with in-memory storage.
+    *   Pre-rendered static pages where possible.
+    *   Zero-config deployment on push to main branch.
