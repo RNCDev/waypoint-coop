@@ -1,7 +1,7 @@
 # Waypoint Phase 1: The Digital Clearinghouse
 
 ## Vision
-To build the "VISA Network" for private market data—a secure, immutable message bus where structured data is pushed from Publisher (GP) to Subscriber (LP) with perfect audit trails.
+To build the "Global Data Clearinghouse" for private market data—a secure, immutable message bus where structured data is pushed from Publisher (GP) to Subscriber (LP) with perfect audit trails.
 
 ## Core Philosophy
 - **Structured Data Only:** JSON is the primary citizen. No PDFs.
