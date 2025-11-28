@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -22,12 +23,23 @@ interface Delegation {
 }
 
 export default function DelegationsPage() {
+  const router = useRouter()
   const { currentUser } = useAuthStore()
   const [delegations, setDelegations] = useState<Delegation[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [delegateEmail, setDelegateEmail] = useState('')
   const [selectedDelegateId, setSelectedDelegateId] = useState('')
+
+  // Redirect if user doesn't have access to delegations
+  useEffect(() => {
+    if (currentUser) {
+      const hasAccess = currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, router])
 
   useEffect(() => {
     if (currentUser?.orgId) {

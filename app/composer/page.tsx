@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { mockAssets, mockOrganizations } from '@/lib/mock-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,7 +18,18 @@ import { Download, CheckCircle2, XCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function ComposerPage() {
+  const router = useRouter()
   const { currentUser, currentOrg } = useAuthStore()
+
+  // Redirect if user doesn't have access to composer
+  useEffect(() => {
+    if (currentUser && currentOrg) {
+      const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, currentOrg, router])
   const [inputData, setInputData] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
   const [isValidJson, setIsValidJson] = useState<boolean | null>(null)
@@ -25,6 +37,27 @@ export default function ComposerPage() {
   const [selectedAsset, setSelectedAsset] = useState<string>('')
   const [tags, setTags] = useState('')
   const [isPublishing, setIsPublishing] = useState(false)
+
+  // Helper function to normalize column names and find LP ID field
+  const getLpIdFromRow = (row: any): number | null => {
+    // Try various possible column name variations
+    const possibleKeys = [
+      'lp_id', 'lpId', 'LP ID', 'LP_ID', 'lp-id', 'LP-ID',
+      'lp id', 'LP Id', 'Lp Id', 'lpId', 'LPID'
+    ]
+    
+    for (const key of possibleKeys) {
+      const value = row[key]
+      if (value !== undefined && value !== null && value !== '') {
+        const parsed = typeof value === 'string' ? parseInt(value.trim(), 10) : Number(value)
+        if (!isNaN(parsed) && parsed > 0) {
+          return parsed
+        }
+      }
+    }
+    
+    return null
+  }
 
   const handleSmartPaste = () => {
     if (!inputData.trim()) {
@@ -86,12 +119,15 @@ export default function ComposerPage() {
       // Extract LP IDs from parsed data and create one envelope per LP
       const lpIds = new Set<number>()
       parsedData.forEach((row: any) => {
-        if (row.lp_id) lpIds.add(parseInt(row.lp_id))
-        if (row.lpId) lpIds.add(parseInt(row.lpId))
+        const lpId = getLpIdFromRow(row)
+        if (lpId !== null) {
+          lpIds.add(lpId)
+        }
       })
 
       if (lpIds.size === 0) {
-        alert('No LP IDs found in data. Please include lp_id or lpId fields.')
+        const availableColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).join(', ') : 'none'
+        alert(`No valid LP IDs found in data.\n\nFound columns: ${availableColumns}\n\nPlease include a column named "LP ID", "lp_id", or "lpId" with numeric values (e.g., 3001, 3002). Valid LP IDs start with 3001-3008.`)
         setIsPublishing(false)
         return
       }
@@ -99,9 +135,10 @@ export default function ComposerPage() {
       // Create one envelope per LP with LP-specific payload
       const envelopesToCreate = Array.from(lpIds).map(lpId => {
         // Extract LP-specific data from parsed data
-        const lpPayload = parsedData.filter((row: any) => 
-          parseInt(row.lp_id) === lpId || parseInt(row.lpId) === lpId
-        )
+        const lpPayload = parsedData.filter((row: any) => {
+          const rowLpId = getLpIdFromRow(row)
+          return rowLpId !== null && rowLpId === lpId
+        })
 
         // Build payload structure based on data type
         let payload: any = {}
@@ -157,7 +194,7 @@ export default function ComposerPage() {
   }
 
   const downloadTemplate = () => {
-    const template = 'LP ID\tLP Name\tAmount\tCurrency\tDue Date\nlp_001\tExample LP\t1000000.00\tUSD\t2025-12-31'
+    const template = 'LP ID\tLP Name\tAmount\tCurrency\tDue Date\n3001\tState of Ohio Pension\t1000000.00\tUSD\t2025-12-31\n3002\tHarvard Management Co.\t2000000.00\tUSD\t2025-12-31'
     const blob = new Blob([template], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -215,6 +252,9 @@ export default function ComposerPage() {
                   onChange={(e) => setInputData(e.target.value)}
                   className="min-h-[300px] font-mono text-sm"
                 />
+                <div className="text-xs text-muted-foreground">
+                  <strong>Note:</strong> LP ID must be a numeric value (e.g., 3001, 3002). Use the template for correct format.
+                </div>
                 <Button onClick={handleSmartPaste} className="w-full">
                   Parse Data
                 </Button>

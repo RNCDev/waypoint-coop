@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,12 +22,23 @@ interface Envelope {
 }
 
 export default function LedgerPage() {
+  const router = useRouter()
   const { currentUser } = useAuthStore()
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [payloads, setPayloads] = useState<Record<number, any>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // Redirect if user doesn't have access to ledger
+  useEffect(() => {
+    if (currentUser) {
+      const hasAccess = currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, router])
 
   useEffect(() => {
     if (currentUser?.orgId) {

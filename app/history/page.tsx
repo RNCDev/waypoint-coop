@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -22,11 +23,22 @@ interface Envelope {
 }
 
 export default function HistoryPage() {
+  const router = useRouter()
   const { currentUser, currentOrg } = useAuthStore()
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [selectedEnvelope, setSelectedEnvelope] = useState<Envelope | null>(null)
   const [payload, setPayload] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  // Redirect if user doesn't have access to history
+  useEffect(() => {
+    if (currentUser && currentOrg) {
+      const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, currentOrg, router])
 
   useEffect(() => {
     if (currentOrg?.id) {

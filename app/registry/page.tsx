@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -24,10 +26,22 @@ interface User {
 }
 
 export default function RegistryPage() {
+  const router = useRouter()
+  const { currentUser, currentOrg } = useAuthStore()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // Redirect if user doesn't have access to registry
+  useEffect(() => {
+    if (currentUser && currentOrg) {
+      const hasAccess = currentUser.role === 'Platform Admin' || currentOrg.role === 'Platform Admin'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, currentOrg, router])
 
   useEffect(() => {
     fetchData()

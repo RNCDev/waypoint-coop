@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -18,8 +20,20 @@ interface AuditEntry {
 }
 
 export default function AuditPage() {
+  const router = useRouter()
+  const { currentUser, currentOrg } = useAuthStore()
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Redirect if user doesn't have access to audit
+  useEffect(() => {
+    if (currentUser && currentOrg) {
+      const hasAccess = currentUser.role === 'Platform Admin' || currentOrg.role === 'Platform Admin'
+      if (!hasAccess) {
+        router.push('/')
+      }
+    }
+  }, [currentUser, currentOrg, router])
 
   useEffect(() => {
     fetchAuditLog()
