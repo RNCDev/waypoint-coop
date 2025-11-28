@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useAuthStore } from '@/store/auth-store'
 import { Button } from '@/components/ui/button'
+import { APP_VERSION } from '@/lib/config'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +67,9 @@ export function Navbar() {
                 <span className="text-sm text-muted-foreground">{currentUser.name}</span>
               </div>
             )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              v{APP_VERSION}
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">

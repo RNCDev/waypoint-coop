@@ -3,6 +3,8 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const receiptSchema = z.object({
   envelopeId: z.number(),
   userId: z.number(),

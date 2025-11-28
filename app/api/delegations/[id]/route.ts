@@ -3,6 +3,8 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateSchema = z.object({
   status: z.enum(['Active', 'Pending GP Approval', 'Rejected']).optional(),
   gpApprovalStatus: z.enum(['Pending', 'Approved', 'Rejected']).optional(),

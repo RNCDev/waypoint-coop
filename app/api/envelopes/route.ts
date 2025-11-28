@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const envelopeSchema = z.object({
   publisherId: z.number(),
   userId: z.number(),

@@ -61,6 +61,17 @@ export function getInMemoryDB(): InMemoryDB {
 
 // Helper to determine if we should use in-memory DB (Vercel) or Prisma (local)
 export function isVercel(): boolean {
-  return process.env.VERCEL === '1' || process.env.NODE_ENV === 'production'
+  // On Vercel, always use in-memory DB since we can't use SQLite
+  // Check for Vercel environment or if Prisma client fails to initialize
+  if (process.env.VERCEL === '1' || process.env.VERCEL_ENV) {
+    return true
+  }
+  
+  // In production builds, prefer in-memory unless DATABASE_URL is explicitly set
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+    return true
+  }
+  
+  return false
 }
 

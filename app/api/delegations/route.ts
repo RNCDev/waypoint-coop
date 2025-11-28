@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { DataType } from '@/types'
 
+export const dynamic = 'force-dynamic'
+
 const dataTypeEnum = z.enum([
   'CAPITAL_CALL',
   'DISTRIBUTION',
