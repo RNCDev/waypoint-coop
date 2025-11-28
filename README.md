@@ -12,6 +12,7 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 - **Subscriber Ledger (LP)**: View chronological feed of data events with read receipt tracking
 - **Delegation Management**: Grant access to third-party service providers (auditors, analytics)
 - **Admin Console**: Entity registry and global audit log
+- **Identity & Access Management**: Role-based permissions, session management, and audit logging
 - **Mock Authentication**: Persona switcher for demo purposes
 - **Cryptographic Signing**: SHA-256 hash generation for data integrity
 
@@ -62,10 +63,11 @@ The application will be available at `http://localhost:3000`.
 
 Switch between demo personas using the dropdown in the navigation:
 
-- **Alice Admin** (Publisher: Genii Admin Services) - Can compose and publish data
+- **Alice Admin** (Platform Admin: Waypoint Platform) - Full platform access, can view IAM
+- **Genii Publisher** (Publisher: Genii Admin Services) - Can compose and publish data
 - **Bob GP** (Asset Owner: Kleiner Perkins) - Can view assets and publish
 - **Charlie LP** (Subscriber: State of Ohio Pension) - Can view ledger and manage delegations
-- **Dana Delegate** (Auditor: Deloitte) - Can view delegated data
+- **Dana Delegate** (Auditor: Deloitte) - Can view delegated data (read-only)
 
 ## Project Structure
 
@@ -137,6 +139,8 @@ See the `docs/` folder for detailed documentation:
 - `3_MOCK_DATA.md` - Mock data definitions
 - `4_INFRA_BUILD.md` - Infrastructure and build setup
 - `5_Design_Guide.md` - Design system and UI patterns
+- `6_IAM_IMPLEMENTATION.md` - Identity and Access Management guide
+- `7_IAM_API_EXAMPLES.md` - IAM API usage examples
 
 ## License
 

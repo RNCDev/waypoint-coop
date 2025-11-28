@@ -3,6 +3,7 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { DataType } from '@/types'
+import { withPermission, logAuditEvent } from '@/lib/iam/middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ const delegationSchema = z.object({
   typeScope: z.union([z.literal('ALL'), z.array(dataTypeEnum)]),
 })
 
-export async function GET(request: NextRequest) {
+export const GET = withPermission('delegations:read')(async (request, auth, user, org) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const subscriberId = searchParams.get('subscriberId')
@@ -40,6 +41,12 @@ export async function GET(request: NextRequest) {
         delegations = delegations.filter(d => d.delegateId === parseInt(delegateId))
       }
 
+      if (!auth.permissions.includes('admin:all')) {
+        delegations = delegations.filter(d => 
+          d.subscriberId === auth.orgId || d.delegateId === auth.orgId
+        )
+      }
+
       return NextResponse.json(delegations)
     } else {
       const where: any = {}
@@ -48,22 +55,40 @@ export async function GET(request: NextRequest) {
 
       const delegations = await prisma.delegation.findMany({ where })
 
-      return NextResponse.json(delegations.map(d => ({
+      let filtered = delegations.map(d => ({
         ...d,
         assetScope: d.assetScope === 'ALL' ? 'ALL' : JSON.parse(d.assetScope),
         typeScope: d.typeScope === 'ALL' ? 'ALL' : JSON.parse(d.typeScope),
-      })))
+      }))
+
+      if (!auth.permissions.includes('admin:all')) {
+        filtered = filtered.filter(d => 
+          d.subscriberId === auth.orgId || d.delegateId === auth.orgId
+        )
+      }
+
+      return NextResponse.json(filtered)
     }
   } catch (error) {
     console.error('Error fetching delegations:', error)
     return NextResponse.json({ error: 'Failed to fetch delegations' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('delegations:write')(async (request, auth, user, org) => {
   try {
     const body = await request.json()
     const validated = delegationSchema.parse(body)
+
+    if (validated.subscriberId !== auth.orgId && !auth.permissions.includes('admin:all')) {
+      await logAuditEvent(auth, 'CREATE_DELEGATION', 'delegations', undefined, 'failure', request, {
+        reason: 'Cannot create delegation for other organizations',
+      })
+      return NextResponse.json(
+        { error: 'Cannot create delegation for other organizations' },
+        { status: 403 }
+      )
+    }
 
     if (isVercel()) {
       const db = getInMemoryDB()
@@ -79,6 +104,11 @@ export async function POST(request: NextRequest) {
       }
 
       db.delegations.push(delegation)
+      
+      await logAuditEvent(auth, 'CREATE_DELEGATION', 'delegations', undefined, 'success', request, {
+        delegateId: validated.delegateId,
+      })
+      
       return NextResponse.json(delegation, { status: 201 })
     } else {
       const delegation = await prisma.delegation.create({
@@ -90,6 +120,10 @@ export async function POST(request: NextRequest) {
           status: 'Pending GP Approval',
           gpApprovalStatus: 'Pending',
         },
+      })
+
+      await logAuditEvent(auth, 'CREATE_DELEGATION', 'delegations', undefined, 'success', request, {
+        delegateId: validated.delegateId,
       })
 
       return NextResponse.json({
@@ -105,5 +139,5 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: 'Failed to create delegation' }, { status: 500 })
   }
-}
+})
 

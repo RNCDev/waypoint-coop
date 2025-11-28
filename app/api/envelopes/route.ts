@@ -3,6 +3,8 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
 import { z } from 'zod'
+import { withPermission, logAuditEvent } from '@/lib/iam/middleware'
+import { filterEnvelopesByAccess } from '@/lib/iam/authorization'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,42 +14,43 @@ const envelopeSchema = z.object({
   assetOwnerId: z.number(),
   assetId: z.number(),
   timestamp: z.string(),
-  recipientId: z.number(), // Single recipient per envelope
+  recipientId: z.number(),
   dataType: z.string().optional(),
   period: z.string().optional(),
-  payload: z.any(), // LP-specific payload data
+  payload: z.any(),
 })
 
-export async function GET(request: NextRequest) {
+export const GET = withPermission('envelopes:read')(async (request, auth, user, org) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const publisherId = searchParams.get('publisherId')
     const subscriberId = searchParams.get('subscriberId')
     const assetId = searchParams.get('assetId')
 
+    let envelopes
+    let delegations = []
+
     if (isVercel()) {
       const db = getInMemoryDB()
-      let envelopes = db.envelopes
+      envelopes = db.envelopes
+      delegations = db.delegations
 
       if (publisherId) {
         envelopes = envelopes.filter(e => e.publisherId === parseInt(publisherId))
       }
       if (subscriberId) {
-        // Filter by recipientId (single recipient per envelope)
         envelopes = envelopes.filter(e => e.recipientId === parseInt(subscriberId))
       }
       if (assetId) {
         envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
       }
-
-      return NextResponse.json(envelopes)
     } else {
       const where: any = {}
       if (publisherId) where.publisherId = parseInt(publisherId)
       if (subscriberId) where.recipientId = parseInt(subscriberId)
       if (assetId) where.assetId = parseInt(assetId)
 
-      const envelopes = await prisma.envelope.findMany({
+      envelopes = await prisma.envelope.findMany({
         where,
         include: {
           asset: true,
@@ -55,19 +58,27 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      return NextResponse.json(envelopes)
+      const delegationsRaw = await prisma.delegation.findMany()
+      delegations = delegationsRaw.map(d => ({
+        ...d,
+        assetScope: d.assetScope === 'ALL' ? 'ALL' : JSON.parse(d.assetScope),
+        typeScope: d.typeScope === 'ALL' ? 'ALL' : JSON.parse(d.typeScope),
+      }))
     }
+
+    const filteredEnvelopes = filterEnvelopesByAccess(auth, org, envelopes, delegations)
+
+    return NextResponse.json(filteredEnvelopes)
   } catch (error) {
     console.error('Error fetching envelopes:', error)
     return NextResponse.json({ error: 'Failed to fetch envelopes' }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('envelopes:write')(async (request, auth, user, org) => {
   try {
     const body = await request.json()
     
-    // Support both single envelope and batch creation
     const isBatch = Array.isArray(body)
     const envelopesToCreate = isBatch ? body : [body]
 
@@ -75,6 +86,16 @@ export async function POST(request: NextRequest) {
 
     for (const envelopeData of envelopesToCreate) {
       const validated = envelopeSchema.parse(envelopeData)
+
+      if (validated.publisherId !== auth.orgId && validated.assetOwnerId !== auth.orgId) {
+        await logAuditEvent(auth, 'CREATE_ENVELOPE', 'envelopes', undefined, 'failure', request, {
+          reason: 'Unauthorized organization',
+        })
+        return NextResponse.json(
+          { error: 'Cannot create envelope for other organizations' },
+          { status: 403 }
+        )
+      }
 
       if (isVercel()) {
         const db = getInMemoryDB()
@@ -109,9 +130,14 @@ export async function POST(request: NextRequest) {
         })
 
         createdEnvelopes.push(envelopeWithHash)
+        
+        await logAuditEvent(auth, 'CREATE_ENVELOPE', 'envelopes', envelopeId, 'success', request, {
+          recipientId: validated.recipientId,
+          assetId: validated.assetId,
+        })
       } else {
         const envelope = {
-          id: 0, // Temporary, will be set by DB
+          id: 0,
           publisherId: validated.publisherId,
           userId: validated.userId,
           assetOwnerId: validated.assetOwnerId,
@@ -150,6 +176,11 @@ export async function POST(request: NextRequest) {
         })
 
         createdEnvelopes.push(created)
+        
+        await logAuditEvent(auth, 'CREATE_ENVELOPE', 'envelopes', created.id, 'success', request, {
+          recipientId: validated.recipientId,
+          assetId: validated.assetId,
+        })
       }
     }
 
@@ -161,4 +192,4 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: 'Failed to create envelope' }, { status: 500 })
   }
-}
+})

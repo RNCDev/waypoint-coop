@@ -1,8 +1,8 @@
 import { mockOrganizations, mockUsers, mockAssets, mockEnvelopes, mockPayloads, mockDelegations } from './mock-data'
 import { generateHash } from './crypto'
 import { Organization, User, Asset, Envelope, Payload, Delegation, ReadReceipt } from '@/types'
+import { Session, AuditEvent } from '@/types/iam'
 
-// In-memory storage for Vercel serverless functions
 class InMemoryDB {
   organizations: Organization[]
   users: User[]
@@ -11,15 +11,17 @@ class InMemoryDB {
   payloads: Payload[]
   delegations: Delegation[]
   readReceipts: ReadReceipt[]
+  sessions: Session[]
+  auditEvents: AuditEvent[]
   nextEnvelopeId: number
   nextPayloadId: number
   nextReceiptId: number
+  nextAuditEventId: number
 
   constructor() {
     this.organizations = [...mockOrganizations]
     this.users = [...mockUsers]
     this.assets = [...mockAssets]
-    // Generate hashes for envelopes
     this.envelopes = mockEnvelopes.map(env => ({
       ...env,
       hash: generateHash(env, mockPayloads.find(p => p.envelopeId === env.id)?.data || {}),
@@ -27,9 +29,12 @@ class InMemoryDB {
     this.payloads = [...mockPayloads]
     this.delegations = [...mockDelegations]
     this.readReceipts = []
-    this.nextEnvelopeId = 10022 // Updated to match new mock data structure
+    this.sessions = []
+    this.auditEvents = []
+    this.nextEnvelopeId = 10022
     this.nextPayloadId = 22
     this.nextReceiptId = 1
+    this.nextAuditEventId = 1
   }
 
   reset() {
@@ -43,9 +48,12 @@ class InMemoryDB {
     this.payloads = [...mockPayloads]
     this.delegations = [...mockDelegations]
     this.readReceipts = []
+    this.sessions = []
+    this.auditEvents = []
     this.nextEnvelopeId = 10022
     this.nextPayloadId = 22
     this.nextReceiptId = 1
+    this.nextAuditEventId = 1
   }
 }
 

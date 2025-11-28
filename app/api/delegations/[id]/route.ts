@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { withAuth, logAuditEvent } from '@/lib/iam/middleware'
+import { authorize, canManageDelegation } from '@/lib/iam/authorization'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,40 +16,73 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const id = params.id
-    const body = await request.json()
-    const validated = updateSchema.parse(body)
+  return withAuth(async (req, auth, user, org) => {
+    try {
+      const id = params.id
+      const body = await request.json()
+      const validated = updateSchema.parse(body)
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      const delegation = db.delegations.find(d => d.id === id)
-      if (!delegation) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+      let delegation
+      
+      if (isVercel()) {
+        const db = getInMemoryDB()
+        delegation = db.delegations.find(d => d.id === id)
+        if (!delegation) {
+          return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+        }
+      } else {
+        delegation = await prisma.delegation.findUnique({
+          where: { id },
+        })
+        if (!delegation) {
+          return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+        }
+        delegation = {
+          ...delegation,
+          assetScope: delegation.assetScope === 'ALL' ? 'ALL' : JSON.parse(delegation.assetScope),
+          typeScope: delegation.typeScope === 'ALL' ? 'ALL' : JSON.parse(delegation.typeScope),
+        }
       }
 
-      if (validated.status) delegation.status = validated.status
-      if (validated.gpApprovalStatus) delegation.gpApprovalStatus = validated.gpApprovalStatus
+      if (!canManageDelegation(auth, org, delegation)) {
+        await logAuditEvent(auth, 'UPDATE_DELEGATION', 'delegations', undefined, 'failure', request, {
+          reason: 'Insufficient permissions',
+        })
+        return NextResponse.json(
+          { error: 'Cannot manage this delegation' },
+          { status: 403 }
+        )
+      }
 
-      return NextResponse.json(delegation)
-    } else {
-      const delegation = await prisma.delegation.update({
-        where: { id },
-        data: validated,
-      })
+      if (isVercel()) {
+        const db = getInMemoryDB()
+        const delegationToUpdate = db.delegations.find(d => d.id === id)!
+        if (validated.status) delegationToUpdate.status = validated.status
+        if (validated.gpApprovalStatus) delegationToUpdate.gpApprovalStatus = validated.gpApprovalStatus
 
-      return NextResponse.json({
-        ...delegation,
-        assetScope: delegation.assetScope === 'ALL' ? 'ALL' : JSON.parse(delegation.assetScope),
-        typeScope: delegation.typeScope === 'ALL' ? 'ALL' : JSON.parse(delegation.typeScope),
-      })
+        await logAuditEvent(auth, 'UPDATE_DELEGATION', 'delegations', undefined, 'success', request, validated)
+        return NextResponse.json(delegationToUpdate)
+      } else {
+        const updated = await prisma.delegation.update({
+          where: { id },
+          data: validated,
+        })
+
+        await logAuditEvent(auth, 'UPDATE_DELEGATION', 'delegations', undefined, 'success', request, validated)
+
+        return NextResponse.json({
+          ...updated,
+          assetScope: updated.assetScope === 'ALL' ? 'ALL' : JSON.parse(updated.assetScope),
+          typeScope: updated.typeScope === 'ALL' ? 'ALL' : JSON.parse(updated.typeScope),
+        })
+      }
+    } catch (error) {
+      console.error('Error updating delegation:', error)
+      if (error instanceof z.ZodError) {
+        return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+      }
+      return NextResponse.json({ error: 'Failed to update delegation' }, { status: 500 })
     }
-  } catch (error) {
-    console.error('Error updating delegation:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Failed to update delegation' }, { status: 500 })
-  }
+  })(request)
 }
 

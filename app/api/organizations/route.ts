@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
+import { withPermission } from '@/lib/iam/middleware'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export const GET = withPermission('organizations:read')(async (request, auth, user, org) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get('id')
@@ -12,26 +13,26 @@ export async function GET(request: NextRequest) {
     if (isVercel()) {
       const db = getInMemoryDB()
       if (id) {
-        const org = db.organizations.find(o => o.id === parseInt(id))
-        if (!org) {
+        const targetOrg = db.organizations.find(o => o.id === parseInt(id))
+        if (!targetOrg) {
           return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
-        return NextResponse.json(org)
+        return NextResponse.json(targetOrg)
       }
       return NextResponse.json(db.organizations)
     } else {
       if (id) {
-        const org = await prisma.organization.findUnique({
+        const targetOrg = await prisma.organization.findUnique({
           where: { id: parseInt(id) },
           include: {
             users: true,
             assets: true,
           },
         })
-        if (!org) {
+        if (!targetOrg) {
           return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
-        return NextResponse.json(org)
+        return NextResponse.json(targetOrg)
       }
 
       const orgs = await prisma.organization.findMany({
@@ -46,5 +47,5 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching organizations:', error)
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
   }
-}
+})
 

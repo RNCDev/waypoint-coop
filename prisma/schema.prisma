@@ -89,3 +89,27 @@ model ReadReceipt {
   user       User     @relation(fields: [userId], references: [id])
 }
 
+model Session {
+  id         String   @id
+  userId     Int
+  orgId      Int
+  createdAt  String
+  expiresAt  String
+  ipAddress  String?
+  userAgent  String?
+}
+
+model AuditEvent {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  orgId      Int
+  action     String
+  resource   String
+  resourceId Int?
+  timestamp  String
+  ipAddress  String?
+  userAgent  String?
+  status     String
+  details    String?
+}
+

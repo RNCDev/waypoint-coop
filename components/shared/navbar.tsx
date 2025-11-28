@@ -59,6 +59,9 @@ export function Navbar() {
                   <Link href="/audit" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
                     Audit
                   </Link>
+                  <Link href="/iam" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
+                    IAM
+                  </Link>
                 </>
               ) : null}
               {/* Publishers and Asset Owners - Composer and History */}
