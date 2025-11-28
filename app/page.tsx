@@ -142,7 +142,8 @@ export default function Home() {
             </>
           )}
 
-          {currentUser?.role === 'Publisher' && currentOrg?.name === 'Genii Admin Services' && (
+          {/* Waypoint Platform Admin - Registry and Audit */}
+          {(currentUser?.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin') && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">

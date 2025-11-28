@@ -27,7 +27,19 @@ export function Navbar() {
             </Link>
             {currentUser && (
               <div className="flex items-center gap-4">
-                {currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner' ? (
+                {/* Waypoint Platform Admin - Registry and Audit only */}
+                {currentUser.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin' ? (
+                  <>
+                    <Link href="/registry" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
+                      Registry
+                    </Link>
+                    <Link href="/audit" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
+                      Audit
+                    </Link>
+                  </>
+                ) : null}
+                {/* Publishers and Asset Owners - Composer and History */}
+                {(currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg?.role !== 'Platform Admin' ? (
                   <>
                     <Link href="/composer" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
                       Composer
@@ -37,6 +49,7 @@ export function Navbar() {
                     </Link>
                   </>
                 ) : null}
+                {/* Subscribers, Delegates, Analytics - Ledger and Delegations */}
                 {currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor' ? (
                   <>
                     <Link href="/ledger" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
@@ -44,16 +57,6 @@ export function Navbar() {
                     </Link>
                     <Link href="/delegations" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
                       Delegations
-                    </Link>
-                  </>
-                ) : null}
-                {currentUser.role === 'Publisher' && currentOrg?.name === 'Genii Admin Services' ? (
-                  <>
-                    <Link href="/registry" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                      Registry
-                    </Link>
-                    <Link href="/audit" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                      Audit
                     </Link>
                   </>
                 ) : null}

@@ -1,6 +1,7 @@
 import { Organization, User, Asset, Envelope, Payload, Delegation } from '@/types'
 
 export const mockOrganizations: Organization[] = [
+  { id: 1, name: 'Waypoint Platform', role: 'Platform Admin', type: 'Platform Operator', status: 'Verified' },
   { id: 1001, name: 'Genii Admin Services', role: 'Publisher', type: 'Fund Administrator', status: 'Verified' },
   { id: 1002, name: 'Alter Domus', role: 'Publisher', type: 'Fund Administrator', status: 'Verified' },
   { id: 1003, name: 'Carta (Fund Admin)', role: 'Publisher', type: 'Fund Administrator', status: 'Verified' },
@@ -28,7 +29,8 @@ export const mockOrganizations: Organization[] = [
 ]
 
 export const mockUsers: User[] = [
-  { id: 501, name: 'Alice Admin', email: 'alice@genii.com', orgId: 1001, role: 'Publisher' },
+  { id: 501, name: 'Alice Admin', email: 'alice@waypoint.coop', orgId: 1, role: 'Platform Admin' },
+  { id: 521, name: 'Genii Publisher', email: 'publisher@genii.com', orgId: 1001, role: 'Publisher' },
   { id: 502, name: 'Bob GP', email: 'bob@kleinerperkins.com', orgId: 2001, role: 'Asset Owner' },
   { id: 503, name: 'Charlie LP', email: 'charlie@ohio.gov', orgId: 3001, role: 'Subscriber' },
   { id: 504, name: 'Dana Delegate', email: 'dana@deloitte.com', orgId: 4001, role: 'Auditor' },
