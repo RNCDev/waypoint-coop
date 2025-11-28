@@ -23,7 +23,7 @@ interface Envelope {
 
 export default function LedgerPage() {
   const router = useRouter()
-  const { currentUser, _hasHydrated } = useAuthStore()
+  const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [payloads, setPayloads] = useState<Record<number, any>>({})
@@ -34,18 +34,32 @@ export default function LedgerPage() {
   // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
     if (_hasHydrated && currentUser) {
-      const hasAccess = currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor'
+      const hasAccess = 
+        currentUser.role === 'Subscriber' || 
+        currentUser.role === 'Analytics' || 
+        currentUser.role === 'Auditor' ||
+        currentOrg?.role === 'Delegate'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [_hasHydrated, currentUser, router])
+  }, [_hasHydrated, currentUser, currentOrg, router])
 
   const fetchEnvelopes = useCallback(async () => {
     try {
-      // Get envelopes for subscriber
-      const subscriberId = currentUser?.orgId
-      const response = await fetch(`/api/envelopes?subscriberId=${subscriberId}`)
+      // For subscribers, filter by subscriberId
+      // For delegates, fetch all and let the API filter based on delegations
+      let url = '/api/envelopes'
+      if (currentOrg?.role === 'Subscriber' && currentUser?.orgId) {
+        url = `/api/envelopes?subscriberId=${currentUser.orgId}`
+      }
+      // For delegates, don't add subscriberId - the API will filter based on delegations
+      
+      const response = await fetch(url, {
+        headers: {
+          'x-user-id': currentUser?.id.toString() || '',
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setEnvelopes(data)
@@ -55,7 +69,7 @@ export default function LedgerPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentUser])
+  }, [currentUser, currentOrg])
 
   useEffect(() => {
     if (currentUser?.orgId) {
@@ -76,7 +90,11 @@ export default function LedgerPage() {
       try {
         // Pass orgId for authorization check (each envelope is already scoped to one LP)
         const orgId = currentUser?.orgId
-        const response = await fetch(`/api/payloads/${envelope.id}?orgId=${orgId}`)
+        const response = await fetch(`/api/payloads/${envelope.id}?orgId=${orgId}`, {
+          headers: {
+            'x-user-id': currentUser?.id.toString() || '',
+          },
+        })
         if (response.ok) {
           const data = await response.json()
           setPayloads((prev) => ({ ...prev, [envelope.id]: data.data }))
@@ -209,7 +227,7 @@ export default function LedgerPage() {
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-[1.2] pb-0.5">
           Ledger
         </h1>
         <p className="text-muted-foreground text-lg">Your data feed</p>

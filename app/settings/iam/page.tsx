@@ -133,10 +133,10 @@ export default function IAMSettingsPage() {
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              {currentOrg?.role === 'Platform Admin' ? 'IAM' : 'Organization Settings'}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+          <div className="flex-1 min-w-0 pr-4">
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent break-words leading-[1.2] pb-0.5">
+              {currentOrg?.role === 'Platform Admin' ? 'IAM' : 'IAM'}
             </h1>
             <p className="text-muted-foreground text-lg">
               {currentOrg?.role === 'Platform Admin' 
@@ -145,7 +145,7 @@ export default function IAMSettingsPage() {
             </p>
           </div>
           {currentOrg?.role !== 'Platform Admin' && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Badge variant="outline" className="text-sm">{currentOrg?.type}</Badge>
               <Badge variant={currentOrg?.status === 'Verified' ? 'default' : 'secondary'} className="text-sm">
                 {currentOrg?.status}

@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -26,10 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Check, X, Building2, FileText, Edit } from 'lucide-react'
+import { Plus, Trash2, Check, X, Edit, FileText, Eye, Settings, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { PublishingRight, Asset, Organization } from '@/types'
 import { mockAssets, mockOrganizations } from '@/lib/mock-data'
+
+type AccessType = 'publish' | 'view' | 'manageSubscriptions' | 'approveDelegations' | 'approveSubscriptions'
+
+interface AssetAccess {
+  asset: Asset
+  rights: PublishingRight[]
+}
 
 export default function DataRightsPage() {
   const router = useRouter()
@@ -41,20 +47,16 @@ export default function DataRightsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingRight, setEditingRight] = useState<PublishingRight | null>(null)
-  const [activeTab, setActiveTab] = useState('publishing')
-  const [newRight, setNewRight] = useState({
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [newAccess, setNewAccess] = useState({
+    assetId: '',
     organizationId: '',
-    organizationType: 'Publisher' as 'Publisher' | 'Delegate' | 'Subscriber',
-    assetScope: 'ALL' as 'ALL' | number[],
-    selectedAssets: [] as number[],
-    canManageSubscriptions: false,
-    canPublish: true,
-    canView: true,
+    accessTypes: [] as AccessType[],
   })
-  const [editRight, setEditRight] = useState({
+  const [editAccess, setEditAccess] = useState({
     assetScope: 'ALL' as 'ALL' | number[],
     selectedAssets: [] as number[],
-    canManageSubscriptions: false,
+    accessTypes: [] as AccessType[],
   })
 
   // Redirect if user doesn't have access
@@ -100,51 +102,82 @@ export default function DataRightsPage() {
     }
   }, [currentUser, fetchData])
 
-  const handleCreateRight = async () => {
-    if (!currentUser || !newRight.organizationId) return
-
-    // For now, only handle Publishing Rights (Publisher orgs)
-    // In the future, this could create other types of data rights
-    if (newRight.organizationType === 'Publisher') {
-      try {
-        const response = await fetch('/api/publishing-rights', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': currentUser.id.toString(),
-          },
-          body: JSON.stringify({
-            publisherId: parseInt(newRight.organizationId),
-            assetScope: newRight.assetScope === 'ALL' ? 'ALL' : newRight.selectedAssets,
-            canManageSubscriptions: newRight.canManageSubscriptions,
-          }),
-        })
-
-        if (response.ok) {
-          setDialogOpen(false)
-          setNewRight({
-            organizationId: '',
-            organizationType: 'Publisher',
-            assetScope: 'ALL',
-            selectedAssets: [],
-            canManageSubscriptions: false,
-            canPublish: true,
-            canView: true,
-          })
-          fetchData()
-        } else {
-          const error = await response.json()
-          alert(error.error || 'Failed to create data right')
+  // Group rights by asset
+  const getAssetAccess = (): AssetAccess[] => {
+    return assets.map(asset => {
+      const assetRights = publishingRights.filter(right => {
+        if (right.assetScope === 'ALL') {
+          return right.assetOwnerId === currentOrg?.id
         }
-      } catch (error) {
-        console.error('Error creating data right:', error)
+        return Array.isArray(right.assetScope) && right.assetScope.includes(asset.id) && right.assetOwnerId === currentOrg?.id
+      })
+      return { asset, rights: assetRights }
+    }).filter(item => item.rights.length > 0 || searchTerm === '')
+  }
+
+  const getAccessTypes = (right: PublishingRight): AccessType[] => {
+    const types: AccessType[] = []
+    // Having a PublishingRight means they can publish
+    types.push('publish')
+    if (right.canViewData) types.push('view')
+    if (right.canManageSubscriptions) types.push('manageSubscriptions')
+    if (right.canApproveDelegations) types.push('approveDelegations')
+    if (right.canApproveSubscriptions) types.push('approveSubscriptions')
+    return types
+  }
+
+  const handleCreateAccess = async () => {
+    if (!currentUser || !newAccess.assetId || !newAccess.organizationId || newAccess.accessTypes.length === 0) return
+
+    try {
+      // Determine asset scope - if only one asset selected, use array, otherwise could be ALL
+      const assetScope = [parseInt(newAccess.assetId)]
+      
+      // Map access types to PublishingRight flags
+      const canManageSubscriptions = newAccess.accessTypes.includes('manageSubscriptions')
+      const canApproveDelegations = newAccess.accessTypes.includes('approveDelegations')
+      const canApproveSubscriptions = newAccess.accessTypes.includes('approveSubscriptions')
+      const canViewData = newAccess.accessTypes.includes('view') || newAccess.accessTypes.includes('publish')
+
+      const response = await fetch('/api/publishing-rights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id.toString(),
+        },
+        body: JSON.stringify({
+          publisherId: parseInt(newAccess.organizationId),
+          assetScope,
+          canManageSubscriptions,
+          canApproveDelegations,
+          canApproveSubscriptions,
+          canViewData,
+        }),
+      })
+
+      if (response.ok) {
+        setDialogOpen(false)
+        setNewAccess({
+          assetId: '',
+          organizationId: '',
+          accessTypes: [],
+        })
+        setSelectedAsset(null)
+        fetchData()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to delegate access')
       }
+    } catch (error) {
+      console.error('Error creating access:', error)
     }
   }
 
-  const handleEditRight = (right: PublishingRight) => {
+  const handleEditAccess = (right: PublishingRight, asset: Asset) => {
     setEditingRight(right)
-    // Parse assetScope - it can be 'ALL', array, or JSON string
+    setSelectedAsset(asset)
+    
+    // Parse assetScope
     let parsedScope: 'ALL' | number[] = 'ALL'
     if (right.assetScope === 'ALL') {
       parsedScope = 'ALL'
@@ -159,18 +192,25 @@ export default function DataRightsPage() {
       }
     }
     
-    setEditRight({
+    const accessTypes = getAccessTypes(right)
+    
+    setEditAccess({
       assetScope: parsedScope,
       selectedAssets: parsedScope === 'ALL' ? [] : parsedScope,
-      canManageSubscriptions: right.canManageSubscriptions,
+      accessTypes,
     })
     setEditDialogOpen(true)
   }
 
-  const handleUpdateRight = async () => {
+  const handleUpdateAccess = async () => {
     if (!currentUser || !editingRight) return
 
     try {
+      const canManageSubscriptions = editAccess.accessTypes.includes('manageSubscriptions')
+      const canApproveDelegations = editAccess.accessTypes.includes('approveDelegations')
+      const canApproveSubscriptions = editAccess.accessTypes.includes('approveSubscriptions')
+      const canViewData = editAccess.accessTypes.includes('view') || editAccess.accessTypes.includes('publish')
+
       const response = await fetch(`/api/publishing-rights/${editingRight.id}`, {
         method: 'PATCH',
         headers: {
@@ -178,33 +218,37 @@ export default function DataRightsPage() {
           'x-user-id': currentUser.id.toString(),
         },
         body: JSON.stringify({
-          assetScope: editRight.assetScope === 'ALL' ? 'ALL' : editRight.selectedAssets,
-          canManageSubscriptions: editRight.canManageSubscriptions,
+          assetScope: editAccess.assetScope === 'ALL' ? 'ALL' : editAccess.selectedAssets,
+          canManageSubscriptions,
+          canApproveDelegations,
+          canApproveSubscriptions,
+          canViewData,
         }),
       })
 
       if (response.ok) {
         setEditDialogOpen(false)
         setEditingRight(null)
-        setEditRight({
+        setSelectedAsset(null)
+        setEditAccess({
           assetScope: 'ALL',
           selectedAssets: [],
-          canManageSubscriptions: false,
+          accessTypes: [],
         })
         fetchData()
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to update publishing right')
+        alert(error.error || 'Failed to update access')
       }
     } catch (error) {
-      console.error('Error updating publishing right:', error)
+      console.error('Error updating access:', error)
     }
   }
 
-  const handleRevokeRight = async (id: string) => {
+  const handleRevokeAccess = async (id: string) => {
     if (!currentUser) return
     
-    if (!confirm('Are you sure you want to revoke this data right?')) return
+    if (!confirm('Are you sure you want to revoke this access?')) return
 
     try {
       const response = await fetch(`/api/publishing-rights/${id}`, {
@@ -218,16 +262,8 @@ export default function DataRightsPage() {
         fetchData()
       }
     } catch (error) {
-      console.error('Error revoking data right:', error)
+      console.error('Error revoking access:', error)
     }
-  }
-
-  const getAssetNames = (assetScope: number[] | 'ALL') => {
-    if (assetScope === 'ALL') return 'All Assets'
-    return assetScope.map(id => {
-      const asset = mockAssets.find(a => a.id === id)
-      return asset?.name || `Asset ${id}`
-    }).join(', ')
   }
 
   const getOrgName = (orgId: number) => {
@@ -235,24 +271,32 @@ export default function DataRightsPage() {
     return org?.name || `Org ${orgId}`
   }
 
-  // Get available organizations by type
-  const getAvailableOrgs = (type: 'Publisher' | 'Delegate' | 'Subscriber') => {
-    return mockOrganizations.filter(o => o.role === type)
+  const getAvailableOrgs = () => {
+    // Can delegate to Publishers, Delegates, or potentially other Asset Owners
+    return mockOrganizations.filter(o => 
+      o.role === 'Publisher' || o.role === 'Delegate' || o.role === 'Asset Owner'
+    )
   }
 
-  // Get available assets for current GP
   const getAvailableAssets = () => {
     if (!currentOrg) return []
     if (currentOrg.role === 'Platform Admin') return mockAssets
     return mockAssets.filter(a => a.ownerId === currentOrg.id)
   }
 
-  const filteredRights = publishingRights.filter((right) => {
-    const publisherName = getOrgName(right.publisherId).toLowerCase()
-    const assetOwnerName = getOrgName(right.assetOwnerId).toLowerCase()
-    return publisherName.includes(searchTerm.toLowerCase()) || 
-           assetOwnerName.includes(searchTerm.toLowerCase())
+  const filteredAssetAccess = getAssetAccess().filter(item => {
+    const assetName = item.asset.name.toLowerCase()
+    const orgNames = item.rights.map(r => getOrgName(r.publisherId).toLowerCase()).join(' ')
+    return assetName.includes(searchTerm.toLowerCase()) || orgNames.includes(searchTerm.toLowerCase())
   })
+
+  const accessTypeLabels: Record<AccessType, { label: string; icon: React.ReactNode }> = {
+    publish: { label: 'Publish Data', icon: <FileText className="w-4 h-4" /> },
+    view: { label: 'View Data', icon: <Eye className="w-4 h-4" /> },
+    manageSubscriptions: { label: 'Manage Subscriptions', icon: <Settings className="w-4 h-4" /> },
+    approveDelegations: { label: 'Approve Delegations', icon: <Shield className="w-4 h-4" /> },
+    approveSubscriptions: { label: 'Approve Subscriptions', icon: <Shield className="w-4 h-4" /> },
+  }
 
   if (loading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>
@@ -266,331 +310,256 @@ export default function DataRightsPage() {
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Data Rights
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-[1.2] pb-0.5">
+          Delegations
         </h1>
         <p className="text-muted-foreground text-lg">
-          Grant organizations access to view, use, or publish data for your assets
+          Delegate access permissions for organizations by asset. Grant publishing, viewing, subscription management, and approval rights.
         </p>
       </motion.div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="publishing">
-            <FileText className="w-4 h-4 mr-2" />
-            Publishing Rights
-          </TabsTrigger>
-          <TabsTrigger value="access">
-            <Building2 className="w-4 h-4 mr-2" />
-            Access Rights
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <Input
+          placeholder="Search by asset or organization..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-md"
+        />
 
-        <TabsContent value="publishing" className="space-y-6">
-          <div className="flex items-center justify-between gap-4">
-            <Input
-              placeholder="Search by organization or asset owner..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
-
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Grant Publishing Rights
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Grant Publishing Rights</DialogTitle>
-                  <DialogDescription>
-                    Authorize an organization to publish data on behalf of your assets
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Organization Type</Label>
-                    <Select
-                      value={newRight.organizationType}
-                      onValueChange={(value) => setNewRight(prev => ({ 
-                        ...prev, 
-                        organizationType: value as 'Publisher' | 'Delegate' | 'Subscriber',
-                        organizationId: '',
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Publisher">Fund Administrator</SelectItem>
-                        <SelectItem value="Delegate">Service Provider</SelectItem>
-                        <SelectItem value="Subscriber">Limited Partner</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>
-                      {newRight.organizationType === 'Publisher' ? 'Fund Administrator' :
-                       newRight.organizationType === 'Delegate' ? 'Service Provider' :
-                       'Limited Partner'}
-                    </Label>
-                    <Select
-                      value={newRight.organizationId}
-                      onValueChange={(value) => setNewRight(prev => ({ ...prev, organizationId: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select a ${newRight.organizationType === 'Publisher' ? 'fund administrator' : newRight.organizationType === 'Delegate' ? 'service provider' : 'limited partner'}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableOrgs(newRight.organizationType).map(org => (
-                          <SelectItem key={org.id} value={org.id.toString()}>
-                            {org.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Asset Scope</Label>
-                    <Select
-                      value={newRight.assetScope === 'ALL' ? 'ALL' : 'SPECIFIC'}
-                      onValueChange={(value) => setNewRight(prev => ({
-                        ...prev,
-                        assetScope: value === 'ALL' ? 'ALL' : [],
-                        selectedAssets: [],
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Assets</SelectItem>
-                        <SelectItem value="SPECIFIC">Specific Assets</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {newRight.assetScope !== 'ALL' && (
-                    <div className="space-y-2">
-                      <Label>Select Assets</Label>
-                      <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                        {getAvailableAssets().map(asset => (
-                          <label key={asset.id} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={newRight.selectedAssets.includes(asset.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setNewRight(prev => ({
-                                    ...prev,
-                                    selectedAssets: [...prev.selectedAssets, asset.id],
-                                  }))
-                                } else {
-                                  setNewRight(prev => ({
-                                    ...prev,
-                                    selectedAssets: prev.selectedAssets.filter(id => id !== asset.id),
-                                  }))
-                                }
-                              }}
-                              className="rounded"
-                            />
-                            <span className="text-sm">{asset.name} ({asset.type})</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {newRight.organizationType === 'Publisher' && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="canManageSubscriptions"
-                          checked={newRight.canManageSubscriptions}
-                          onChange={(e) => setNewRight(prev => ({
-                            ...prev,
-                            canManageSubscriptions: e.target.checked,
-                          }))}
-                          className="rounded"
-                        />
-                        <Label htmlFor="canManageSubscriptions" className="cursor-pointer">
-                          Allow subscription management
-                        </Label>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        If enabled, the organization can also add/remove LP subscriptions
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreateRight}
-                    disabled={!newRight.organizationId || (newRight.assetScope !== 'ALL' && newRight.selectedAssets.length === 0)}
-                  >
-                    Grant Rights
-                  </Button>
-                </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Edit Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Delegate Access
+            </Button>
+          </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Edit Publishing Rights</DialogTitle>
+              <DialogTitle>Delegate Access to Organization</DialogTitle>
               <DialogDescription>
-                Update asset scope and permissions for {editingRight && getOrgName(editingRight.publisherId)}
+                Grant an organization access to a specific asset with defined permissions
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Asset Scope</Label>
+                <Label>Asset</Label>
                 <Select
-                  value={editRight.assetScope === 'ALL' ? 'ALL' : 'SPECIFIC'}
-                  onValueChange={(value) => setEditRight(prev => ({
-                    ...prev,
-                    assetScope: value === 'ALL' ? 'ALL' : [],
-                    selectedAssets: [],
-                  }))}
+                  value={newAccess.assetId}
+                  onValueChange={(value) => {
+                    setNewAccess(prev => ({ ...prev, assetId: value }))
+                    const asset = getAvailableAssets().find(a => a.id === parseInt(value))
+                    setSelectedAsset(asset || null)
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select an asset" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">All Assets</SelectItem>
-                    <SelectItem value="SPECIFIC">Specific Assets</SelectItem>
+                    {getAvailableAssets().map(asset => (
+                      <SelectItem key={asset.id} value={asset.id.toString()}>
+                        {asset.name} ({asset.type})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {editRight.assetScope !== 'ALL' && (
-                <div className="space-y-2">
-                  <Label>Select Assets</Label>
-                  <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                    {getAvailableAssets().map(asset => (
-                      <label key={asset.id} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editRight.selectedAssets.includes(asset.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEditRight(prev => ({
-                                ...prev,
-                                selectedAssets: [...prev.selectedAssets, asset.id],
-                              }))
-                            } else {
-                              setEditRight(prev => ({
-                                ...prev,
-                                selectedAssets: prev.selectedAssets.filter(id => id !== asset.id),
-                              }))
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        <span className="text-sm">{asset.name} ({asset.type})</span>
-                      </label>
+              <div className="space-y-2">
+                <Label>Organization</Label>
+                <Select
+                  value={newAccess.organizationId}
+                  onValueChange={(value) => setNewAccess(prev => ({ ...prev, organizationId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableOrgs().map(org => (
+                      <SelectItem key={org.id} value={org.id.toString()}>
+                        {org.name} ({org.role})
+                      </SelectItem>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="editCanManageSubscriptions"
-                  checked={editRight.canManageSubscriptions}
-                  onChange={(e) => setEditRight(prev => ({
-                    ...prev,
-                    canManageSubscriptions: e.target.checked,
-                  }))}
-                  className="rounded"
-                />
-                <Label htmlFor="editCanManageSubscriptions" className="cursor-pointer">
-                  Allow subscription management
-                </Label>
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="text-xs text-muted-foreground">
-                If enabled, the organization can also add/remove LP subscriptions
-              </p>
+
+              <div className="space-y-2">
+                <Label>Access Types</Label>
+                <div className="border rounded-md p-3 space-y-2">
+                  {Object.entries(accessTypeLabels).map(([key, { label, icon }]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newAccess.accessTypes.includes(key as AccessType)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewAccess(prev => ({
+                              ...prev,
+                              accessTypes: [...prev.accessTypes, key as AccessType],
+                            }))
+                          } else {
+                            setNewAccess(prev => ({
+                              ...prev,
+                              accessTypes: prev.accessTypes.filter(t => t !== key),
+                            }))
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="flex items-center gap-2 text-sm">
+                        {icon}
+                        {label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select one or more access types to grant to this organization
+                </p>
+              </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => {
-                setEditDialogOpen(false)
-                setEditingRight(null)
-                setEditRight({
-                  assetScope: 'ALL',
-                  selectedAssets: [],
-                  canManageSubscriptions: false,
-                })
+                setDialogOpen(false)
+                setNewAccess({ assetId: '', organizationId: '', accessTypes: [] })
+                setSelectedAsset(null)
               }}>
                 Cancel
               </Button>
               <Button 
-                onClick={handleUpdateRight}
-                disabled={editRight.assetScope !== 'ALL' && editRight.selectedAssets.length === 0}
+                onClick={handleCreateAccess}
+                disabled={!newAccess.assetId || !newAccess.organizationId || newAccess.accessTypes.length === 0}
               >
-                Update Rights
+                Delegate Access
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
 
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Access Permissions</DialogTitle>
+            <DialogDescription>
+              Update access types for {editingRight && getOrgName(editingRight.publisherId)} on {selectedAsset?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Access Types</Label>
+              <div className="border rounded-md p-3 space-y-2">
+                {Object.entries(accessTypeLabels).map(([key, { label, icon }]) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editAccess.accessTypes.includes(key as AccessType)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setEditAccess(prev => ({
+                            ...prev,
+                            accessTypes: [...prev.accessTypes, key as AccessType],
+                          }))
+                        } else {
+                          setEditAccess(prev => ({
+                            ...prev,
+                            accessTypes: prev.accessTypes.filter(t => t !== key),
+                          }))
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span className="flex items-center gap-2 text-sm">
+                      {icon}
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setEditDialogOpen(false)
+              setEditingRight(null)
+              setSelectedAsset(null)
+              setEditAccess({
+                assetScope: 'ALL',
+                selectedAssets: [],
+                accessTypes: [],
+              })
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateAccess}
+              disabled={editAccess.accessTypes.length === 0}
+            >
+              Update Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {filteredAssetAccess.length === 0 ? (
         <Card>
-            <CardHeader>
-              <CardTitle>Publishing Rights</CardTitle>
-              <CardDescription>
-                {filteredRights.length} publishing right{filteredRights.length !== 1 ? 's' : ''} granted
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {filteredRights.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12 border border-dashed rounded-lg">
-                  No publishing rights granted yet
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <p className="text-sm">No access delegations found</p>
+              <p className="text-xs mt-1">Delegate access to organizations to get started</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {filteredAssetAccess.map(({ asset, rights }) => (
+            <Card key={asset.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>{asset.name}</CardTitle>
+                    <CardDescription>
+                      {asset.type} • {rights.length} organization{rights.length !== 1 ? 's' : ''} with access
+                    </CardDescription>
+                  </div>
                 </div>
-              ) : (
-                <div className="border rounded-lg overflow-hidden">
+              </CardHeader>
+              <CardContent>
+                {rights.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8 border border-dashed rounded-lg">
+                    No organizations have access to this asset
+                  </div>
+                ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Organization</TableHead>
-                        <TableHead>Asset Owner</TableHead>
-                        <TableHead>Assets</TableHead>
-                        <TableHead>Can Manage Subs</TableHead>
+                        <TableHead>Access Types</TableHead>
                         <TableHead>Granted At</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="w-[80px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRights.map((right) => (
-                        <TableRow key={right.id} className="hover:bg-muted/50">
+                      {rights.map((right) => (
+                        <TableRow key={right.id}>
                           <TableCell className="font-medium">
                             {getOrgName(right.publisherId)}
                           </TableCell>
-                          <TableCell>{getOrgName(right.assetOwnerId)}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {getAssetNames(right.assetScope)}
-                          </TableCell>
                           <TableCell>
-                            {right.canManageSubscriptions ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <X className="w-4 h-4 text-muted-foreground" />
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                              {getAccessTypes(right).map(type => (
+                                <Badge key={type} variant="outline" className="text-xs">
+                                  {accessTypeLabels[type].icon}
+                                  <span className="ml-1">{accessTypeLabels[type].label}</span>
+                                </Badge>
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm">
                             {new Date(right.grantedAt).toLocaleDateString()}
@@ -608,16 +577,16 @@ export default function DataRightsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleEditRight(right)}
-                                  title="Edit publishing rights"
+                                  onClick={() => handleEditAccess(right, asset)}
+                                  title="Edit access"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleRevokeRight(right.id)}
-                                  title="Revoke publishing rights"
+                                  onClick={() => handleRevokeAccess(right.id)}
+                                  title="Revoke access"
                                 >
                                   <Trash2 className="w-4 h-4 text-destructive" />
                                 </Button>
@@ -628,30 +597,12 @@ export default function DataRightsPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="access" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Access Rights</CardTitle>
-              <CardDescription>
-                Grant organizations view-only or read-write access to your assets
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-muted-foreground py-12 border border-dashed rounded-lg">
-                <p className="text-sm">Access rights management coming soon</p>
-                <p className="text-xs mt-1">This will allow you to grant view or use rights to service providers, auditors, and other organizations</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
-

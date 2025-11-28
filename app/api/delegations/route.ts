@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { DataType } from '@/types'
 import { getCurrentUser, checkPermission } from '@/lib/api-guard'
@@ -24,6 +23,7 @@ const delegationSchema = z.object({
   assetScope: z.union([z.literal('ALL'), z.array(z.number())]),
   typeScope: z.union([z.literal('ALL'), z.array(dataTypeEnum)]),
   gpApprovalRequired: z.boolean().optional().default(false),
+  canManageSubscriptions: z.boolean().optional().default(false), // Can accept/request subscriptions on behalf of subscriber
 })
 
 export async function GET(request: NextRequest) {
@@ -43,49 +43,25 @@ export async function GET(request: NextRequest) {
     const delegateId = searchParams.get('delegateId')
     const pendingApproval = searchParams.get('pendingApproval')
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      
-      // Get delegations the user has access to
-      let delegations = getAccessibleDelegations(user)
+    // Use in-memory DB for consistency (works on Vercel and local dev)
+    // Prisma can be used if database is properly seeded, but in-memory is simpler
+    const db = getInMemoryDB()
+    
+    // Get delegations the user has access to
+    let delegations = getAccessibleDelegations(user)
 
-      // Apply additional filters
-      if (subscriberId) {
-        delegations = delegations.filter(d => d.subscriberId === parseInt(subscriberId))
-      }
-      if (delegateId) {
-        delegations = delegations.filter(d => d.delegateId === parseInt(delegateId))
-      }
-      if (pendingApproval === 'true') {
-        delegations = delegations.filter(d => d.status === 'Pending GP Approval' && d.gpApprovalStatus === 'Pending')
-      }
-
-      return NextResponse.json(delegations)
-    } else {
-      const where: any = {}
-      if (subscriberId) where.subscriberId = parseInt(subscriberId)
-      if (delegateId) where.delegateId = parseInt(delegateId)
-      if (pendingApproval === 'true') {
-        where.status = 'Pending GP Approval'
-        where.gpApprovalStatus = 'Pending'
-      }
-
-      const delegations = await prisma.delegation.findMany({ where })
-
-      // Filter by permission and format
-      const formattedDelegations = delegations.map(d => ({
-        ...d,
-        assetScope: d.assetScope === 'ALL' ? 'ALL' : JSON.parse(d.assetScope),
-        typeScope: d.typeScope === 'ALL' ? 'ALL' : JSON.parse(d.typeScope),
-      }))
-
-      // Apply permission filtering
-      const accessibleDelegations = getAccessibleDelegations(user)
-      const accessibleIds = new Set(accessibleDelegations.map(d => d.id))
-      const filteredDelegations = formattedDelegations.filter(d => accessibleIds.has(d.id))
-
-      return NextResponse.json(filteredDelegations)
+    // Apply additional filters
+    if (subscriberId) {
+      delegations = delegations.filter(d => d.subscriberId === parseInt(subscriberId))
     }
+    if (delegateId) {
+      delegations = delegations.filter(d => d.delegateId === parseInt(delegateId))
+    }
+    if (pendingApproval === 'true') {
+      delegations = delegations.filter(d => d.status === 'Pending GP Approval' && d.gpApprovalStatus === 'Pending')
+    }
+
+    return NextResponse.json(delegations)
   } catch (error) {
     console.error('Error fetching delegations:', error)
     return NextResponse.json({ error: 'Failed to fetch delegations' }, { status: 500 })
@@ -117,9 +93,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check asset-level approval requirements
+    // If any asset in scope requires GP approval, force gpApprovalRequired = true
+    let requiresApproval = validated.gpApprovalRequired || false
+    
+    if (isVercel()) {
+      const db = getInMemoryDB()
+      if (validated.assetScope === 'ALL') {
+        // For "ALL" scope, check if subscriber has any subscriptions to assets that require approval
+        const subscriptions = db.subscriptions.filter(
+          s => s.subscriberId === validated.subscriberId && s.status === 'Active'
+        )
+        const assetIds = subscriptions.map(s => s.assetId)
+        const assetsRequiringApproval = db.assets.filter(
+          a => assetIds.includes(a.id) && a.requireGPApprovalForDelegations
+        )
+        if (assetsRequiringApproval.length > 0) {
+          requiresApproval = true
+        }
+      } else {
+        // Check each asset in scope (assetScope is an array of numbers)
+        const assetScopeArray = validated.assetScope as number[]
+        const assetsRequiringApproval = db.assets.filter(
+          a => assetScopeArray.includes(a.id) && a.requireGPApprovalForDelegations
+        )
+        if (assetsRequiringApproval.length > 0) {
+          requiresApproval = true
+        }
+      }
+    } else {
+      // Use Prisma for local development
+      const { prisma } = await import('@/lib/prisma')
+      if (validated.assetScope === 'ALL') {
+        // For "ALL" scope, check subscriptions
+        const subscriptions = await prisma.subscription.findMany({
+          where: {
+            subscriberId: validated.subscriberId,
+            status: 'Active',
+          },
+        })
+        const assetIds = subscriptions.map(s => s.assetId)
+        const assetsRequiringApproval = await prisma.asset.findMany({
+          where: {
+            id: { in: assetIds },
+            requireGPApprovalForDelegations: true,
+          },
+        })
+        if (assetsRequiringApproval.length > 0) {
+          requiresApproval = true
+        }
+      } else {
+        // Check each asset in scope
+        const assetsRequiringApproval = await prisma.asset.findMany({
+          where: {
+            id: { in: validated.assetScope },
+            requireGPApprovalForDelegations: true,
+          },
+        })
+        if (assetsRequiringApproval.length > 0) {
+          requiresApproval = true
+        }
+      }
+    }
+
     const timestamp = new Date().toISOString()
-    const initialStatus = validated.gpApprovalRequired ? 'Pending GP Approval' : 'Active'
-    const gpApprovalStatus = validated.gpApprovalRequired ? 'Pending' : undefined
+    const initialStatus = requiresApproval ? 'Pending GP Approval' : 'Active'
+    const gpApprovalStatus = requiresApproval ? 'Pending' : undefined
 
     if (isVercel()) {
       const db = getInMemoryDB()
@@ -131,8 +170,9 @@ export async function POST(request: NextRequest) {
         assetScope: validated.assetScope,
         typeScope: validated.typeScope as 'ALL' | DataType[],
         status: initialStatus as 'Active' | 'Pending GP Approval',
-        gpApprovalRequired: validated.gpApprovalRequired,
+        gpApprovalRequired: requiresApproval,
         gpApprovalStatus: gpApprovalStatus as 'Pending' | undefined,
+        canManageSubscriptions: validated.canManageSubscriptions,
         createdAt: timestamp,
       }
 
@@ -147,6 +187,7 @@ export async function POST(request: NextRequest) {
           typeScope: typeof validated.typeScope === 'string' ? validated.typeScope : JSON.stringify(validated.typeScope),
           status: initialStatus,
           gpApprovalStatus: gpApprovalStatus || null,
+          canManageSubscriptions: validated.canManageSubscriptions,
           createdAt: timestamp,
         } as any,
       })

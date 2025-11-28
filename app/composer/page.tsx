@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { mockAssets, mockOrganizations } from '@/lib/mock-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,11 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import Papa from 'papaparse'
 import { format } from 'date-fns'
-import { Download, CheckCircle2, XCircle } from 'lucide-react'
+import { Download, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function ComposerPage() {
+function ComposerContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const correctEnvelopeId = searchParams?.get('correctEnvelopeId')
   const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
 
   // Redirect if user doesn't have access to composer
@@ -31,6 +33,7 @@ export default function ComposerPage() {
       }
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
+
   const [inputData, setInputData] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
   const [isValidJson, setIsValidJson] = useState<boolean | null>(null)
@@ -38,6 +41,61 @@ export default function ComposerPage() {
   const [selectedAsset, setSelectedAsset] = useState<string>('')
   const [tags, setTags] = useState('')
   const [isPublishing, setIsPublishing] = useState(false)
+  const [isCorrecting, setIsCorrecting] = useState(false)
+
+  // Initialize correction mode if ID is present
+  useEffect(() => {
+    const fetchEnvelopeForCorrection = async () => {
+      if (!correctEnvelopeId || !currentUser) return
+
+      try {
+        setIsCorrecting(true)
+        // Fetch envelope details to get asset and owner
+        // In a real app, we'd have a single envelope endpoint. For now we use the list endpoint and filter
+        // or assumes we can fetch by ID if implemented. 
+        // Based on history page, we can fetch payloads.
+        
+        // Let's try to fetch payload first, which gives us data
+        const payloadResponse = await fetch(`/api/payloads/${correctEnvelopeId}?orgId=${currentUser.orgId}`)
+        if (payloadResponse.ok) {
+          const payloadResult = await payloadResponse.json()
+          const data = payloadResult.data
+          
+          // Pre-fill input data
+          setInputData(JSON.stringify(data, null, 2))
+          // Trigger validation
+          setParsedData(Array.isArray(data) ? data : [data])
+          setIsValidJson(true)
+
+          // We also need envelope metadata to set asset/owner
+          // Since we don't have a direct "get envelope by id" hook handy in the mock setup easily without iterating,
+          // let's fetch envelopes for this user and find it.
+          const queryParam = currentOrg?.role === 'Asset Owner' 
+            ? `assetOwnerId=${currentOrg?.id}`
+            : `publisherId=${currentOrg?.id}`
+          
+          const envelopeResponse = await fetch(`/api/envelopes?${queryParam}`)
+          if (envelopeResponse.ok) {
+            const envelopes = await envelopeResponse.json()
+            const envelope = envelopes.find((e: any) => e.id === parseInt(correctEnvelopeId))
+            
+            if (envelope) {
+              setSelectedAssetOwner(envelope.assetOwnerId.toString())
+              setSelectedAsset(envelope.assetId.toString())
+              setTags(envelope.dataType || '')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching correction data:', error)
+      }
+    }
+
+    if (correctEnvelopeId && currentUser && currentOrg) {
+      fetchEnvelopeForCorrection()
+    }
+  }, [correctEnvelopeId, currentUser, currentOrg])
+
 
   // Helper function to normalize column names and find LP ID field
   const getLpIdFromRow = (row: any): number | null => {
@@ -112,79 +170,109 @@ export default function ComposerPage() {
 
     setIsPublishing(true)
     try {
-      const asset = mockAssets.find(a => a.id === parseInt(selectedAsset))
-      const assetOwner = mockOrganizations.find(o => o.id === asset?.ownerId)
       const timestamp = new Date().toISOString()
-      const dataType = tags.split(',').find(t => t.trim().toUpperCase().includes('CAPITAL')) ? 'CAPITAL_CALL' : undefined
+      const dataType = tags.split(',').find(t => t.trim().toUpperCase().includes('CAPITAL')) ? 'CAPITAL_CALL' : (tags || undefined)
 
-      // Extract LP IDs from parsed data and create one envelope per LP
-      const lpIds = new Set<number>()
-      parsedData.forEach((row: any) => {
-        const lpId = getLpIdFromRow(row)
-        if (lpId !== null) {
-          lpIds.add(lpId)
-        }
-      })
+      if (isCorrecting && correctEnvelopeId) {
+        // Correction Flow
+        // We only correct the single envelope specified by ID
+        // The payload should be the corrected data for THAT envelope
+        
+        // For correction, we assume the input data is the FULL payload for that specific envelope
+        // (since we pre-filled it with the envelope's payload)
+        const payload = parsedData.length === 1 ? parsedData[0] : parsedData
 
-      if (lpIds.size === 0) {
-        const availableColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).join(', ') : 'none'
-        alert(`No valid LP IDs found in data.\n\nFound columns: ${availableColumns}\n\nPlease include a column named "LP ID", "lp_id", or "lpId" with numeric values (e.g., 3001, 3002). Valid LP IDs start with 3001-3008.`)
-        setIsPublishing(false)
-        return
-      }
-
-      // Create one envelope per LP with LP-specific payload
-      const envelopesToCreate = Array.from(lpIds).map(lpId => {
-        // Extract LP-specific data from parsed data
-        const lpPayload = parsedData.filter((row: any) => {
-          const rowLpId = getLpIdFromRow(row)
-          return rowLpId !== null && rowLpId === lpId
+        const response = await fetch(`/api/envelopes/${correctEnvelopeId}/correct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp,
+            dataType,
+            payload,
+          }),
         })
 
-        // Build payload structure based on data type
-        let payload: any = {}
-        if (dataType === 'CAPITAL_CALL' || parsedData[0]?.amount) {
-          // Capital Call structure
-          payload = {
-            currency: parsedData[0]?.currency || 'USD',
-            due_date: parsedData[0]?.due_date || parsedData[0]?.dueDate,
-            bank_details: parsedData[0]?.bank_details || parsedData[0]?.bankDetails || {},
-            line_items: lpPayload,
-          }
+        if (response.ok) {
+          alert(`Successfully published correction for envelope ${correctEnvelopeId}!`)
+          router.push('/history')
         } else {
-          // Generic structure - use LP-specific rows
-          payload = lpPayload.length === 1 ? lpPayload[0] : lpPayload
+          const error = await response.json()
+          alert(`Failed to publish correction: ${error.error || 'Unknown error'}`)
         }
 
-        return {
-          publisherId: currentOrg?.id || 1001,
-          userId: currentUser?.id || 501,
-          assetOwnerId: asset?.ownerId || 2001,
-          assetId: parseInt(selectedAsset),
-          timestamp,
-          recipientId: lpId, // One envelope per LP
-          dataType,
-          payload,
-        }
-      })
-
-      const response = await fetch('/api/envelopes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelopesToCreate), // Batch create
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        const count = Array.isArray(result) ? result.length : 1
-        alert(`Successfully published ${count} envelope(s) (one per LP)!`)
-        setInputData('')
-        setParsedData([])
-        setSelectedAsset('')
-        setTags('')
       } else {
-        const error = await response.json()
-        alert(`Failed to publish: ${error.error || 'Unknown error'}`)
+        // Standard Publish Flow (Batch)
+        const asset = mockAssets.find(a => a.id === parseInt(selectedAsset))
+        
+        // Extract LP IDs from parsed data and create one envelope per LP
+        const lpIds = new Set<number>()
+        parsedData.forEach((row: any) => {
+          const lpId = getLpIdFromRow(row)
+          if (lpId !== null) {
+            lpIds.add(lpId)
+          }
+        })
+
+        if (lpIds.size === 0) {
+          const availableColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).join(', ') : 'none'
+          alert(`No valid LP IDs found in data.\n\nFound columns: ${availableColumns}\n\nPlease include a column named "LP ID", "lp_id", or "lpId" with numeric values (e.g., 3001, 3002). Valid LP IDs start with 3001-3008.`)
+          setIsPublishing(false)
+          return
+        }
+
+        // Create one envelope per LP with LP-specific payload
+        const envelopesToCreate = Array.from(lpIds).map(lpId => {
+          // Extract LP-specific data from parsed data
+          const lpPayload = parsedData.filter((row: any) => {
+            const rowLpId = getLpIdFromRow(row)
+            return rowLpId !== null && rowLpId === lpId
+          })
+
+          // Build payload structure based on data type
+          let payload: any = {}
+          if (dataType === 'CAPITAL_CALL' || parsedData[0]?.amount) {
+            // Capital Call structure
+            payload = {
+              currency: parsedData[0]?.currency || 'USD',
+              due_date: parsedData[0]?.due_date || parsedData[0]?.dueDate,
+              bank_details: parsedData[0]?.bank_details || parsedData[0]?.bankDetails || {},
+              line_items: lpPayload,
+            }
+          } else {
+            // Generic structure - use LP-specific rows
+            payload = lpPayload.length === 1 ? lpPayload[0] : lpPayload
+          }
+
+          return {
+            publisherId: currentOrg?.id || 1001,
+            userId: currentUser?.id || 501,
+            assetOwnerId: asset?.ownerId || 2001,
+            assetId: parseInt(selectedAsset),
+            timestamp,
+            recipientId: lpId, // One envelope per LP
+            dataType,
+            payload,
+          }
+        })
+
+        const response = await fetch('/api/envelopes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(envelopesToCreate), // Batch create
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          const count = Array.isArray(result) ? result.length : 1
+          alert(`Successfully published ${count} envelope(s) (one per LP)!`)
+          setInputData('')
+          setParsedData([])
+          setSelectedAsset('')
+          setTags('')
+        } else {
+          const error = await response.json()
+          alert(`Failed to publish: ${error.error || 'Unknown error'}`)
+        }
       }
     } catch (error) {
       console.error('Error publishing:', error)
@@ -221,9 +309,27 @@ export default function ComposerPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Composer</h1>
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-[1.2] pb-0.5">Composer</h1>
         <p className="text-muted-foreground text-lg">Create and publish data packets</p>
       </motion.div>
+
+      {isCorrecting && (
+        <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-500" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-yellow-500">Correction Mode</h3>
+            <p className="text-sm text-yellow-600/80">
+              You are creating a correction for Envelope #{correctEnvelopeId}. This will create a new version of the data.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            setIsCorrecting(false)
+            router.push('/composer')
+          }}>
+            Cancel
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>
@@ -234,7 +340,7 @@ export default function ComposerPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="smart-paste">
+            <Tabs defaultValue={isCorrecting ? "raw-json" : "smart-paste"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="smart-paste">Smart Paste</TabsTrigger>
                 <TabsTrigger value="raw-json">Raw JSON</TabsTrigger>
@@ -347,7 +453,7 @@ export default function ComposerPage() {
             </div>
             <div className="space-y-2">
               <Label>Asset Owner</Label>
-              <Select value={selectedAssetOwner} onValueChange={setSelectedAssetOwner}>
+              <Select value={selectedAssetOwner} onValueChange={setSelectedAssetOwner} disabled={isCorrecting}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select asset owner" />
                 </SelectTrigger>
@@ -365,7 +471,7 @@ export default function ComposerPage() {
               <Select
                 value={selectedAsset}
                 onValueChange={setSelectedAsset}
-                disabled={!selectedAssetOwner}
+                disabled={!selectedAssetOwner || isCorrecting}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select asset" />
@@ -396,7 +502,7 @@ export default function ComposerPage() {
               disabled={!selectedAsset || !parsedData.length || !isValidJson || isPublishing}
               size="lg"
             >
-              {isPublishing ? 'Publishing...' : 'SIGN & PUBLISH'}
+              {isPublishing ? 'Publishing...' : (isCorrecting ? 'PUBLISH CORRECTION' : 'SIGN & PUBLISH')}
             </Button>
           </div>
         </CardContent>
@@ -405,3 +511,10 @@ export default function ComposerPage() {
   )
 }
 
+export default function ComposerPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading...</div>}>
+      <ComposerContent />
+    </Suspense>
+  )
+}

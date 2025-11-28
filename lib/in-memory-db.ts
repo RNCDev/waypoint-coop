@@ -31,7 +31,7 @@ class InMemoryDB {
     this.subscriptions = [...mockSubscriptions]
     this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
-    this.nextEnvelopeId = 10022 // Updated to match new mock data structure
+    this.nextEnvelopeId = 10023 // Updated to match new mock data structure
     this.nextPayloadId = 22
     this.nextReceiptId = 1
   }
@@ -49,8 +49,8 @@ class InMemoryDB {
     this.subscriptions = [...mockSubscriptions]
     this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
-    this.nextEnvelopeId = 10022
-    this.nextPayloadId = 22
+    this.nextEnvelopeId = 10023
+    this.nextPayloadId = 23
     this.nextReceiptId = 1
   }
 }

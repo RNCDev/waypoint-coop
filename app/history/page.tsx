@@ -87,15 +87,8 @@ export default function HistoryPage() {
     }
   }
 
-  const handleCorrect = async (envelope: Envelope) => {
-    // Create a new version
-    const newVersion = {
-      ...envelope,
-      version: envelope.version + 1,
-      timestamp: new Date().toISOString(),
-    }
-    // In a real app, this would open the composer with pre-filled data
-    alert(`Creating version ${newVersion.version} for envelope ${envelope.id}`)
+  const handleCorrect = (envelope: Envelope) => {
+    router.push(`/composer?correctEnvelopeId=${envelope.id}`)
   }
 
   const handleRevoke = async (envelope: Envelope) => {
@@ -134,7 +127,7 @@ export default function HistoryPage() {
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-[1.2] pb-0.5">
           Published History
         </h1>
         <p className="text-muted-foreground text-lg">View and manage your published envelopes</p>

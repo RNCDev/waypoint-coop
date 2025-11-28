@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { DataType } from '@/types'
 import { checkPermission } from '@/lib/api-guard'
 import { getAccessibleDelegations, getUserOrganization, getDelegationsRequiringApproval } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
+const dataTypeEnum = z.enum([
+  'CAPITAL_CALL',
+  'DISTRIBUTION',
+  'NAV_UPDATE',
+  'QUARTERLY_REPORT',
+  'K-1_TAX_FORM',
+  'SOI_UPDATE',
+  'LEGAL_NOTICE',
+])
+
 const updateSchema = z.object({
   status: z.enum(['Active', 'Pending GP Approval', 'Rejected']).optional(),
   gpApprovalStatus: z.enum(['Pending', 'Approved', 'Rejected']).optional(),
+  assetScope: z.union([z.literal('ALL'), z.array(z.number())]).optional(),
+  typeScope: z.union([z.literal('ALL'), z.array(dataTypeEnum)]).optional(),
+  canManageSubscriptions: z.boolean().optional(),
 })
 
 export async function GET(
@@ -73,66 +86,52 @@ export async function PUT(
     const body = await request.json()
     const validated = updateSchema.parse(body)
 
-    // If approving/rejecting, check if user is an Asset Owner
+    // Fetch delegation first
+    const db = getInMemoryDB()
+    const delegationIndex = db.delegations.findIndex(d => d.id === id)
+    if (delegationIndex === -1) {
+      return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+    }
+    const delegation = db.delegations[delegationIndex]
+
+    // If approving/rejecting, check if user can approve delegations
     if (validated.gpApprovalStatus === 'Approved' || validated.gpApprovalStatus === 'Rejected') {
-      if (org?.role !== 'Asset Owner' && org?.role !== 'Platform Admin') {
-        return NextResponse.json({ error: 'Only Asset Owners can approve/reject delegations' }, { status: 403 })
+      // Check if user can approve this delegation
+      const { canApproveDelegation } = await import('@/lib/permissions')
+      const canApprove = canApproveDelegation(user, delegation as any)
+      
+      if (!canApprove) {
+        return NextResponse.json(
+          { error: 'You do not have permission to approve/reject this delegation' },
+          { status: 403 }
+        )
       }
     }
 
     const timestamp = new Date().toISOString()
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      const delegationIndex = db.delegations.findIndex(d => d.id === id)
-      if (delegationIndex === -1) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-      }
-
-      const delegation = db.delegations[delegationIndex]
-
-      // Update status based on approval
-      if (validated.gpApprovalStatus === 'Approved') {
-        delegation.status = 'Active'
-        delegation.gpApprovalStatus = 'Approved'
-        delegation.gpApprovedAt = timestamp
-        delegation.gpApprovedById = user.id
-      } else if (validated.gpApprovalStatus === 'Rejected') {
-        delegation.status = 'Rejected'
-        delegation.gpApprovalStatus = 'Rejected'
-        delegation.gpApprovedAt = timestamp
-        delegation.gpApprovedById = user.id
-      } else {
-        if (validated.status) delegation.status = validated.status
-        if (validated.gpApprovalStatus) delegation.gpApprovalStatus = validated.gpApprovalStatus
-      }
-
-      db.delegations[delegationIndex] = delegation
-      return NextResponse.json(delegation)
+    // Update status based on approval
+    if (validated.gpApprovalStatus === 'Approved') {
+      delegation.status = 'Active'
+      delegation.gpApprovalStatus = 'Approved'
+      delegation.gpApprovedAt = timestamp
+      delegation.gpApprovedById = user.id
+    } else if (validated.gpApprovalStatus === 'Rejected') {
+      delegation.status = 'Rejected'
+      delegation.gpApprovalStatus = 'Rejected'
+      delegation.gpApprovedAt = timestamp
+      delegation.gpApprovedById = user.id
     } else {
-      const updateData: any = { ...validated }
-      
-      if (validated.gpApprovalStatus === 'Approved') {
-        updateData.status = 'Active'
-        updateData.gpApprovedAt = timestamp
-        updateData.gpApprovedById = user.id
-      } else if (validated.gpApprovalStatus === 'Rejected') {
-        updateData.status = 'Rejected'
-        updateData.gpApprovedAt = timestamp
-        updateData.gpApprovedById = user.id
-      }
-
-      const delegation = await prisma.delegation.update({
-        where: { id },
-        data: updateData,
-      })
-
-      return NextResponse.json({
-        ...delegation,
-        assetScope: delegation.assetScope === 'ALL' ? 'ALL' : JSON.parse(delegation.assetScope),
-        typeScope: delegation.typeScope === 'ALL' ? 'ALL' : JSON.parse(delegation.typeScope),
-      })
+      // Update other fields
+      if (validated.status) delegation.status = validated.status
+      if (validated.gpApprovalStatus) delegation.gpApprovalStatus = validated.gpApprovalStatus
+      if (validated.assetScope !== undefined) delegation.assetScope = validated.assetScope
+      if (validated.typeScope !== undefined) delegation.typeScope = validated.typeScope as 'ALL' | DataType[]
+      if (validated.canManageSubscriptions !== undefined) delegation.canManageSubscriptions = validated.canManageSubscriptions
     }
+
+    db.delegations[delegationIndex] = delegation
+    return NextResponse.json(delegation)
   } catch (error) {
     console.error('Error updating delegation:', error)
     if (error instanceof z.ZodError) {
@@ -161,35 +160,21 @@ export async function DELETE(
     const user = permissionResult.user
     const org = getUserOrganization(user)
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      const delegationIndex = db.delegations.findIndex(d => d.id === id)
-      if (delegationIndex === -1) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-      }
-
-      const delegation = db.delegations[delegationIndex]
-      
-      // Only the subscriber who created it can delete
-      if (delegation.subscriberId !== org?.id && org?.role !== 'Platform Admin') {
-        return NextResponse.json({ error: 'Only the subscriber can delete their delegation' }, { status: 403 })
-      }
-
-      db.delegations.splice(delegationIndex, 1)
-      return NextResponse.json({ success: true })
-    } else {
-      const delegation = await prisma.delegation.findUnique({ where: { id } })
-      if (!delegation) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-      }
-
-      if (delegation.subscriberId !== org?.id && org?.role !== 'Platform Admin') {
-        return NextResponse.json({ error: 'Only the subscriber can delete their delegation' }, { status: 403 })
-      }
-
-      await prisma.delegation.delete({ where: { id } })
-      return NextResponse.json({ success: true })
+    const db = getInMemoryDB()
+    const delegationIndex = db.delegations.findIndex(d => d.id === id)
+    if (delegationIndex === -1) {
+      return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
     }
+
+    const delegation = db.delegations[delegationIndex]
+    
+    // Only the subscriber who created it can delete
+    if (delegation.subscriberId !== org?.id && org?.role !== 'Platform Admin') {
+      return NextResponse.json({ error: 'Only the subscriber can delete their delegation' }, { status: 403 })
+    }
+
+    db.delegations.splice(delegationIndex, 1)
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting delegation:', error)
     return NextResponse.json({ error: 'Failed to delete delegation' }, { status: 500 })

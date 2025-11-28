@@ -31,8 +31,9 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
   "asset_id": 3001, // Numeric ID for the Asset (Fund/Co-Invest)
   "timestamp": "2025-11-27T10:00:00.000Z", // ISO 8601 UTC String (Strict)
   "version": 1,
-  "recipient_scope": [7001, 7002], // Array of Recipient Entity IDs (LPs)
-  "read_receipt_required": true // Boolean: signals system to track 'View' events
+  "recipient_id": 7001, // Numeric ID for the Recipient Entity (LP) - One envelope per recipient
+  "status": "Delivered",
+  "data_type": "CAPITAL_CALL" // Optional metadata
 }
 ```
 
@@ -40,27 +41,20 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
 *   `publisher_id` must match the authenticated session's Organization.
 *   `asset_owner_id` must have delegated publishing rights to `publisher_id`.
 *   `timestamp` must be a valid ISO 8601 string in UTC (Z-terminated).
-*   **Metadata:** `period` and `data_type` are NOT enforced in the core routing envelope. They can be tagged in the payload or inferred later.
+*   **One Envelope Per Recipient:** To allow for individual read receipts and granular permissions, a separate envelope is created for each LP recipient, even if the payload is identical.
 
 ### 2. The Payload (Loose)
 The "Body" of the transaction. Flexible to accommodate various GP internal formats.
 
 ```json
 {
-  "data": [
+  "currency": "USD",
+  "due_date": "2025-12-15",
+  "bank_details": { ... },
+  "line_items": [
     {
-      "lp_id": "lp_001",
-      "amount": 500000.00,
-      "currency": "USD",
-      "due_date": "2025-12-15",
-      "bank_account": "XX-1234"
-    },
-    {
-      "lp_id": "lp_002",
-      "amount": 1250000.00,
-      "currency": "USD",
-      "due_date": "2025-12-15",
-      "bank_account": "XX-1234"
+      "lp_id": "3001",
+      "amount": 500000.00
     }
   ]
 }
@@ -68,7 +62,22 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 
 **Validation Rules:**
 *   Must be valid JSON syntax.
-*   No schema enforcement in Phase 1 (e.g., `amount` vs `Amount` is ignored).
+*   No strict schema enforcement in Phase 1 (e.g., `amount` vs `Amount` is ignored).
+
+---
+
+## Correction Workflow (Versioning)
+
+Waypoint implements an append-only correction model to ensure auditability.
+
+1.  **Immutability:** Original envelopes (v1) are never deleted or modified.
+2.  **Correction Mode:** Publishers can enter "Correction Mode" for a specific envelope.
+3.  **New Version:** The system creates a new envelope with:
+    *   Same `envelope_id` logic (or linked reference)
+    *   Incremented `version` (e.g., v2)
+    *   New `timestamp`
+    *   Updated `payload`
+4.  **Audit Trail:** Both v1 and v2 remain in the ledger. Subscribers see the latest version by default but can inspect the history.
 
 ---
 
@@ -77,33 +86,35 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 ### 1. Frontend (The Terminal)
 *   **Stack:** React / Next.js (App Router)
 *   **Role:**
-    *   **Asset Owner (GP):** Subscription management, data rights management, data entry, envelope configuration, signing, history view.
+    *   **Asset Owner (GP):** Subscription management, delegations management, data entry, envelope configuration, signing, history view.
     *   **Publisher (Fund Admin):** Subscription viewing, data entry, envelope configuration, signing, history view.
     *   **Subscriber (LP):** Feed view, subscription acceptance, search, delegation management, ledger view.
     *   **Delegate (Service Provider):** Delegated data view, ledger view.
-    *   **Platform Admin:** Identity verification, system monitoring, audit log, IAM management.
+    *   **Platform Admin:** Identity Registry (manage Orgs & Users), system monitoring, audit log, IAM management.
 
 ### 2. API Layer (The Switch)
 *   **Stack:** Next.js API Routes (Node.js)
 *   **Role:**
     *   Authentication (Mock authentication with persona switcher).
     *   Permission-based access control (API guards).
-    *   Envelope Validation.
+    *   Envelope Validation & Processing (Batch creation).
     *   Routing logic.
-    *   Subscription management.
+    *   Subscription management (Request/Approve/Reject).
     *   Publishing rights management.
     *   Delegation management.
-    *   Webhook dispatch (planned).
+    *   Correction handling.
 
 ### 3. Storage Layer (The Vault)
 *   **Database:** Prisma ORM with SQLite (local) / In-memory (Vercel)
 *   **Models:**
-    *   Organizations, Users, Assets, Envelopes, Payloads
-    *   Subscriptions (which LPs can access which assets)
-    *   Publishing Rights (which Publishers can publish for which Asset Owners)
-    *   Delegations (LP delegations to service providers)
-    *   Permissions (fine-grained user permissions)
-*   **Ledger:** An append-only table recording the hash of every payload + envelope combination.
+    *   **Organizations & Users:** Identity primitives.
+    *   **Assets:** Funds, Co-investments, etc.
+    *   **Envelopes:** Metadata header for data packets.
+    *   **Payloads:** The actual data content.
+    *   **Subscriptions:** Mapping of LPs to Assets.
+    *   **PublishingRights:** Mapping of Publishers to Asset Owners.
+    *   **Delegations:** Mapping of LPs to Delegates.
+    *   **Permissions:** Fine-grained user capabilities.
 
 ---
 
@@ -135,4 +146,4 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 *   **Subscriptions:** Asset Owners (GPs) control which LPs can access which assets. Publishers can view subscriptions for assets they have publishing rights to, and may manage them if granted that right.
 *   **Publishing Rights:** Asset Owners grant Publishers the right to publish data on their behalf, with optional subscription management rights.
 *   **Delegations:** LPs can delegate access to their data to service providers. Asset Owners can optionally require approval for delegations at the asset level.
-*   **Data Rights:** Asset Owners manage both publishing rights and (future) access rights for their assets.
+*   **Delegations:** Asset Owners delegate access permissions to organizations, including publishing rights and other access types for their assets.

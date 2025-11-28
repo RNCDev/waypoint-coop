@@ -4,9 +4,10 @@ import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
+import { mockDelegations } from '@/lib/mock-data'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,24 +33,21 @@ const itemVariants = {
 
 export default function Home() {
   const { currentUser, currentOrg } = useAuthStore()
+  
+  // Check if delegate can request or accept subscriptions
+  // This checks if they have any delegation (active or pending) with canManageSubscriptions = true
+  const canManageSubscriptions = useMemo(() => {
+    if (!currentUser || !currentOrg || currentOrg.role !== 'Delegate') return false
+    return mockDelegations.some(
+      d => d.delegateId === currentOrg.id && 
+           (d.status === 'Active' || d.status === 'Pending GP Approval') &&
+           d.canManageSubscriptions === true
+    )
+  }, [currentUser, currentOrg])
 
   return (
-    <div className="container mx-auto px-4 py-12 relative min-h-[calc(100vh-4rem)]">
-      {/* Background Logo */}
-      <div className="absolute inset-0 flex items-start justify-end pointer-events-none z-0 overflow-hidden pt-8 pr-8">
-        <div className="relative w-[450px] h-[450px] md:w-[600px] md:h-[600px] opacity-10 blur-[1px]">
-          <Image 
-            src="/waypoint-logo-dark.svg" 
-            alt="" 
-            width={600}
-            height={600}
-            className="w-full h-full object-contain"
-            priority={false}
-          />
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto relative z-10">
+    <div className="container mx-auto px-4 py-12 min-h-[calc(100vh-4rem)]">
+      <div className="max-w-4xl mx-auto">
         <motion.div 
           className="text-center mb-12 overflow-visible"
           initial={{ opacity: 0, y: -20 }}
@@ -152,9 +150,25 @@ export default function Home() {
             </>
           )}
 
-          {/* Asset Owner (GP) - Subscriptions, Data Rights, IAM, Publish Data */}
+          {/* Asset Owner (GP) - Assets, Subscriptions, Delegations, IAM, Publish Data */}
           {currentUser?.role === 'Asset Owner' && (
             <>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Assets</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Create and manage your fund assets and their attributes.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/assets">
+                      <Button className="w-full group/btn" variant="outline">
+                        Asset Registry
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
@@ -174,13 +188,13 @@ export default function Home() {
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
-                    <CardTitle className="group-hover:text-primary transition-colors">Data Rights</CardTitle>
-                    <CardDescription className="min-h-[2.5rem]">Grant organizations access to view, use, or publish data for your assets</CardDescription>
+                    <CardTitle className="group-hover:text-primary transition-colors">Delegations</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Delegate access permissions to organizations for your assets</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/data-rights">
                       <Button className="w-full group/btn" variant="outline">
-                        Manage Data Rights
+                        Manage Delegations
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Button>
                     </Link>
@@ -240,18 +254,18 @@ export default function Home() {
             </>
           )}
 
-          {(currentUser?.role === 'Subscriber' || currentUser?.role === 'Analytics' || currentUser?.role === 'Auditor') && (
+          {(currentUser?.role === 'Subscriber' || ((currentUser?.role === 'Analytics' || currentUser?.role === 'Auditor') && currentOrg?.role !== 'Delegate')) && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
-                    <CardTitle className="group-hover:text-primary transition-colors">Ledger</CardTitle>
-                    <CardDescription>View your data feed</CardDescription>
+                    <CardTitle className="group-hover:text-primary transition-colors">Subscriptions</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View and manage your subscription feeds</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Link href="/ledger">
+                    <Link href="/feeds">
                       <Button className="w-full group/btn" variant="outline">
-                        Open Ledger
+                        View Feeds
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Button>
                     </Link>
@@ -262,7 +276,7 @@ export default function Home() {
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors">Delegations</CardTitle>
-                    <CardDescription>Manage delegate access</CardDescription>
+                    <CardDescription className="min-h-[2.5rem]">Manage access to your data with other organizations</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/delegations">
@@ -274,6 +288,114 @@ export default function Home() {
                   </CardContent>
                 </Card>
               </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Ledger</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View your data feed</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/ledger">
+                      <Button className="w-full group/btn" variant="outline">
+                        Open Ledger
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              {currentUser?.isOrgAdmin && (
+                <motion.div variants={itemVariants}>
+                  <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-primary transition-colors">IAM</CardTitle>
+                      <CardDescription className="min-h-[2.5rem]">Manage team members and organization permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link href="/settings/iam">
+                        <Button className="w-full group/btn" variant="outline">
+                          Manage IAM
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </>
+          )}
+
+          {/* Delegate - Subscriptions (conditional), Delegations, Ledger, IAM */}
+          {currentOrg?.role === 'Delegate' && (
+            <>
+              {canManageSubscriptions && (
+                <motion.div variants={itemVariants}>
+                  <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-primary transition-colors">Subscriptions</CardTitle>
+                      <CardDescription className="min-h-[2.5rem]">Manage subscriptions on behalf of subscribers</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link href="/feeds">
+                        <Button className="w-full group/btn" variant="outline">
+                          View Feeds
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Delegations</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View your delegations</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/delegations">
+                      <Button className="w-full group/btn" variant="outline">
+                        View Delegations
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Ledger</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View your data feed</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/ledger">
+                      <Button className="w-full group/btn" variant="outline">
+                        Open Ledger
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              {currentUser?.isOrgAdmin && (
+                <motion.div variants={itemVariants}>
+                  <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-primary transition-colors">IAM</CardTitle>
+                      <CardDescription className="min-h-[2.5rem]">Manage team members and organization permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link href="/settings/iam">
+                        <Button className="w-full group/btn" variant="outline">
+                          Manage IAM
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
             </>
           )}
 

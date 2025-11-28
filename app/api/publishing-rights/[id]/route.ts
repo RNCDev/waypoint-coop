@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic'
 const updateSchema = z.object({
   assetScope: z.union([z.literal('ALL'), z.array(z.number())]).optional(),
   canManageSubscriptions: z.boolean().optional(),
+  canApproveSubscriptions: z.boolean().optional(),
+  canApproveDelegations: z.boolean().optional(),
+  canViewData: z.boolean().optional(),
   status: z.enum(['Active', 'Revoked']).optional(),
 })
 

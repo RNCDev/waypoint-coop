@@ -20,6 +20,15 @@ model Organization {
   users     User[]
   assets    Asset[] @relation("AssetOwner")
   published Asset[] @relation("Publisher")
+  subscriptionsAsSubscriber Subscription[] @relation("Subscriber")
+  subscriptionsAsGranter Subscription[] @relation("Granter")
+  delegationsAsSubscriber Delegation[] @relation("DelegationSubscriber")
+  delegationsAsDelegate Delegation[] @relation("DelegationDelegate")
+  publishingRightsAsOwner PublishingRight[] @relation("PublishingRightOwner")
+  publishingRightsAsPublisher PublishingRight[] @relation("PublishingRightPublisher")
+  envelopesAsPublisher Envelope[] @relation("EnvelopePublisher")
+  envelopesAsOwner Envelope[] @relation("EnvelopeOwner")
+  envelopesAsRecipient Envelope[] @relation("EnvelopeRecipient")
 }
 
 model User {
@@ -45,6 +54,7 @@ model Asset {
   owner       Organization @relation("AssetOwner", fields: [ownerId], references: [id])
   publisher   Organization @relation("Publisher", fields: [publisherId], references: [id])
   envelopes   Envelope[]
+  subscriptions Subscription[]
 }
 
 model Envelope {
@@ -62,6 +72,9 @@ model Envelope {
   period         String?
   user           User      @relation(fields: [userId], references: [id])
   asset          Asset      @relation(fields: [assetId], references: [id])
+  publisher      Organization @relation("EnvelopePublisher", fields: [publisherId], references: [id])
+  assetOwner     Organization @relation("EnvelopeOwner", fields: [assetOwnerId], references: [id])
+  recipient      Organization @relation("EnvelopeRecipient", fields: [recipientId], references: [id])
   payload        Payload?
   receipts       ReadReceipt[]
 }
@@ -74,17 +87,20 @@ model Payload {
 }
 
 model Delegation {
-  id                  String   @id @default(uuid())
-  subscriberId        Int
-  delegateId          Int
-  assetScope          String   // JSON array or "ALL"
-  typeScope           String   // JSON array or "ALL"
-  status              String   // Active, Pending GP Approval, Rejected
-  gpApprovalRequired  Boolean  @default(false) // Whether GP must approve this delegation
-  gpApprovalStatus    String?  // Pending, Approved, Rejected
-  gpApprovedAt        String?  // ISO 8601 timestamp of approval
-  gpApprovedById      Int?     // User ID who approved
-  createdAt           String   // ISO 8601 timestamp
+  id                     String   @id @default(uuid())
+  subscriberId           Int
+  delegateId             Int
+  assetScope             String   // JSON array or "ALL"
+  typeScope              String   // JSON array or "ALL"
+  status                 String   // Active, Pending GP Approval, Rejected
+  gpApprovalRequired     Boolean  @default(false) // Whether GP must approve this delegation
+  gpApprovalStatus       String?  // Pending, Approved, Rejected
+  gpApprovedAt           String?  // ISO 8601 timestamp of approval
+  gpApprovedById         Int?     // User ID who approved
+  canManageSubscriptions Boolean  @default(false) // Can accept/request subscriptions on behalf of subscriber
+  createdAt              String   // ISO 8601 timestamp
+  subscriber             Organization @relation("DelegationSubscriber", fields: [subscriberId], references: [id])
+  delegate               Organization @relation("DelegationDelegate", fields: [delegateId], references: [id])
 }
 
 model ReadReceipt {
@@ -105,8 +121,12 @@ model Subscription {
   grantedAt     String  // ISO 8601 timestamp (when invitation sent)
   acceptedAt    String? // ISO 8601 timestamp (when LP accepted)
   expiresAt     String? // Optional expiration timestamp
-  status        String  // Pending LP Acceptance, Active, Expired, Revoked, Declined
+  status        String  // Pending LP Acceptance, Pending Asset Owner Approval, Active, Expired, Revoked, Declined
   inviteMessage String? // Optional message from GP to LP
+  requestMessage String? // Optional message from LP to GP when requesting subscription
+  asset         Asset   @relation(fields: [assetId], references: [id])
+  subscriber    Organization @relation("Subscriber", fields: [subscriberId], references: [id])
+  granter       Organization @relation("Granter", fields: [grantedById], references: [id])
 }
 
 // PublishingRight - GP delegates publishing rights to Fund Admin
@@ -116,8 +136,13 @@ model PublishingRight {
   publisherId            Int     // The Fund Admin organization
   assetScope             String  // JSON array of asset IDs or "ALL"
   canManageSubscriptions Boolean @default(false) // Can also manage subscriptions
+  canApproveSubscriptions Boolean @default(false) // Can approve subscription requests (if asset requires approval)
+  canApproveDelegations Boolean @default(false) // Can approve LP delegations (if asset requires approval)
+  canViewData            Boolean @default(true) // Can view data envelopes (default true for backward compatibility)
   grantedAt              String  // ISO 8601 timestamp
   status                 String  // Active, Revoked
+  assetOwner             Organization @relation("PublishingRightOwner", fields: [assetOwnerId], references: [id])
+  publisher              Organization @relation("PublishingRightPublisher", fields: [publisherId], references: [id])
 }
 
 // Permission - Fine-grained permissions per user

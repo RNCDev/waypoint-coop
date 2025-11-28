@@ -11,8 +11,10 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 - **Publisher Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
 - **Subscriber Ledger (LP)**: View chronological feed of data events with read receipt tracking
 - **Subscription Management**: Asset Owners and Publishers manage which LPs can access which assets
-- **Data Rights Management**: Asset Owners grant publishing rights and manage delegations
+- **Delegations Management**: Asset Owners delegate access permissions with granular controls (publish, manage subscriptions, approve delegations, view data)
 - **Delegation Management**: LPs grant access to third-party service providers (auditors, analytics) with optional GP approval
+- **Correction Workflow**: Append-only correction mechanism maintaining full audit history (v1 -> v2)
+- **Identity Registry**: Platform Admin interface for managing Organizations and Users
 - **IAM System**: Role-based access control (RBAC) with organization-level user management
 - **Admin Console**: Entity registry and global audit log
 - **Mock Authentication**: Persona switcher for demo purposes
@@ -66,7 +68,7 @@ The application will be available at `http://localhost:3000`.
 Switch between demo personas using the dropdown in the navigation:
 
 - **Alice Admin** (Platform Admin: Waypoint) - Manages platform registry, audit logs, and IAM
-- **Bob GP** (Asset Owner: Kleiner Perkins) - Manages subscriptions, data rights, publishes data, and views history
+- **Bob GP** (Asset Owner: Kleiner Perkins) - Manages subscriptions, delegations, publishes data, and views history
 - **Genii Publisher** (Publisher: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
 - **Charlie LP** (Subscriber: State of Ohio Pension) - Views feeds, ledger, manages delegations, and IAM
 - **Dana Delegate** (Auditor: Deloitte) - Views delegated data and manages IAM
@@ -76,33 +78,33 @@ Switch between demo personas using the dropdown in the navigation:
 ```
 waypoint-coop/
 ├── app/                    # Next.js App Router
-│   ├── api/               # API routes
+│   ├── api/                # API routes
 │   │   ├── subscriptions/      # Subscription CRUD
 │   │   ├── publishing-rights/  # Publishing rights CRUD
 │   │   ├── delegations/        # Delegation management
-│   │   └── envelopes/          # Envelope CRUD
-│   ├── composer/          # Publisher composer page
-│   ├── history/           # Published data history
-│   ├── ledger/            # Subscriber ledger page
-│   ├── feeds/             # LP subscription feeds
-│   ├── subscriptions/     # Subscription management
-│   ├── data-rights/       # Data rights management (Asset Owners)
-│   ├── delegations/       # Delegation management
-│   ├── settings/iam/      # IAM settings page
-│   ├── registry/          # Admin entity registry
-│   └── audit/             # Admin audit log
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   └── shared/           # Shared components
-├── lib/                  # Utilities
-│   ├── prisma.ts         # Prisma client
-│   ├── permissions.ts    # Permission system & RBAC
-│   ├── api-guard.ts      # API route guards
-│   ├── mock-data.ts      # Mock data definitions
-│   ├── in-memory-db.ts   # In-memory DB for Vercel
-│   └── crypto.ts         # Cryptographic utilities
-├── prisma/               # Prisma schema and migrations
-└── store/                # Zustand stores
+│   │   └── envelopes/          # Envelope CRUD & Corrections
+│   ├── composer/           # Publisher composer page
+│   ├── history/            # Published data history
+│   ├── ledger/             # Subscriber ledger page
+│   ├── feeds/              # LP subscription feeds
+│   ├── subscriptions/      # Subscription management
+│   ├── data-rights/        # Delegations management (Asset Owners)
+│   ├── delegations/        # Delegation management
+│   ├── settings/iam/       # IAM settings page
+│   ├── registry/           # Admin entity registry (Organizations & Users)
+│   └── audit/              # Admin audit log
+├── components/             # React components
+│   ├── ui/                 # shadcn/ui components
+│   └── shared/             # Shared components
+├── lib/                    # Utilities
+│   ├── prisma.ts           # Prisma client
+│   ├── permissions.ts      # Permission system & RBAC
+│   ├── api-guard.ts        # API route guards
+│   ├── mock-data.ts        # Mock data definitions
+│   ├── in-memory-db.ts     # In-memory DB for Vercel
+│   └── crypto.ts           # Cryptographic utilities
+├── prisma/                 # Prisma schema and migrations
+└── store/                  # Zustand stores
 ```
 
 ## Available Scripts
@@ -145,11 +147,12 @@ NODE_ENV="development"
 ## Documentation
 
 See the `support-docs/` folder for detailed documentation:
-- `0_PHASE_1_REQUIREMENTS.md` - Feature requirements and user stories
-- `1_ARCHITECTURE_OVERVIEW.md` - System architecture
-- `2_WIREFRAMES.md` - UI wireframes and specifications
-- `3_MOCK_DATA.md` - Mock data definitions
-- `5_Design_Guide.md` - Design system and UI patterns
+- `0_Phase_1_Overview.md` - Feature requirements and user stories
+- `1_Permission_Delegation_Schema.md` - Permission model
+- `2_Architecture_Overview.md` - System architecture
+- `3_Mock_Data.md` - Mock data definitions
+- `8_infra-build.md` - Infrastructure setup
+- `9_design_guide.md` - Design system and UI patterns
 
 ## License
 

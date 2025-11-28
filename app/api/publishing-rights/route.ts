@@ -12,6 +12,9 @@ const publishingRightSchema = z.object({
   publisherId: z.number(),
   assetScope: z.union([z.literal('ALL'), z.array(z.number())]),
   canManageSubscriptions: z.boolean().default(false),
+  canApproveSubscriptions: z.boolean().default(false),
+  canApproveDelegations: z.boolean().default(false),
+  canViewData: z.boolean().default(true), // Default true for backward compatibility
 })
 
 export async function GET(request: NextRequest) {
@@ -112,6 +115,9 @@ export async function POST(request: NextRequest) {
         publisherId: validated.publisherId,
         assetScope: validated.assetScope,
         canManageSubscriptions: validated.canManageSubscriptions,
+        canApproveSubscriptions: validated.canApproveSubscriptions,
+        canApproveDelegations: validated.canApproveDelegations,
+        canViewData: validated.canViewData,
         grantedAt: timestamp,
         status: 'Active',
       }
@@ -139,6 +145,9 @@ export async function POST(request: NextRequest) {
         publisherId: validated.publisherId,
         assetScope: validated.assetScope,
         canManageSubscriptions: validated.canManageSubscriptions,
+        canApproveSubscriptions: validated.canApproveSubscriptions,
+        canApproveDelegations: validated.canApproveDelegations,
+        canViewData: validated.canViewData,
         grantedAt: timestamp,
         status: 'Active',
       }

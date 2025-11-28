@@ -106,6 +106,7 @@ async function main() {
         typeScope: typeof del.typeScope === 'string' ? del.typeScope : JSON.stringify(del.typeScope),
         status: del.status,
         gpApprovalStatus: del.gpApprovalStatus || null,
+        createdAt: del.createdAt || new Date().toISOString(),
       },
     })
   }

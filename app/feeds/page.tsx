@@ -12,6 +12,7 @@ import { Check, X, Mail, Rss, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Subscription } from '@/types'
 import { mockAssets, mockOrganizations, mockSubscriptions } from '@/lib/mock-data'
+import { getManageableSubscriptionsForUser } from '@/lib/permissions'
 
 export default function FeedsPage() {
   const router = useRouter()
@@ -20,10 +21,13 @@ export default function FeedsPage() {
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  // Redirect if user doesn't have access (only Subscribers)
+  // Redirect if user doesn't have access (Subscribers or Delegates with subscription management)
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentOrg.role === 'Subscriber' || currentOrg.role === 'Platform Admin'
+      const hasAccess = 
+        currentOrg.role === 'Subscriber' || 
+        currentOrg.role === 'Platform Admin' ||
+        (currentOrg.role === 'Delegate' && getManageableSubscriptionsForUser(currentUser).length > 0)
       if (!hasAccess) {
         router.push('/')
       }
@@ -31,13 +35,22 @@ export default function FeedsPage() {
   }, [_hasHydrated, currentUser, currentOrg, router])
 
   const fetchSubscriptions = useCallback(async () => {
-    if (!currentOrg) return
+    if (!currentOrg || !currentUser) return
     
-    // Get subscriptions for this LP
-    const lpSubscriptions = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
-    setSubscriptions(lpSubscriptions)
+    // For Subscribers, get their own subscriptions
+    // For Delegates, get subscriptions they can manage
+    let subscriptions: Subscription[] = []
+    if (currentOrg.role === 'Subscriber') {
+      subscriptions = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
+    } else if (currentOrg.role === 'Delegate') {
+      subscriptions = getManageableSubscriptionsForUser(currentUser)
+    } else if (currentOrg.role === 'Platform Admin') {
+      subscriptions = mockSubscriptions
+    }
+    
+    setSubscriptions(subscriptions)
     setLoading(false)
-  }, [currentOrg])
+  }, [currentOrg, currentUser])
 
   useEffect(() => {
     fetchSubscriptions()
@@ -130,8 +143,8 @@ export default function FeedsPage() {
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          My Feeds
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-[1.2] pb-0.5">
+          Subscriptions
         </h1>
         <p className="text-muted-foreground text-lg">
           Manage your data feed subscriptions and accept new invitations

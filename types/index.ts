@@ -4,7 +4,7 @@ export type UserRole = 'Admin' | 'Viewer' | 'Publisher' | 'Asset Owner' | 'Subsc
 export type EnvelopeStatus = 'Delivered' | 'Revoked' | 'Pending'
 export type DelegationStatus = 'Active' | 'Pending GP Approval' | 'Rejected'
 export type DataType = 'CAPITAL_CALL' | 'DISTRIBUTION' | 'NAV_UPDATE' | 'QUARTERLY_REPORT' | 'K-1_TAX_FORM' | 'SOI_UPDATE' | 'LEGAL_NOTICE'
-export type SubscriptionStatus = 'Pending LP Acceptance' | 'Active' | 'Expired' | 'Revoked' | 'Declined'
+export type SubscriptionStatus = 'Pending LP Acceptance' | 'Pending Asset Owner Approval' | 'Active' | 'Expired' | 'Revoked' | 'Declined'
 export type PublishingRightStatus = 'Active' | 'Revoked'
 export type GPApprovalStatus = 'Pending' | 'Approved' | 'Rejected'
 
@@ -71,6 +71,7 @@ export interface Delegation {
   gpApprovalStatus?: GPApprovalStatus
   gpApprovedAt?: string // ISO 8601 timestamp of approval
   gpApprovedById?: number // User ID who approved
+  canManageSubscriptions?: boolean // Can accept/request subscriptions on behalf of subscriber
   createdAt?: string // ISO 8601 timestamp
 }
 
@@ -92,6 +93,7 @@ export interface Subscription {
   expiresAt?: string // Optional expiration timestamp
   status: SubscriptionStatus
   inviteMessage?: string // Optional message from GP to LP
+  requestMessage?: string // Optional message from LP to GP when requesting subscription
 }
 
 // PublishingRight - GP delegates publishing rights to Fund Admin
@@ -101,6 +103,9 @@ export interface PublishingRight {
   publisherId: number // The Fund Admin organization
   assetScope: number[] | 'ALL' // Asset IDs or ALL
   canManageSubscriptions: boolean // Can also manage subscriptions
+  canApproveSubscriptions: boolean // Can approve subscription requests (if asset requires approval)
+  canApproveDelegations: boolean // Can approve LP delegations (if asset requires approval)
+  canViewData: boolean // Can view data envelopes (default true for backward compatibility)
   grantedAt: string // ISO 8601 timestamp
   status: PublishingRightStatus
 }

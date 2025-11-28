@@ -197,6 +197,12 @@ export const mockEnvelopes: Omit<Envelope, 'hash'>[] = [
   // Distribution 10020
   { id: 10020, publisherId: 1002, userId: 515, assetOwnerId: 2007, assetId: 9010, recipientId: 3008, timestamp: '2025-10-24T10:00:00.000Z', version: 1, status: 'Delivered', dataType: 'DISTRIBUTION' },
   { id: 10021, publisherId: 1002, userId: 515, assetOwnerId: 2007, assetId: 9010, recipientId: 3004, timestamp: '2025-10-24T10:00:00.000Z', version: 1, status: 'Delivered', dataType: 'DISTRIBUTION' },
+  // K-1 Tax Form 10022 - for Deloitte delegate (3008) - matches delegation D-106
+  // This envelope is for subscriber 3008 (Teacher's Retirement System of Texas) 
+  // and matches the delegation D-106 which has assetScope: 'ALL' and typeScope: ['K-1_TAX_FORM']
+  // Subscriber 3008 is subscribed to assets 9007 (Benchmark VIII) and 9010 (Vista Equity VIII)
+  // Using asset 9010 (Vista Equity VIII) owned by assetOwnerId 2007
+  { id: 10022, publisherId: 1002, userId: 515, assetOwnerId: 2007, assetId: 9010, recipientId: 3008, timestamp: '2025-10-25T10:00:00.000Z', version: 1, status: 'Delivered', dataType: 'K-1_TAX_FORM' },
 ]
 
 export const mockPayloads: Payload[] = [
@@ -221,17 +227,26 @@ export const mockPayloads: Payload[] = [
   { id: 19, envelopeId: 10019, data: {} },
   { id: 20, envelopeId: 10020, data: {} },
   { id: 21, envelopeId: 10021, data: {} },
+  { id: 22, envelopeId: 10022, data: {} },
 ]
 
 export const mockDelegations: Delegation[] = [
-  { id: 'D-101', subscriberId: 3001, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-01-15T10:00:00.000Z' },
-  { id: 'D-102', subscriberId: 3002, delegateId: 4004, assetScope: [9001, 9002], typeScope: ['CAPITAL_CALL', 'DISTRIBUTION'], status: 'Active', gpApprovalRequired: false, createdAt: '2025-02-01T10:00:00.000Z' },
-  { id: 'D-103', subscriberId: 3003, delegateId: 4006, assetScope: 'ALL', typeScope: ['NAV_UPDATE', 'SOI_UPDATE'], status: 'Active', gpApprovalRequired: false, createdAt: '2025-02-15T10:00:00.000Z' },
-  { id: 'D-104', subscriberId: 3007, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-03-01T10:00:00.000Z' },
-  { id: 'D-105', subscriberId: 3005, delegateId: 4005, assetScope: [9005, 9006], typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-03-15T10:00:00.000Z' },
-  { id: 'D-106', subscriberId: 3008, delegateId: 4001, assetScope: 'ALL', typeScope: ['K-1_TAX_FORM'], status: 'Active', gpApprovalRequired: true, gpApprovalStatus: 'Approved', gpApprovedAt: '2025-04-01T10:00:00.000Z', gpApprovedById: 512, createdAt: '2025-03-25T10:00:00.000Z' },
-  { id: 'D-107', subscriberId: 3004, delegateId: 4002, assetScope: [9009], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', createdAt: '2025-10-20T10:00:00.000Z' },
-  { id: 'D-108', subscriberId: 3001, delegateId: 4001, assetScope: [9001, 9002], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', createdAt: '2025-10-22T10:00:00.000Z' },
+  // View-only delegations
+  // Note: D-101 removed - superseded by D-109 which has the same scope plus subscription management
+  { id: 'D-102', subscriberId: 3002, delegateId: 4004, assetScope: [9001, 9002], typeScope: ['CAPITAL_CALL', 'DISTRIBUTION'], status: 'Active', gpApprovalRequired: false, canManageSubscriptions: false, createdAt: '2025-02-01T10:00:00.000Z' },
+  { id: 'D-103', subscriberId: 3003, delegateId: 4006, assetScope: 'ALL', typeScope: ['NAV_UPDATE', 'SOI_UPDATE'], status: 'Active', gpApprovalRequired: false, canManageSubscriptions: false, createdAt: '2025-02-15T10:00:00.000Z' },
+  { id: 'D-104', subscriberId: 3007, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, canManageSubscriptions: false, createdAt: '2025-03-01T10:00:00.000Z' },
+  { id: 'D-105', subscriberId: 3005, delegateId: 4005, assetScope: [9005, 9006], typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, canManageSubscriptions: false, createdAt: '2025-03-15T10:00:00.000Z' },
+  { id: 'D-106', subscriberId: 3008, delegateId: 4001, assetScope: 'ALL', typeScope: ['K-1_TAX_FORM'], status: 'Active', gpApprovalRequired: true, gpApprovalStatus: 'Approved', gpApprovedAt: '2025-04-01T10:00:00.000Z', gpApprovedById: 512, canManageSubscriptions: false, createdAt: '2025-03-25T10:00:00.000Z' },
+  { id: 'D-107', subscriberId: 3004, delegateId: 4002, assetScope: [9009], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', canManageSubscriptions: false, createdAt: '2025-10-20T10:00:00.000Z' },
+  { id: 'D-108', subscriberId: 3001, delegateId: 4001, assetScope: [9001, 9002], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', canManageSubscriptions: false, createdAt: '2025-10-22T10:00:00.000Z' },
+  
+  // Delegations with subscription management rights
+  // Ohio (3001) -> Portfolio Manager (4003) can manage subscriptions on behalf of Ohio
+  // This delegation supersedes D-101 (removed) with the same scope plus subscription management
+  { id: 'D-109', subscriberId: 3001, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, canManageSubscriptions: true, createdAt: '2025-11-01T10:00:00.000Z' },
+  // Harvard (3002) -> Portfolio Manager (4003) can manage subscriptions on behalf of Harvard
+  { id: 'D-110', subscriberId: 3002, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, canManageSubscriptions: true, createdAt: '2025-11-05T10:00:00.000Z' },
 ]
 
 // Subscriptions - Which LPs can access which assets
@@ -286,21 +301,38 @@ export const mockSubscriptions: Subscription[] = [
   { id: 'S-030', assetId: 9009, subscriberId: 3001, grantedById: 2006, grantedAt: '2025-11-15T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'Thoma Bravo is extending an invitation for data feed access to Fund XV. Please accept to begin receiving updates.' },
   // a16z inviting Ohio to a16z Crypto IV (9005)
   { id: 'S-031', assetId: 9005, subscriberId: 3001, grantedById: 2003, grantedAt: '2025-11-20T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'Welcome to a16z Crypto IV. Accept this invitation to access your capital account statements and fund communications.' },
+  
+  // === PENDING REQUESTS (LP requesting, Asset Owner needs to approve) ===
+  // Note: Harvard already has an active subscription to KP Fund XVIII (S-002), so no duplicate request
+  // Note: Yale already has an active subscription to Insight Partners XII (S-018), so no duplicate request
+  // Note: CPPIB already has an active subscription to Vista Equity VIII (S-022), so no duplicate request
+  // Example: BlackRock requesting subscription to a new asset (if needed for demo)
+  // { id: 'S-033', assetId: 9001, subscriberId: 3005, grantedById: 2001, grantedAt: '2025-11-26T10:00:00.000Z', status: 'Pending Asset Owner Approval', requestMessage: 'BlackRock requests subscription access for portfolio tracking.' },
 ]
 
 // Publishing Rights - GP delegates publishing rights to Fund Admins
 export const mockPublishingRights: PublishingRight[] = [
   // Kleiner Perkins (2001) -> Genii Admin Services (1001) for all KP assets
-  { id: 'PR-001', assetOwnerId: 2001, publisherId: 1001, assetScope: [9001, 9002, 9101], canManageSubscriptions: true, grantedAt: '2024-01-01T10:00:00.000Z', status: 'Active' },
+  // Full delegation: can manage subscriptions, approve delegations, and view data
+  { id: 'PR-001', assetOwnerId: 2001, publisherId: 1001, assetScope: [9001, 9002, 9101], canManageSubscriptions: true, canApproveSubscriptions: true, canApproveDelegations: true, canViewData: true, grantedAt: '2024-01-01T10:00:00.000Z', status: 'Active' },
   // Andreessen Horowitz (2003) -> Carta Fund Admin (1003) for a16z assets
-  { id: 'PR-002', assetOwnerId: 2003, publisherId: 1003, assetScope: [9005, 9006, 9103], canManageSubscriptions: false, grantedAt: '2024-01-15T10:00:00.000Z', status: 'Active' },
+  // Publishing only: can publish and view data, but cannot manage subscriptions
+  { id: 'PR-002', assetOwnerId: 2003, publisherId: 1003, assetScope: [9005, 9006, 9103], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-01-15T10:00:00.000Z', status: 'Active' },
   // Benchmark (2004) -> Alter Domus (1002) for Benchmark VIII
-  { id: 'PR-003', assetOwnerId: 2004, publisherId: 1002, assetScope: [9007], canManageSubscriptions: false, grantedAt: '2024-02-01T10:00:00.000Z', status: 'Active' },
+  // Can approve delegations and view data, but cannot manage subscriptions
+  { id: 'PR-003', assetOwnerId: 2004, publisherId: 1002, assetScope: [9007], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: true, canViewData: true, grantedAt: '2024-02-01T10:00:00.000Z', status: 'Active' },
   // Insight Partners (2005) -> Alter Domus (1002) for Insight XII
-  { id: 'PR-004', assetOwnerId: 2005, publisherId: 1002, assetScope: [9008], canManageSubscriptions: true, grantedAt: '2024-02-15T10:00:00.000Z', status: 'Active' },
+  // Can manage subscriptions and approve subscriptions, view data
+  { id: 'PR-004', assetOwnerId: 2005, publisherId: 1002, assetScope: [9008], canManageSubscriptions: true, canApproveSubscriptions: true, canApproveDelegations: false, canViewData: true, grantedAt: '2024-02-15T10:00:00.000Z', status: 'Active' },
   // Thoma Bravo (2006) -> Genii Admin Services (1001) for Thoma XV
-  { id: 'PR-005', assetOwnerId: 2006, publisherId: 1001, assetScope: [9009], canManageSubscriptions: false, grantedAt: '2024-03-01T10:00:00.000Z', status: 'Active' },
+  // Publishing only: can publish and view data
+  { id: 'PR-005', assetOwnerId: 2006, publisherId: 1001, assetScope: [9009], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-03-01T10:00:00.000Z', status: 'Active' },
   // Vista Equity (2007) -> Alter Domus (1002) for Vista VIII
-  { id: 'PR-006', assetOwnerId: 2007, publisherId: 1002, assetScope: [9010], canManageSubscriptions: false, grantedAt: '2024-03-15T10:00:00.000Z', status: 'Active' },
+  // Publishing only: can publish and view data
+  { id: 'PR-006', assetOwnerId: 2007, publisherId: 1002, assetScope: [9010], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-03-15T10:00:00.000Z', status: 'Active' },
+  // Example: GP's Counsel - can manage subscriptions but cannot view data
+  // { id: 'PR-007', assetOwnerId: 2001, publisherId: 4007, assetScope: [9001, 9002], canManageSubscriptions: true, canApproveSubscriptions: false, canApproveDelegations: true, canViewData: false, grantedAt: '2024-04-01T10:00:00.000Z', status: 'Active' },
+  // Example: GP's Auditor - can view data but cannot publish or manage
+  // { id: 'PR-008', assetOwnerId: 2001, publisherId: 4008, assetScope: [9001, 9002], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-04-01T10:00:00.000Z', status: 'Active' },
   // Note: Sequoia (2002) self-publishes, so no publishing rights to external fund admins
 ]

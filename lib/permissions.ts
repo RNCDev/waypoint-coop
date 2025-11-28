@@ -85,9 +85,9 @@ export function getAccessibleAssets(user: User): Asset[] {
       return mockAssets.filter(a => a.ownerId === org.id)
 
     case 'Publisher':
-      // Publisher can see assets they have publishing rights for
+      // Publisher can see assets they have publishing rights for AND canViewData = true
       const publisherRights = mockPublishingRights.filter(
-        pr => pr.publisherId === org.id && pr.status === 'Active'
+        pr => pr.publisherId === org.id && pr.status === 'Active' && pr.canViewData === true
       )
       return mockAssets.filter(asset => {
         return publisherRights.some(pr => {
@@ -234,35 +234,297 @@ export function getManageablePublishingRights(user: User): PublishingRight[] {
   return []
 }
 
-// Get delegations that need GP approval for a given asset owner
+// Get delegations that need GP approval for a given user (Asset Owner or Publisher with approval rights)
 export function getDelegationsRequiringApproval(user: User): Delegation[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  if (org.role !== 'Asset Owner' && org.role !== 'Platform Admin') {
-    return []
+  // Asset Owners and Platform Admins can approve all delegations for their assets
+  if (org.role === 'Asset Owner' || org.role === 'Platform Admin') {
+    // Get all assets owned by this GP
+    const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
+    
+    // Find delegations that need approval and involve assets this GP owns
+    return mockDelegations.filter(d => {
+      if (d.status !== 'Pending GP Approval' || d.gpApprovalStatus !== 'Pending') {
+        return false
+      }
+      
+      // Check if the delegation involves any assets owned by this GP
+      if (d.assetScope === 'ALL') {
+        // Check if subscriber has subscriptions to GP's assets
+        const subSubscriptions = mockSubscriptions.filter(
+          s => s.subscriberId === d.subscriberId && s.status === 'Active'
+        )
+        return subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))
+      }
+      
+      return (d.assetScope as number[]).some(id => ownedAssetIds.includes(id))
+    })
   }
 
-  // Get all assets owned by this GP
-  const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
-  
-  // Find delegations that need approval and involve assets this GP owns
-  return mockDelegations.filter(d => {
-    if (d.status !== 'Pending GP Approval' || d.gpApprovalStatus !== 'Pending') {
-      return false
+  // Publishers can approve if they have canApproveDelegations = true
+  if (org.role === 'Publisher') {
+    // Get publishing rights with canApproveDelegations
+    const approvalRights = mockPublishingRights.filter(
+      pr => pr.publisherId === org.id && 
+            pr.status === 'Active' && 
+            pr.canApproveDelegations === true
+    )
+    
+    if (approvalRights.length === 0) {
+      return []
     }
+
+    // Get asset IDs this publisher can approve delegations for
+    const approvableAssetIds = new Set<number>()
+    approvalRights.forEach(pr => {
+      if (pr.assetScope === 'ALL') {
+        // Get all assets owned by the asset owner
+        mockAssets.filter(a => a.ownerId === pr.assetOwnerId).forEach(a => approvableAssetIds.add(a.id))
+      } else {
+        (pr.assetScope as number[]).forEach(id => approvableAssetIds.add(id))
+      }
+    })
+
+    // Find delegations that need approval and involve assets this publisher can approve
+    return mockDelegations.filter(d => {
+      if (d.status !== 'Pending GP Approval' || d.gpApprovalStatus !== 'Pending') {
+        return false
+      }
+      
+      // Check if the delegation involves any assets this publisher can approve
+      if (d.assetScope === 'ALL') {
+        // Check if subscriber has subscriptions to approvable assets
+        const subSubscriptions = mockSubscriptions.filter(
+          s => s.subscriberId === d.subscriberId && s.status === 'Active'
+        )
+        return subSubscriptions.some(s => approvableAssetIds.has(s.assetId))
+      }
+      
+      return (d.assetScope as number[]).some(id => approvableAssetIds.has(id))
+    })
+  }
+
+  return []
+}
+
+// Check if a user can approve a specific delegation
+export function canApproveDelegation(user: User, delegation: Delegation): boolean {
+  const org = getUserOrganization(user)
+  if (!org) return false
+
+  // Platform Admins can approve all delegations
+  if (org.role === 'Platform Admin') {
+    return true
+  }
+
+  // Asset Owners can approve delegations for their assets
+  if (org.role === 'Asset Owner') {
+    // Get all assets owned by this GP
+    const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
     
     // Check if the delegation involves any assets owned by this GP
-    if (d.assetScope === 'ALL') {
+    if (delegation.assetScope === 'ALL') {
       // Check if subscriber has subscriptions to GP's assets
       const subSubscriptions = mockSubscriptions.filter(
-        s => s.subscriberId === d.subscriberId && s.status === 'Active'
+        s => s.subscriberId === delegation.subscriberId && s.status === 'Active'
       )
       return subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))
     }
     
-    return (d.assetScope as number[]).some(id => ownedAssetIds.includes(id))
-  })
+    return (delegation.assetScope as number[]).some(id => ownedAssetIds.includes(id))
+  }
+
+  // Publishers can approve if they have canApproveDelegations = true
+  if (org.role === 'Publisher') {
+    // Get publishing rights with canApproveDelegations
+    const approvalRights = mockPublishingRights.filter(
+      pr => pr.publisherId === org.id && 
+            pr.status === 'Active' && 
+            pr.canApproveDelegations === true
+    )
+    
+    if (approvalRights.length === 0) {
+      return false
+    }
+
+    // Get asset IDs this publisher can approve delegations for
+    const approvableAssetIds = new Set<number>()
+    approvalRights.forEach(pr => {
+      if (pr.assetScope === 'ALL') {
+        // Get all assets owned by the asset owner
+        mockAssets.filter(a => a.ownerId === pr.assetOwnerId).forEach(a => approvableAssetIds.add(a.id))
+      } else {
+        (pr.assetScope as number[]).forEach(id => approvableAssetIds.add(id))
+      }
+    })
+
+    // Check if the delegation involves any assets this publisher can approve
+    if (delegation.assetScope === 'ALL') {
+      // Check if subscriber has subscriptions to approvable assets
+      const subSubscriptions = mockSubscriptions.filter(
+        s => s.subscriberId === delegation.subscriberId && s.status === 'Active'
+      )
+      return subSubscriptions.some(s => approvableAssetIds.has(s.assetId))
+    }
+    
+    return (delegation.assetScope as number[]).some(id => approvableAssetIds.has(id))
+  }
+
+  return false
+}
+
+// Check if a user (delegate) can manage subscriptions for a specific subscriber
+export function canManageSubscriptionsForSubscriber(user: User, subscriberId: number): boolean {
+  const org = getUserOrganization(user)
+  if (!org) return false
+
+  // Platform Admins can manage all subscriptions
+  if (org.role === 'Platform Admin') {
+    return true
+  }
+
+  // Subscriber can manage their own subscriptions
+  if (org.role === 'Subscriber' && org.id === subscriberId) {
+    return true
+  }
+
+  // Delegate can manage subscriptions if they have an active delegation with canManageSubscriptions = true
+  if (org.role === 'Delegate') {
+    const delegations = mockDelegations.filter(
+      d => d.delegateId === org.id && 
+           d.subscriberId === subscriberId && 
+           d.status === 'Active' &&
+           d.canManageSubscriptions === true
+    )
+    return delegations.length > 0
+  }
+
+  return false
+}
+
+// Get subscriptions that a user can manage (either as subscriber or as delegate)
+export function getManageableSubscriptionsForUser(user: User): Subscription[] {
+  const org = getUserOrganization(user)
+  if (!org) return []
+
+  // Platform Admins can manage all subscriptions
+  if (org.role === 'Platform Admin') {
+    return mockSubscriptions
+  }
+
+  // Subscriber can manage their own subscriptions
+  if (org.role === 'Subscriber') {
+    return mockSubscriptions.filter(s => s.subscriberId === org.id)
+  }
+
+  // Delegate can manage subscriptions for subscribers they have delegation from
+  if (org.role === 'Delegate') {
+    const delegations = mockDelegations.filter(
+      d => d.delegateId === org.id && 
+           d.status === 'Active' &&
+           d.canManageSubscriptions === true
+    )
+    
+    if (delegations.length === 0) return []
+
+    // Get subscriber IDs from delegations
+    const subscriberIds = new Set(delegations.map(d => d.subscriberId))
+    
+    // Return subscriptions for those subscribers
+    return mockSubscriptions.filter(s => subscriberIds.has(s.subscriberId))
+  }
+
+  return []
+}
+
+// Check if a subscriber has a subscription that allows publishing (Pending LP Acceptance, Pending Asset Owner Approval, or Active)
+// Publishers can send data to LPs even if they haven't accepted yet - this incentivizes onboarding
+// Also allows publishing to requests that are pending approval
+// Works with both in-memory DB (Vercel) and Prisma (local)
+export async function hasSubscriptionForPublishing(
+  assetId: number,
+  subscriberId: number
+): Promise<boolean> {
+  // Check if we're using in-memory DB (Vercel)
+  const { isVercel, getInMemoryDB } = await import('@/lib/in-memory-db')
+  
+  if (isVercel()) {
+    const db = getInMemoryDB()
+    return db.subscriptions.some(
+      s => s.assetId === assetId && 
+           s.subscriberId === subscriberId && 
+           (s.status === 'Active' || s.status === 'Pending LP Acceptance' || s.status === 'Pending Asset Owner Approval')
+    )
+  } else {
+    // Use Prisma for local development
+    const { prisma } = await import('@/lib/prisma')
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        assetId,
+        subscriberId,
+        status: {
+          in: ['Active', 'Pending LP Acceptance', 'Pending Asset Owner Approval'],
+        },
+      },
+    })
+    return !!subscription
+  }
+}
+
+// Check if a subscriber has an active subscription to an asset (for viewing)
+// Only "Active" subscriptions allow viewing - data sent before acceptance becomes visible after acceptance
+// Works with both in-memory DB (Vercel) and Prisma (local)
+export async function hasActiveSubscription(
+  assetId: number,
+  subscriberId: number
+): Promise<boolean> {
+  // Check if we're using in-memory DB (Vercel)
+  const { isVercel, getInMemoryDB } = await import('@/lib/in-memory-db')
+  
+  if (isVercel()) {
+    const db = getInMemoryDB()
+    const now = new Date()
+    return db.subscriptions.some(
+      s => s.assetId === assetId && 
+           s.subscriberId === subscriberId && 
+           s.status === 'Active' &&
+           (!s.expiresAt || new Date(s.expiresAt) > now)
+    )
+  } else {
+    // Use Prisma for local development
+    const { prisma } = await import('@/lib/prisma')
+    const now = new Date().toISOString()
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        assetId,
+        subscriberId,
+        status: 'Active',
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } },
+        ],
+      },
+    })
+    return !!subscription
+  }
+}
+
+// Synchronous version for in-memory checks (used in filterEnvelopesByAccess)
+// Only checks for "Active" status - used for viewing access control
+// Also checks expiration date
+export function hasActiveSubscriptionSync(
+  assetId: number,
+  subscriberId: number
+): boolean {
+  const now = new Date()
+  return mockSubscriptions.some(
+    s => s.assetId === assetId && 
+         s.subscriberId === subscriberId && 
+         s.status === 'Active' &&
+         (!s.expiresAt || new Date(s.expiresAt) > now)
+  )
 }
 
 // Get delegations that a user can view/manage
@@ -292,8 +554,11 @@ export function getAccessibleDelegations(user: User): Delegation[] {
       return mockDelegations.filter(d => d.subscriberId === org.id)
 
     case 'Delegate':
-      // Delegate can see delegations granted to them
-      return mockDelegations.filter(d => d.delegateId === org.id && d.status === 'Active')
+      // Delegate can see delegations granted to them (approved or pending)
+      return mockDelegations.filter(d => 
+        d.delegateId === org.id && 
+        (d.status === 'Active' || d.status === 'Pending GP Approval')
+      )
 
     default:
       return []
@@ -405,8 +670,9 @@ export function getNavItemsForUser(user: User): NavItem[] {
 
     case 'Asset Owner':
       navItems.push(
+        { label: 'Assets', href: '/assets', permission: { resource: 'assets', action: 'view' } },
         { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
-        { label: 'Data Rights', href: '/data-rights', permission: { resource: 'publishing-rights', action: 'view' } },
+        { label: 'Delegations', href: '/data-rights', permission: { resource: 'publishing-rights', action: 'view' } },
         { label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
         { label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } },
       )
@@ -422,13 +688,29 @@ export function getNavItemsForUser(user: User): NavItem[] {
 
     case 'Subscriber':
       navItems.push(
-        { label: 'My Feeds', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } },
-        { label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } },
+        { label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } },
         { label: 'Delegations', href: '/delegations', permission: { resource: 'delegations', action: 'view' } },
+        { label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } },
       )
       break
 
     case 'Delegate':
+      // Add Subscriptions if delegate can request or accept subscriptions
+      // Check if delegate has any delegation (active or pending) with canManageSubscriptions = true
+      const hasSubscriptionPermission = mockDelegations.some(
+        d => d.delegateId === org.id && 
+             (d.status === 'Active' || d.status === 'Pending GP Approval') &&
+             d.canManageSubscriptions === true
+      )
+      if (hasSubscriptionPermission) {
+        navItems.push(
+          { label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } },
+        )
+      }
+      // Add Delegations - delegates should see their delegations
+      navItems.push(
+        { label: 'Delegations', href: '/delegations', permission: { resource: 'delegations', action: 'view' } },
+      )
       navItems.push(
         { label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } },
       )
@@ -463,23 +745,39 @@ export function filterEnvelopesByAccess(
       return envelopes.filter(e => ownedAssetIds.includes(e.assetId))
 
     case 'Publisher':
-      // Can see envelopes for assets they publish for
+      // Can see envelopes for assets they have view access to (canViewData = true)
       const accessibleAssets = getAccessibleAssets(user)
       const accessibleAssetIds = accessibleAssets.map(a => a.id)
       return envelopes.filter(e => accessibleAssetIds.includes(e.assetId))
 
     case 'Subscriber':
-      // Can see envelopes addressed to them
-      return envelopes.filter(e => e.recipientId === org.id)
+      // Can see envelopes addressed to them AND where they have an active subscription
+      return envelopes.filter(e => {
+        // Must be addressed to this subscriber
+        if (e.recipientId !== org.id) return false
+        // Must have an active subscription to the asset
+        return hasActiveSubscriptionSync(e.assetId, org.id)
+      })
 
     case 'Delegate':
       // Can see envelopes based on their delegations
+      // Only Active delegations grant access to envelopes
       const delegations = mockDelegations.filter(
         d => d.delegateId === org.id && d.status === 'Active'
       )
       
+      // If no active delegations, return empty array
+      if (delegations.length === 0) {
+        return []
+      }
+      
       return envelopes.filter(envelope => {
         return delegations.some(d => {
+          // Check recipient matches subscriber FIRST - this is the most restrictive check
+          if (envelope.recipientId !== d.subscriberId) {
+            return false
+          }
+
           // Check asset scope
           let assetMatch = false
           if (d.assetScope === 'ALL') {
@@ -500,10 +798,8 @@ export function filterEnvelopesByAccess(
             typeMatch = (d.typeScope as DataType[]).includes(envelope.dataType)
           }
 
-          // Check recipient matches subscriber
-          const recipientMatch = envelope.recipientId === d.subscriberId
-
-          return assetMatch && typeMatch && recipientMatch
+          // All three conditions must be true
+          return assetMatch && typeMatch
         })
       })
 

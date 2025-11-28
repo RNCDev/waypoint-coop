@@ -35,28 +35,28 @@
 | `4006` | **Burgiss / MSCI** | Delegate | LP Portfolio Analytics | Verified |
 
 ## 2. Users
-| ID | Name | Email | Org ID | Role |
-| :--- | :--- | :--- | :--- | :--- |
-| `501` | **Alice Admin** | alice@genii.com | `1001` | Publisher (Admin) |
-| `502` | **Bob GP** | bob@kleinerperkins.com | `2001` | Asset Owner (Admin) |
-| `503` | **Charlie LP** | charlie@ohio.gov | `3001` | Subscriber (Viewer) |
-| `504` | **Dana Delegate** | dana@deloitte.com | `4001` | Auditor (Restricted) |
-| `505` | **Eve Analyst** | eve@chronograph.pe | `4003` | Delegate (Analytics) |
-| `506` | **Frank Founder** | frank@mantle.co | `4004` | Delegate (Analytics) |
-| `507` | **Grace GP** | grace@sequoia.com | `2002` | Asset Owner (Admin) |
-| `508` | **Harry Harvard** | harry@hmc.harvard.edu | `3002` | Subscriber (Admin) |
-| `509` | **Ian Insight** | ian@insightpartners.com | `2005` | Asset Owner (Admin) |
-| `510` | **Jack Yale** | jack@yale.edu | `3003` | Subscriber (Viewer) |
-| `511` | **Karen CPPIB** | karen@cppib.com | `3004` | Subscriber (Admin) |
-| `512` | **Leo Thoma** | leo@thomabravo.com | `2006` | Asset Owner (Admin) |
-| `513` | **Mike Mantle** | mike@mantle.co | `4004` | Delegate (Analytics) |
-| `514` | **Nancy Nexla** | nancy@nexla.com | `4003` | Delegate (Integration) |
-| `515` | **Oscar Ops** | oscar@alterdomus.com | `1002` | Publisher (Ops) |
-| `516` | **Pat Partner** | pat@benchmark.com | `2004` | Asset Owner (Signer) |
-| `517` | **Quinn Quant** | quinn@msci.com | `4006` | Delegate (Analytics) |
-| `518` | **Rachel Risk** | rachel@calpers.ca.gov | `3007` | Subscriber (Risk) |
-| `519` | **Steve Sequoia** | steve@sequoia.com | `2002` | Asset Owner (IR) |
-| `520` | **Tina Tax** | tina@pwc.com | `4002` | Tax Delegate |
+| ID | Name | Email | Org ID | Role | Is Org Admin? |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `501` | **Alice Admin** | alice@genii.com | `1001` | Publisher | Yes |
+| `502` | **Bob GP** | bob@kleinerperkins.com | `2001` | Asset Owner | Yes |
+| `503` | **Charlie LP** | charlie@ohio.gov | `3001` | Subscriber | No |
+| `504` | **Dana Delegate** | dana@deloitte.com | `4001` | Auditor | No |
+| `505` | **Eve Analyst** | eve@chronograph.pe | `4003` | Delegate | No |
+| `506` | **Frank Founder** | frank@mantle.co | `4004` | Delegate | Yes |
+| `507` | **Grace GP** | grace@sequoia.com | `2002` | Asset Owner | Yes |
+| `508` | **Harry Harvard** | harry@hmc.harvard.edu | `3002` | Subscriber | Yes |
+| `509` | **Ian Insight** | ian@insightpartners.com | `2005` | Asset Owner | Yes |
+| `510` | **Jack Yale** | jack@yale.edu | `3003` | Subscriber | No |
+| `511` | **Karen CPPIB** | karen@cppib.com | `3004` | Subscriber | Yes |
+| `512` | **Leo Thoma** | leo@thomabravo.com | `2006` | Asset Owner | Yes |
+| `513` | **Mike Mantle** | mike@mantle.co | `4004` | Delegate | No |
+| `514` | **Nancy Nexla** | nancy@nexla.com | `4003` | Delegate | No |
+| `515` | **Oscar Ops** | oscar@alterdomus.com | `1002` | Publisher | No |
+| `516` | **Pat Partner** | pat@benchmark.com | `2004` | Asset Owner | No |
+| `517` | **Quinn Quant** | quinn@msci.com | `4006` | Delegate | No |
+| `518` | **Rachel Risk** | rachel@calpers.ca.gov | `3007` | Subscriber | No |
+| `519` | **Steve Sequoia** | steve@sequoia.com | `2002` | Asset Owner | No |
+| `520` | **Tina Tax** | tina@pwc.com | `4002` | Tax Delegate | No |
 
 ## 3. Assets
 | ID | Name | Owner ID | Publisher ID | Type | Require GP Approval |
@@ -77,18 +77,19 @@
 
 ## 4. Transaction Envelopes (The Ledger)
 
-| Env ID | Publisher | On Behalf Of | Asset | Date | Type | Recipients |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `10001` | `1001` (Genii) | `2001` (KP) | `9001` | 2025-10-15 | `CAPITAL_CALL` | `3001`, `3002`, `3007` |
-| `10002` | `2002` (Seq) | `2002` (Seq) | `9003` | 2025-10-16 | `DISTRIBUTION` | `3002`, `3003`, `3004` |
-| `10003` | `1003` (Carta) | `2003` (a16z) | `9005` | 2025-10-17 | `NAV_UPDATE` | `3005`, `3006` |
-| `10004` | `1002` (AD) | `2004` (Bench) | `9007` | 2025-10-18 | `QUARTERLY_REPORT` | `3001`, `3008` |
-| `10005` | `1001` (Genii) | `2006` (Thoma) | `9009` | 2025-10-19 | `CAPITAL_CALL` | `3004`, `3007` |
-| `10006` | `1002` (AD) | `2005` (Insight)| `9008` | 2025-10-20 | `K-1_TAX_FORM` | `3002`, `3003` |
-| `10007` | `2002` (Seq) | `2002` (Seq) | `9102` | 2025-10-21 | `CAPITAL_CALL` | `3003` |
-| `10008` | `1003` (Carta) | `2003` (a16z) | `9006` | 2025-10-22 | `SOI_UPDATE` | `3005`, `3006` |
-| `10009` | `1001` (Genii) | `2001` (KP) | `9101` | 2025-10-23 | `LEGAL_NOTICE` | `3001`, `3002` |
-| `10010` | `1002` (AD) | `2007` (Vista) | `9010` | 2025-10-24 | `DISTRIBUTION` | `3008`, `3004` |
+| Env ID | Publisher | On Behalf Of | Asset | Date | Type | Version | Recipients |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `10001` | `1001` (Genii) | `2001` (KP) | `9001` | 2025-10-15 | `CAPITAL_CALL` | v1 | `3001`, `3002`, `3007` |
+| `10002` | `2002` (Seq) | `2002` (Seq) | `9003` | 2025-10-16 | `DISTRIBUTION` | v1 | `3002`, `3003`, `3004` |
+| `10003` | `1003` (Carta) | `2003` (a16z) | `9005` | 2025-10-17 | `NAV_UPDATE` | v1 | `3005`, `3006` |
+| `10004` | `1002` (AD) | `2004` (Bench) | `9007` | 2025-10-18 | `QUARTERLY_REPORT` | v1 | `3001`, `3008` |
+| `10005` | `1001` (Genii) | `2006` (Thoma) | `9009` | 2025-10-19 | `CAPITAL_CALL` | v1 | `3004`, `3007` |
+| `10006` | `1002` (AD) | `2005` (Insight)| `9008` | 2025-10-20 | `K-1_TAX_FORM` | v1 | `3002`, `3003` |
+| `10007` | `2002` (Seq) | `2002` (Seq) | `9102` | 2025-10-21 | `CAPITAL_CALL` | v1 | `3003` |
+| `10008` | `1003` (Carta) | `2003` (a16z) | `9006` | 2025-10-22 | `SOI_UPDATE` | v1 | `3005`, `3006` |
+| `10009` | `1001` (Genii) | `2001` (KP) | `9101` | 2025-10-23 | `LEGAL_NOTICE` | v1 | `3001`, `3002` |
+| `10010` | `1002` (AD) | `2007` (Vista) | `9010` | 2025-10-24 | `DISTRIBUTION` | v1 | `3008`, `3004` |
+| `10011` | `1001` (Genii) | `2001` (KP) | `9001` | 2025-10-25 | `CAPITAL_CALL` | v2 (Correction) | `3001`, `3002`, `3007` |
 
 ## 5. Subscriptions
 *Note: This defines which LPs can access which assets.*

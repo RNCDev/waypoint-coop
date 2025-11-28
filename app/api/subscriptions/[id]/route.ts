@@ -9,8 +9,45 @@ export const dynamic = 'force-dynamic'
 
 const updateSchema = z.object({
   expiresAt: z.string().optional(),
-  status: z.enum(['Active', 'Expired', 'Revoked']).optional(),
+  status: z.enum(['Active', 'Expired', 'Revoked', 'Pending Asset Owner Approval']).optional(),
 })
+
+// Validate subscription status transitions
+function isValidStatusTransition(currentStatus: string, newStatus: string): { valid: boolean; error?: string } {
+  // Valid transitions:
+  // Pending LP Acceptance → Active (via accept endpoint)
+  // Pending LP Acceptance → Declined (via decline endpoint)
+  // Pending Asset Owner Approval → Active (via approve endpoint)
+  // Pending Asset Owner Approval → Declined (via reject endpoint)
+  // Active → Revoked (via revoke/delete)
+  // Active → Expired (via expiration check or manual update)
+  // Revoked → (no transitions, final state)
+  // Declined → (no transitions, final state)
+  // Expired → (no transitions, final state)
+
+  if (currentStatus === newStatus) {
+    return { valid: true }
+  }
+
+  const validTransitions: Record<string, string[]> = {
+    'Pending LP Acceptance': ['Active', 'Declined'], // Only via accept/decline endpoints
+    'Pending Asset Owner Approval': ['Active', 'Declined'], // Only via approve/reject endpoints
+    'Active': ['Revoked', 'Expired'],
+    'Expired': [], // Final state
+    'Revoked': [], // Final state
+    'Declined': [], // Final state
+  }
+
+  const allowed = validTransitions[currentStatus] || []
+  if (!allowed.includes(newStatus)) {
+    return {
+      valid: false,
+      error: `Invalid status transition from "${currentStatus}" to "${newStatus}". Valid transitions: ${allowed.length > 0 ? allowed.join(', ') : 'none (final state)'}`
+    }
+  }
+
+  return { valid: true }
+}
 
 export async function GET(
   request: NextRequest,
@@ -103,6 +140,18 @@ export async function PATCH(
       }
 
       const subscription = db.subscriptions[subscriptionIndex]
+      
+      // Validate status transition if status is being changed
+      if (validated.status && validated.status !== subscription.status) {
+        const transitionCheck = isValidStatusTransition(subscription.status, validated.status)
+        if (!transitionCheck.valid) {
+          return NextResponse.json(
+            { error: transitionCheck.error },
+            { status: 400 }
+          )
+        }
+      }
+
       const updated = {
         ...subscription,
         ...validated,
@@ -126,6 +175,18 @@ export async function PATCH(
       }
 
       const subscription = db.subscriptions[subscriptionIndex]
+      
+      // Validate status transition if status is being changed
+      if (validated.status && validated.status !== subscription.status) {
+        const transitionCheck = isValidStatusTransition(subscription.status, validated.status)
+        if (!transitionCheck.valid) {
+          return NextResponse.json(
+            { error: transitionCheck.error },
+            { status: 400 }
+          )
+        }
+      }
+
       const updated = {
         ...subscription,
         ...validated,
