@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        Int     @id @default(autoincrement())
+  name      String
+  role      String  // Publisher, Asset Owner, Subscriber, Delegate
+  type      String  // Fund Administrator, General Partner (GP), Limited Partner (LP), etc.
+  status    String  // Verified, Pending, Suspended
+  imageUrl  String?
+  users     User[]
+  assets    Asset[] @relation("AssetOwner")
+  published Asset[] @relation("Publisher")
+}
+
+model User {
+  id        Int    @id @default(autoincrement())
+  name      String
+  email     String @unique
+  orgId     Int
+  role      String // Admin, Viewer, Publisher, etc.
+  org       Organization @relation(fields: [orgId], references: [id])
+  envelopes Envelope[]
+  receipts  ReadReceipt[]
+}
+
+model Asset {
+  id          Int        @id @default(autoincrement())
+  name        String
+  ownerId     Int
+  publisherId Int
+  type        String     // Fund, Co-Investment, SPV
+  owner       Organization @relation("AssetOwner", fields: [ownerId], references: [id])
+  publisher   Organization @relation("Publisher", fields: [publisherId], references: [id])
+  envelopes   Envelope[]
+}
+
+model Envelope {
+  id             Int       @id @default(autoincrement())
+  publisherId    Int
+  userId         Int
+  assetOwnerId   Int
+  assetId        Int
+  recipientId    Int       // Single recipient (LP) ID
+  timestamp      String    // ISO 8601 UTC string
+  version        Int       @default(1)
+  status         String    // Delivered, Revoked, Pending
+  hash           String
+  dataType       String?   // CAPITAL_CALL, DISTRIBUTION, etc.
+  period         String?
+  user           User      @relation(fields: [userId], references: [id])
+  asset          Asset      @relation(fields: [assetId], references: [id])
+  payload        Payload?
+  receipts       ReadReceipt[]
+}
+
+model Payload {
+  id         Int      @id @default(autoincrement())
+  envelopeId Int      @unique
+  data       String   // JSON string
+  envelope   Envelope @relation(fields: [envelopeId], references: [id])
+}
+
+model Delegation {
+  id               String   @id @default(uuid())
+  subscriberId     Int
+  delegateId       Int
+  assetScope       String   // JSON array or "ALL"
+  typeScope        String   // JSON array or "ALL"
+  status           String   // Active, Pending GP Approval, Rejected
+  gpApprovalStatus String?  // Pending, Approved, Rejected
+}
+
+model ReadReceipt {
+  id         Int      @id @default(autoincrement())
+  envelopeId Int
+  userId     Int
+  viewedAt   String   // ISO 8601 UTC string
+  envelope   Envelope @relation(fields: [envelopeId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
