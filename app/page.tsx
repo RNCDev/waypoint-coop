@@ -33,17 +33,25 @@ export default function Home() {
   const { currentUser, currentOrg } = useAuthStore()
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-4xl mx-auto">
+    <div className="container mx-auto px-4 py-12 relative min-h-[calc(100vh-4rem)]">
+      {/* Background Logo */}
+      <div className="absolute inset-0 flex items-start justify-end pointer-events-none z-0 overflow-hidden pt-8 pr-8">
+        <div className="relative w-[450px] h-[450px] md:w-[600px] md:h-[600px] opacity-10 blur-[1px]">
+          <img 
+            src="/waypoint-logo-dark.svg" 
+            alt="" 
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto relative z-10">
         <motion.div 
           className="text-center mb-12 overflow-visible"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight py-2">
-            Waypoint
-          </h1>
           <p className="text-xl text-muted-foreground mb-8 font-light">
             The Digital Clearinghouse for Private Market Data
           </p>
