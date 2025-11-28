@@ -36,12 +36,12 @@ export default function Home() {
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
         <motion.div 
-          className="text-center mb-12"
+          className="text-center mb-12 overflow-visible"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight py-2">
             Waypoint
           </h1>
           <p className="text-xl text-muted-foreground mb-8 font-light">

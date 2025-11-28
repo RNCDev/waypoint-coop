@@ -136,6 +136,7 @@ See the `docs/` folder for detailed documentation:
 - `2_WIREFRAMES.md` - UI wireframes and specifications
 - `3_MOCK_DATA.md` - Mock data definitions
 - `4_INFRA_BUILD.md` - Infrastructure and build setup
+- `5_Design_Guide.md` - Design system and UI patterns
 
 ## License
 
