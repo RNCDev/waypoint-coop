@@ -1,5 +1,7 @@
 # Waypoint Coop
 
+[![PR Checks](https://github.com/YOUR_USERNAME/waypoint-coop/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/YOUR_USERNAME/waypoint-coop/actions/workflows/pr-checks.yml)
+
 Developing private markets data rails - A secure, immutable message bus for private market data.
 
 ## Overview
@@ -98,11 +100,32 @@ waypoint-coop/
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+- `npm test` - Run tests
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:migrate` - Run database migrations
 - `npm run db:seed` - Seed database with mock data
 - `npm run db:studio` - Open Prisma Studio
 - `npm run db:reset` - Reset database and reseed
+
+## CI/CD
+
+The project uses GitHub Actions for continuous integration on every pull request:
+
+### PR Checks
+
+The following checks run automatically on each PR:
+
+1. **Lint and Type Check**: Runs ESLint and TypeScript type checking
+2. **Build**: Ensures the application builds successfully
+3. **Test**: Runs the test suite (when tests are added)
+
+The workflow is defined in `.github/workflows/pr-checks.yml` and runs on:
+- Pull requests targeting `main` or `develop` branches
+- Direct pushes to `main` or `develop` branches
+
+### Adding Tests
+
+To add tests to the project, install a testing framework (e.g., Jest, Vitest) and update the `test` script in `package.json`. The CI workflow will automatically run tests when test files are detected.
 
 ## Vercel Deployment
 
