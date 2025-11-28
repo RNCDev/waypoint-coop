@@ -219,9 +219,9 @@ export default function LedgerPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
               >
-                <Card className="hover:shadow-lg transition-shadow">
+                <Card className="group hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

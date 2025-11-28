@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import Papa from 'papaparse'
 import { format } from 'date-fns'
 import { Download, CheckCircle2, XCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export default function ComposerPage() {
   const { currentUser, currentOrg } = useAuthStore()
@@ -176,10 +177,15 @@ export default function ComposerPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Composer</h1>
-        <p className="text-muted-foreground">Create and publish data packets</p>
-      </div>
+      <motion.div 
+        className="mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Composer</h1>
+        <p className="text-muted-foreground text-lg">Create and publish data packets</p>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card>
