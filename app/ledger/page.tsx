@@ -23,7 +23,7 @@ interface Envelope {
 
 export default function LedgerPage() {
   const router = useRouter()
-  const { currentUser } = useAuthStore()
+  const { currentUser, _hasHydrated } = useAuthStore()
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [payloads, setPayloads] = useState<Record<number, any>>({})
@@ -31,14 +31,15 @@ export default function LedgerPage() {
   const [loading, setLoading] = useState(true)
 
   // Redirect if user doesn't have access to ledger
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser) {
+    if (_hasHydrated && currentUser) {
       const hasAccess = currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, router])
+  }, [_hasHydrated, currentUser, router])
 
   useEffect(() => {
     if (currentUser?.orgId) {

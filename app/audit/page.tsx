@@ -21,19 +21,20 @@ interface AuditEntry {
 
 export default function AuditPage() {
   const router = useRouter()
-  const { currentUser, currentOrg } = useAuthStore()
+  const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   // Redirect if user doesn't have access to audit
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser && currentOrg) {
+    if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = currentUser.role === 'Platform Admin' || currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, currentOrg, router])
+  }, [_hasHydrated, currentUser, currentOrg, router])
 
   useEffect(() => {
     fetchAuditLog()

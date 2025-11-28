@@ -24,7 +24,7 @@ interface Delegation {
 
 export default function DelegationsPage() {
   const router = useRouter()
-  const { currentUser } = useAuthStore()
+  const { currentUser, _hasHydrated } = useAuthStore()
   const [delegations, setDelegations] = useState<Delegation[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -32,14 +32,15 @@ export default function DelegationsPage() {
   const [selectedDelegateId, setSelectedDelegateId] = useState('')
 
   // Redirect if user doesn't have access to delegations
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser) {
+    if (_hasHydrated && currentUser) {
       const hasAccess = currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, router])
+  }, [_hasHydrated, currentUser, router])
 
   useEffect(() => {
     if (currentUser?.orgId) {

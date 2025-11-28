@@ -27,21 +27,22 @@ interface User {
 
 export default function RegistryPage() {
   const router = useRouter()
-  const { currentUser, currentOrg } = useAuthStore()
+  const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
   // Redirect if user doesn't have access to registry
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser && currentOrg) {
+    if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = currentUser.role === 'Platform Admin' || currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, currentOrg, router])
+  }, [_hasHydrated, currentUser, currentOrg, router])
 
   useEffect(() => {
     fetchData()

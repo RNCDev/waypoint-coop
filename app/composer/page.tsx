@@ -19,17 +19,18 @@ import { motion } from 'framer-motion'
 
 export default function ComposerPage() {
   const router = useRouter()
-  const { currentUser, currentOrg } = useAuthStore()
+  const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
 
   // Redirect if user doesn't have access to composer
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser && currentOrg) {
+    if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, currentOrg, router])
+  }, [_hasHydrated, currentUser, currentOrg, router])
   const [inputData, setInputData] = useState('')
   const [parsedData, setParsedData] = useState<any[]>([])
   const [isValidJson, setIsValidJson] = useState<boolean | null>(null)

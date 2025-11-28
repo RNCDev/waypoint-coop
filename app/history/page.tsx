@@ -24,21 +24,22 @@ interface Envelope {
 
 export default function HistoryPage() {
   const router = useRouter()
-  const { currentUser, currentOrg } = useAuthStore()
+  const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [selectedEnvelope, setSelectedEnvelope] = useState<Envelope | null>(null)
   const [payload, setPayload] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   // Redirect if user doesn't have access to history
+  // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
-    if (currentUser && currentOrg) {
+    if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
     }
-  }, [currentUser, currentOrg, router])
+  }, [_hasHydrated, currentUser, currentOrg, router])
 
   useEffect(() => {
     if (currentOrg?.id) {
@@ -89,14 +90,30 @@ export default function HistoryPage() {
   }
 
   const handleRevoke = async (envelope: Envelope) => {
-    if (confirm('Are you sure you want to revoke this envelope?')) {
-      // In a real app, this would update the status
-      alert(`Envelope ${envelope.id} revoked`)
-      fetchEnvelopes()
+    if (confirm('Are you sure you want to revoke this envelope? This is a soft delete - the envelope will remain in the system but marked as revoked.')) {
+      try {
+        const response = await fetch(`/api/envelopes/${envelope.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Revoked' }),
+        })
+
+        if (response.ok) {
+          // Refresh the envelopes list to show updated status
+          await fetchEnvelopes()
+        } else {
+          const error = await response.json()
+          alert(`Failed to revoke envelope: ${error.error || 'Unknown error'}`)
+        }
+      } catch (error) {
+        console.error('Error revoking envelope:', error)
+        alert('Error revoking envelope')
+      }
     }
   }
 
-  if (loading) {
+  // Show loading while auth state is hydrating or data is loading
+  if (!_hasHydrated || loading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>
   }
 
