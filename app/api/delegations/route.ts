@@ -3,6 +3,8 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { DataType } from '@/types'
+import { getCurrentUser, checkPermission } from '@/lib/api-guard'
+import { getAccessibleDelegations, getUserOrganization } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,23 +23,41 @@ const delegationSchema = z.object({
   delegateId: z.number(),
   assetScope: z.union([z.literal('ALL'), z.array(z.number())]),
   typeScope: z.union([z.literal('ALL'), z.array(dataTypeEnum)]),
+  gpApprovalRequired: z.boolean().optional().default(false),
 })
 
 export async function GET(request: NextRequest) {
   try {
+    // Check permission
+    const permissionResult = checkPermission(request, 'delegations', 'view')
+    if (!permissionResult.allowed || !permissionResult.user) {
+      return NextResponse.json(
+        { error: permissionResult.error || 'Access denied' },
+        { status: permissionResult.user ? 403 : 401 }
+      )
+    }
+
+    const user = permissionResult.user
     const searchParams = request.nextUrl.searchParams
     const subscriberId = searchParams.get('subscriberId')
     const delegateId = searchParams.get('delegateId')
+    const pendingApproval = searchParams.get('pendingApproval')
 
     if (isVercel()) {
       const db = getInMemoryDB()
-      let delegations = db.delegations
+      
+      // Get delegations the user has access to
+      let delegations = getAccessibleDelegations(user)
 
+      // Apply additional filters
       if (subscriberId) {
         delegations = delegations.filter(d => d.subscriberId === parseInt(subscriberId))
       }
       if (delegateId) {
         delegations = delegations.filter(d => d.delegateId === parseInt(delegateId))
+      }
+      if (pendingApproval === 'true') {
+        delegations = delegations.filter(d => d.status === 'Pending GP Approval' && d.gpApprovalStatus === 'Pending')
       }
 
       return NextResponse.json(delegations)
@@ -45,14 +65,26 @@ export async function GET(request: NextRequest) {
       const where: any = {}
       if (subscriberId) where.subscriberId = parseInt(subscriberId)
       if (delegateId) where.delegateId = parseInt(delegateId)
+      if (pendingApproval === 'true') {
+        where.status = 'Pending GP Approval'
+        where.gpApprovalStatus = 'Pending'
+      }
 
       const delegations = await prisma.delegation.findMany({ where })
 
-      return NextResponse.json(delegations.map(d => ({
+      // Filter by permission and format
+      const formattedDelegations = delegations.map(d => ({
         ...d,
         assetScope: d.assetScope === 'ALL' ? 'ALL' : JSON.parse(d.assetScope),
         typeScope: d.typeScope === 'ALL' ? 'ALL' : JSON.parse(d.typeScope),
-      })))
+      }))
+
+      // Apply permission filtering
+      const accessibleDelegations = getAccessibleDelegations(user)
+      const accessibleIds = new Set(accessibleDelegations.map(d => d.id))
+      const filteredDelegations = formattedDelegations.filter(d => accessibleIds.has(d.id))
+
+      return NextResponse.json(filteredDelegations)
     }
   } catch (error) {
     console.error('Error fetching delegations:', error)
@@ -62,8 +94,32 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check permission to create delegations
+    const permissionResult = checkPermission(request, 'delegations', 'create')
+    if (!permissionResult.allowed || !permissionResult.user) {
+      return NextResponse.json(
+        { error: permissionResult.error || 'Access denied' },
+        { status: permissionResult.user ? 403 : 401 }
+      )
+    }
+
+    const user = permissionResult.user
+    const org = getUserOrganization(user)
+    
     const body = await request.json()
     const validated = delegationSchema.parse(body)
+
+    // Verify the user's org is the subscriber creating the delegation
+    if (org && org.id !== validated.subscriberId) {
+      return NextResponse.json(
+        { error: 'You can only create delegations for your own organization' },
+        { status: 403 }
+      )
+    }
+
+    const timestamp = new Date().toISOString()
+    const initialStatus = validated.gpApprovalRequired ? 'Pending GP Approval' : 'Active'
+    const gpApprovalStatus = validated.gpApprovalRequired ? 'Pending' : undefined
 
     if (isVercel()) {
       const db = getInMemoryDB()
@@ -74,8 +130,10 @@ export async function POST(request: NextRequest) {
         delegateId: validated.delegateId,
         assetScope: validated.assetScope,
         typeScope: validated.typeScope as 'ALL' | DataType[],
-        status: 'Pending GP Approval' as const,
-        gpApprovalStatus: 'Pending' as const,
+        status: initialStatus as 'Active' | 'Pending GP Approval',
+        gpApprovalRequired: validated.gpApprovalRequired,
+        gpApprovalStatus: gpApprovalStatus as 'Pending' | undefined,
+        createdAt: timestamp,
       }
 
       db.delegations.push(delegation)
@@ -87,9 +145,10 @@ export async function POST(request: NextRequest) {
           delegateId: validated.delegateId,
           assetScope: typeof validated.assetScope === 'string' ? validated.assetScope : JSON.stringify(validated.assetScope),
           typeScope: typeof validated.typeScope === 'string' ? validated.typeScope : JSON.stringify(validated.typeScope),
-          status: 'Pending GP Approval',
-          gpApprovalStatus: 'Pending',
-        },
+          status: initialStatus,
+          gpApprovalStatus: gpApprovalStatus || null,
+          createdAt: timestamp,
+        } as any,
       })
 
       return NextResponse.json({

@@ -1,6 +1,6 @@
-import { mockOrganizations, mockUsers, mockAssets, mockEnvelopes, mockPayloads, mockDelegations } from './mock-data'
+import { mockOrganizations, mockUsers, mockAssets, mockEnvelopes, mockPayloads, mockDelegations, mockSubscriptions, mockPublishingRights } from './mock-data'
 import { generateHash } from './crypto'
-import { Organization, User, Asset, Envelope, Payload, Delegation, ReadReceipt } from '@/types'
+import { Organization, User, Asset, Envelope, Payload, Delegation, ReadReceipt, Subscription, PublishingRight } from '@/types'
 
 // In-memory storage for Vercel serverless functions
 class InMemoryDB {
@@ -10,6 +10,8 @@ class InMemoryDB {
   envelopes: Envelope[]
   payloads: Payload[]
   delegations: Delegation[]
+  subscriptions: Subscription[]
+  publishingRights: PublishingRight[]
   readReceipts: ReadReceipt[]
   nextEnvelopeId: number
   nextPayloadId: number
@@ -26,6 +28,8 @@ class InMemoryDB {
     }))
     this.payloads = [...mockPayloads]
     this.delegations = [...mockDelegations]
+    this.subscriptions = [...mockSubscriptions]
+    this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
     this.nextEnvelopeId = 10022 // Updated to match new mock data structure
     this.nextPayloadId = 22
@@ -42,6 +46,8 @@ class InMemoryDB {
     }))
     this.payloads = [...mockPayloads]
     this.delegations = [...mockDelegations]
+    this.subscriptions = [...mockSubscriptions]
+    this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
     this.nextEnvelopeId = 10022
     this.nextPayloadId = 22

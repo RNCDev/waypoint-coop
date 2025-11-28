@@ -23,14 +23,16 @@ model Organization {
 }
 
 model User {
-  id        Int    @id @default(autoincrement())
-  name      String
-  email     String @unique
-  orgId     Int
-  role      String // Admin, Viewer, Publisher, etc.
-  org       Organization @relation(fields: [orgId], references: [id])
-  envelopes Envelope[]
-  receipts  ReadReceipt[]
+  id         Int     @id @default(autoincrement())
+  name       String
+  email      String  @unique
+  orgId      Int
+  role       String  // Admin, Viewer, Publisher, etc.
+  isOrgAdmin Boolean @default(false) // Can manage users within their org
+  org        Organization @relation(fields: [orgId], references: [id])
+  envelopes  Envelope[]
+  receipts   ReadReceipt[]
+  permissions Permission[]
 }
 
 model Asset {
@@ -71,13 +73,17 @@ model Payload {
 }
 
 model Delegation {
-  id               String   @id @default(uuid())
-  subscriberId     Int
-  delegateId       Int
-  assetScope       String   // JSON array or "ALL"
-  typeScope        String   // JSON array or "ALL"
-  status           String   // Active, Pending GP Approval, Rejected
-  gpApprovalStatus String?  // Pending, Approved, Rejected
+  id                  String   @id @default(uuid())
+  subscriberId        Int
+  delegateId          Int
+  assetScope          String   // JSON array or "ALL"
+  typeScope           String   // JSON array or "ALL"
+  status              String   // Active, Pending GP Approval, Rejected
+  gpApprovalRequired  Boolean  @default(false) // Whether GP must approve this delegation
+  gpApprovalStatus    String?  // Pending, Approved, Rejected
+  gpApprovedAt        String?  // ISO 8601 timestamp of approval
+  gpApprovedById      Int?     // User ID who approved
+  createdAt           String   // ISO 8601 timestamp
 }
 
 model ReadReceipt {
@@ -87,5 +93,39 @@ model ReadReceipt {
   viewedAt   String   // ISO 8601 UTC string
   envelope   Envelope @relation(fields: [envelopeId], references: [id])
   user       User     @relation(fields: [userId], references: [id])
+}
+
+// Subscription - Which LPs can access which assets
+model Subscription {
+  id            String  @id @default(uuid())
+  assetId       Int     // The asset (fund)
+  subscriberId  Int     // The LP organization
+  grantedById   Int     // GP or Publisher org who granted access
+  grantedAt     String  // ISO 8601 timestamp (when invitation sent)
+  acceptedAt    String? // ISO 8601 timestamp (when LP accepted)
+  expiresAt     String? // Optional expiration timestamp
+  status        String  // Pending LP Acceptance, Active, Expired, Revoked, Declined
+  inviteMessage String? // Optional message from GP to LP
+}
+
+// PublishingRight - GP delegates publishing rights to Fund Admin
+model PublishingRight {
+  id                     String  @id @default(uuid())
+  assetOwnerId           Int     // The GP organization
+  publisherId            Int     // The Fund Admin organization
+  assetScope             String  // JSON array of asset IDs or "ALL"
+  canManageSubscriptions Boolean @default(false) // Can also manage subscriptions
+  grantedAt              String  // ISO 8601 timestamp
+  status                 String  // Active, Revoked
+}
+
+// Permission - Fine-grained permissions per user
+model Permission {
+  id       String @id @default(uuid())
+  userId   Int
+  resource String // "assets", "subscriptions", "delegations", "envelopes", "users", "audit", "registry"
+  action   String // "view", "create", "update", "delete", "publish", "approve"
+  scope    String // JSON: { orgId?, assetIds?, all? }
+  user     User   @relation(fields: [userId], references: [id])
 }
 

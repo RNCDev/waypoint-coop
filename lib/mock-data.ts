@@ -1,4 +1,4 @@
-import { Organization, User, Asset, Envelope, Payload, Delegation } from '@/types'
+import { Organization, User, Asset, Envelope, Payload, Delegation, Subscription, PublishingRight } from '@/types'
 
 export const mockOrganizations: Organization[] = [
   { id: 1, name: 'Waypoint Platform', role: 'Platform Admin', type: 'Platform Operator', status: 'Verified' },
@@ -29,27 +29,27 @@ export const mockOrganizations: Organization[] = [
 ]
 
 export const mockUsers: User[] = [
-  { id: 501, name: 'Alice Admin', email: 'alice@waypoint.coop', orgId: 1, role: 'Platform Admin' },
-  { id: 521, name: 'Genii Publisher', email: 'publisher@genii.com', orgId: 1001, role: 'Publisher' },
-  { id: 502, name: 'Bob GP', email: 'bob@kleinerperkins.com', orgId: 2001, role: 'Asset Owner' },
-  { id: 503, name: 'Charlie LP', email: 'charlie@ohio.gov', orgId: 3001, role: 'Subscriber' },
-  { id: 504, name: 'Dana Delegate', email: 'dana@deloitte.com', orgId: 4001, role: 'Auditor' },
-  { id: 505, name: 'Eve Analyst', email: 'eve@chronograph.pe', orgId: 4003, role: 'Analytics' },
-  { id: 506, name: 'Frank Founder', email: 'frank@mantle.co', orgId: 4004, role: 'Analytics' },
-  { id: 507, name: 'Grace GP', email: 'grace@sequoia.com', orgId: 2002, role: 'Asset Owner' },
-  { id: 508, name: 'Harry Harvard', email: 'harry@hmc.harvard.edu', orgId: 3002, role: 'Subscriber' },
-  { id: 509, name: 'Ian Insight', email: 'ian@insightpartners.com', orgId: 2005, role: 'Asset Owner' },
-  { id: 510, name: 'Jack Yale', email: 'jack@yale.edu', orgId: 3003, role: 'Subscriber' },
-  { id: 511, name: 'Karen CPPIB', email: 'karen@cppib.com', orgId: 3004, role: 'Subscriber' },
-  { id: 512, name: 'Leo Thoma', email: 'leo@thomabravo.com', orgId: 2006, role: 'Asset Owner' },
-  { id: 513, name: 'Mike Mantle', email: 'mike@mantle.co', orgId: 4004, role: 'Analytics' },
-  { id: 514, name: 'Nancy Nexla', email: 'nancy@nexla.com', orgId: 4003, role: 'Integration' },
-  { id: 515, name: 'Oscar Ops', email: 'oscar@alterdomus.com', orgId: 1002, role: 'Ops' },
-  { id: 516, name: 'Pat Partner', email: 'pat@benchmark.com', orgId: 2004, role: 'Signer' },
-  { id: 517, name: 'Quinn Quant', email: 'quinn@msci.com', orgId: 4006, role: 'Analytics' },
-  { id: 518, name: 'Rachel Risk', email: 'rachel@calpers.ca.gov', orgId: 3007, role: 'Risk' },
-  { id: 519, name: 'Steve Sequoia', email: 'steve@sequoia.com', orgId: 2002, role: 'IR' },
-  { id: 520, name: 'Tina Tax', email: 'tina@pwc.com', orgId: 4002, role: 'Tax' },
+  { id: 501, name: 'Alice Admin', email: 'alice@waypoint.coop', orgId: 1, role: 'Platform Admin', isOrgAdmin: true },
+  { id: 521, name: 'Genii Publisher', email: 'publisher@genii.com', orgId: 1001, role: 'Publisher', isOrgAdmin: true },
+  { id: 502, name: 'Bob GP', email: 'bob@kleinerperkins.com', orgId: 2001, role: 'Asset Owner', isOrgAdmin: true },
+  { id: 503, name: 'Charlie LP', email: 'charlie@ohio.gov', orgId: 3001, role: 'Subscriber', isOrgAdmin: true },
+  { id: 504, name: 'Dana Delegate', email: 'dana@deloitte.com', orgId: 4001, role: 'Auditor', isOrgAdmin: true },
+  { id: 505, name: 'Eve Analyst', email: 'eve@chronograph.pe', orgId: 4003, role: 'Analytics', isOrgAdmin: false },
+  { id: 506, name: 'Frank Founder', email: 'frank@mantle.co', orgId: 4004, role: 'Analytics', isOrgAdmin: true },
+  { id: 507, name: 'Grace GP', email: 'grace@sequoia.com', orgId: 2002, role: 'Asset Owner', isOrgAdmin: true },
+  { id: 508, name: 'Harry Harvard', email: 'harry@hmc.harvard.edu', orgId: 3002, role: 'Subscriber', isOrgAdmin: true },
+  { id: 509, name: 'Ian Insight', email: 'ian@insightpartners.com', orgId: 2005, role: 'Asset Owner', isOrgAdmin: true },
+  { id: 510, name: 'Jack Yale', email: 'jack@yale.edu', orgId: 3003, role: 'Subscriber', isOrgAdmin: false },
+  { id: 511, name: 'Karen CPPIB', email: 'karen@cppib.com', orgId: 3004, role: 'Subscriber', isOrgAdmin: true },
+  { id: 512, name: 'Leo Thoma', email: 'leo@thomabravo.com', orgId: 2006, role: 'Asset Owner', isOrgAdmin: true },
+  { id: 513, name: 'Mike Mantle', email: 'mike@mantle.co', orgId: 4004, role: 'Analytics', isOrgAdmin: false },
+  { id: 514, name: 'Nancy Nexla', email: 'nancy@nexla.com', orgId: 4003, role: 'Integration', isOrgAdmin: false },
+  { id: 515, name: 'Oscar Ops', email: 'oscar@alterdomus.com', orgId: 1002, role: 'Ops', isOrgAdmin: true },
+  { id: 516, name: 'Pat Partner', email: 'pat@benchmark.com', orgId: 2004, role: 'Signer', isOrgAdmin: true },
+  { id: 517, name: 'Quinn Quant', email: 'quinn@msci.com', orgId: 4006, role: 'Analytics', isOrgAdmin: true },
+  { id: 518, name: 'Rachel Risk', email: 'rachel@calpers.ca.gov', orgId: 3007, role: 'Risk', isOrgAdmin: false },
+  { id: 519, name: 'Steve Sequoia', email: 'steve@sequoia.com', orgId: 2002, role: 'IR', isOrgAdmin: false },
+  { id: 520, name: 'Tina Tax', email: 'tina@pwc.com', orgId: 4002, role: 'Tax', isOrgAdmin: true },
 ]
 
 export const mockAssets: Asset[] = [
@@ -224,11 +224,83 @@ export const mockPayloads: Payload[] = [
 ]
 
 export const mockDelegations: Delegation[] = [
-  { id: 'D-101', subscriberId: 3001, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active' },
-  { id: 'D-102', subscriberId: 3002, delegateId: 4004, assetScope: [9001, 9002], typeScope: ['CAPITAL_CALL', 'DISTRIBUTION'], status: 'Active' },
-  { id: 'D-103', subscriberId: 3003, delegateId: 4006, assetScope: 'ALL', typeScope: ['NAV_UPDATE', 'SOI_UPDATE'], status: 'Active' },
-  { id: 'D-104', subscriberId: 3007, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active' },
-  { id: 'D-105', subscriberId: 3005, delegateId: 4005, assetScope: [9005, 9006], typeScope: 'ALL', status: 'Active' },
-  { id: 'D-106', subscriberId: 3008, delegateId: 4001, assetScope: 'ALL', typeScope: ['K-1_TAX_FORM'], status: 'Active' },
-  { id: 'D-107', subscriberId: 3004, delegateId: 4002, assetScope: [9009], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalStatus: 'Pending' },
+  { id: 'D-101', subscriberId: 3001, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-01-15T10:00:00.000Z' },
+  { id: 'D-102', subscriberId: 3002, delegateId: 4004, assetScope: [9001, 9002], typeScope: ['CAPITAL_CALL', 'DISTRIBUTION'], status: 'Active', gpApprovalRequired: false, createdAt: '2025-02-01T10:00:00.000Z' },
+  { id: 'D-103', subscriberId: 3003, delegateId: 4006, assetScope: 'ALL', typeScope: ['NAV_UPDATE', 'SOI_UPDATE'], status: 'Active', gpApprovalRequired: false, createdAt: '2025-02-15T10:00:00.000Z' },
+  { id: 'D-104', subscriberId: 3007, delegateId: 4003, assetScope: 'ALL', typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-03-01T10:00:00.000Z' },
+  { id: 'D-105', subscriberId: 3005, delegateId: 4005, assetScope: [9005, 9006], typeScope: 'ALL', status: 'Active', gpApprovalRequired: false, createdAt: '2025-03-15T10:00:00.000Z' },
+  { id: 'D-106', subscriberId: 3008, delegateId: 4001, assetScope: 'ALL', typeScope: ['K-1_TAX_FORM'], status: 'Active', gpApprovalRequired: true, gpApprovalStatus: 'Approved', gpApprovedAt: '2025-04-01T10:00:00.000Z', gpApprovedById: 512, createdAt: '2025-03-25T10:00:00.000Z' },
+  { id: 'D-107', subscriberId: 3004, delegateId: 4002, assetScope: [9009], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', createdAt: '2025-10-20T10:00:00.000Z' },
+  { id: 'D-108', subscriberId: 3001, delegateId: 4001, assetScope: [9001, 9002], typeScope: ['K-1_TAX_FORM'], status: 'Pending GP Approval', gpApprovalRequired: true, gpApprovalStatus: 'Pending', createdAt: '2025-10-22T10:00:00.000Z' },
+]
+
+// Subscriptions - Which LPs can access which assets
+export const mockSubscriptions: Subscription[] = [
+  // KP Fund XVIII (9001) - Ohio, Harvard, CalPERS (accepted)
+  { id: 'S-001', assetId: 9001, subscriberId: 3001, grantedById: 2001, grantedAt: '2024-01-15T10:00:00.000Z', acceptedAt: '2024-01-16T10:00:00.000Z', status: 'Active' },
+  { id: 'S-002', assetId: 9001, subscriberId: 3002, grantedById: 2001, grantedAt: '2024-01-15T10:00:00.000Z', acceptedAt: '2024-01-17T10:00:00.000Z', status: 'Active' },
+  { id: 'S-003', assetId: 9001, subscriberId: 3007, grantedById: 2001, grantedAt: '2024-01-15T10:00:00.000Z', acceptedAt: '2024-01-18T10:00:00.000Z', status: 'Active' },
+  // KP Growth III (9002) - Ohio, Harvard
+  { id: 'S-004', assetId: 9002, subscriberId: 3001, grantedById: 2001, grantedAt: '2024-02-01T10:00:00.000Z', acceptedAt: '2024-02-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-005', assetId: 9002, subscriberId: 3002, grantedById: 2001, grantedAt: '2024-02-01T10:00:00.000Z', acceptedAt: '2024-02-03T10:00:00.000Z', status: 'Active' },
+  // Sequoia Seed 2025 (9003) - Harvard, Yale, CPPIB
+  { id: 'S-006', assetId: 9003, subscriberId: 3002, grantedById: 2002, grantedAt: '2024-03-01T10:00:00.000Z', acceptedAt: '2024-03-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-007', assetId: 9003, subscriberId: 3003, grantedById: 2002, grantedAt: '2024-03-01T10:00:00.000Z', acceptedAt: '2024-03-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-008', assetId: 9003, subscriberId: 3004, grantedById: 2002, grantedAt: '2024-03-01T10:00:00.000Z', acceptedAt: '2024-03-03T10:00:00.000Z', status: 'Active' },
+  // Sequoia Growth X (9004) - Harvard, Yale
+  { id: 'S-009', assetId: 9004, subscriberId: 3002, grantedById: 2002, grantedAt: '2024-03-15T10:00:00.000Z', acceptedAt: '2024-03-16T10:00:00.000Z', status: 'Active' },
+  { id: 'S-010', assetId: 9004, subscriberId: 3003, grantedById: 2002, grantedAt: '2024-03-15T10:00:00.000Z', acceptedAt: '2024-03-16T10:00:00.000Z', status: 'Active' },
+  // a16z Crypto IV (9005) - BlackRock, GIC
+  { id: 'S-011', assetId: 9005, subscriberId: 3005, grantedById: 2003, grantedAt: '2024-04-01T10:00:00.000Z', acceptedAt: '2024-04-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-012', assetId: 9005, subscriberId: 3006, grantedById: 2003, grantedAt: '2024-04-01T10:00:00.000Z', acceptedAt: '2024-04-02T10:00:00.000Z', status: 'Active' },
+  // a16z Bio II (9006) - BlackRock, GIC
+  { id: 'S-013', assetId: 9006, subscriberId: 3005, grantedById: 2003, grantedAt: '2024-04-15T10:00:00.000Z', acceptedAt: '2024-04-16T10:00:00.000Z', status: 'Active' },
+  { id: 'S-014', assetId: 9006, subscriberId: 3006, grantedById: 2003, grantedAt: '2024-04-15T10:00:00.000Z', acceptedAt: '2024-04-16T10:00:00.000Z', status: 'Active' },
+  // Benchmark VIII (9007) - Ohio, TRS Texas
+  { id: 'S-015', assetId: 9007, subscriberId: 3001, grantedById: 2004, grantedAt: '2024-05-01T10:00:00.000Z', acceptedAt: '2024-05-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-016', assetId: 9007, subscriberId: 3008, grantedById: 2004, grantedAt: '2024-05-01T10:00:00.000Z', acceptedAt: '2024-05-03T10:00:00.000Z', status: 'Active' },
+  // Insight Partners XII (9008) - Harvard, Yale
+  { id: 'S-017', assetId: 9008, subscriberId: 3002, grantedById: 2005, grantedAt: '2024-05-15T10:00:00.000Z', acceptedAt: '2024-05-16T10:00:00.000Z', status: 'Active' },
+  { id: 'S-018', assetId: 9008, subscriberId: 3003, grantedById: 2005, grantedAt: '2024-05-15T10:00:00.000Z', acceptedAt: '2024-05-16T10:00:00.000Z', status: 'Active' },
+  // Thoma Bravo XV (9009) - CPPIB, CalPERS
+  { id: 'S-019', assetId: 9009, subscriberId: 3004, grantedById: 2006, grantedAt: '2024-06-01T10:00:00.000Z', acceptedAt: '2024-06-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-020', assetId: 9009, subscriberId: 3007, grantedById: 2006, grantedAt: '2024-06-01T10:00:00.000Z', acceptedAt: '2024-06-02T10:00:00.000Z', status: 'Active' },
+  // Vista Equity VIII (9010) - TRS Texas, CPPIB
+  { id: 'S-021', assetId: 9010, subscriberId: 3008, grantedById: 2007, grantedAt: '2024-06-15T10:00:00.000Z', acceptedAt: '2024-06-16T10:00:00.000Z', status: 'Active' },
+  { id: 'S-022', assetId: 9010, subscriberId: 3004, grantedById: 2007, grantedAt: '2024-06-15T10:00:00.000Z', acceptedAt: '2024-06-16T10:00:00.000Z', status: 'Active' },
+  // Project SpaceX Co-Invest (9101) - Ohio, Harvard
+  { id: 'S-023', assetId: 9101, subscriberId: 3001, grantedById: 2001, grantedAt: '2024-07-01T10:00:00.000Z', acceptedAt: '2024-07-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-024', assetId: 9101, subscriberId: 3002, grantedById: 2001, grantedAt: '2024-07-01T10:00:00.000Z', acceptedAt: '2024-07-02T10:00:00.000Z', status: 'Active' },
+  // Project Stripe SPV (9102) - Yale
+  { id: 'S-025', assetId: 9102, subscriberId: 3003, grantedById: 2002, grantedAt: '2024-07-15T10:00:00.000Z', acceptedAt: '2024-07-16T10:00:00.000Z', status: 'Active' },
+  // Project Databricks (9103) - BlackRock, GIC
+  { id: 'S-026', assetId: 9103, subscriberId: 3005, grantedById: 2003, grantedAt: '2024-08-01T10:00:00.000Z', acceptedAt: '2024-08-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-027', assetId: 9103, subscriberId: 3006, grantedById: 2003, grantedAt: '2024-08-01T10:00:00.000Z', acceptedAt: '2024-08-02T10:00:00.000Z', status: 'Active' },
+  
+  // === PENDING INVITATIONS (LP needs to accept) ===
+  // Sequoia inviting Ohio to Sequoia Seed 2025 (9003)
+  { id: 'S-028', assetId: 9003, subscriberId: 3001, grantedById: 2002, grantedAt: '2025-11-01T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'We are pleased to invite State of Ohio Pension to join Sequoia Seed 2025. Please review and accept to receive fund updates.' },
+  // Sequoia inviting Ohio to Sequoia Growth X (9004)
+  { id: 'S-029', assetId: 9004, subscriberId: 3001, grantedById: 2002, grantedAt: '2025-11-01T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'You are invited to subscribe to Sequoia Growth X for Q4 2025 capital calls and distributions.' },
+  // Thoma Bravo inviting Ohio to Thoma Bravo XV (9009)
+  { id: 'S-030', assetId: 9009, subscriberId: 3001, grantedById: 2006, grantedAt: '2025-11-15T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'Thoma Bravo is extending an invitation for data feed access to Fund XV. Please accept to begin receiving updates.' },
+  // a16z inviting Ohio to a16z Crypto IV (9005)
+  { id: 'S-031', assetId: 9005, subscriberId: 3001, grantedById: 2003, grantedAt: '2025-11-20T10:00:00.000Z', status: 'Pending LP Acceptance', inviteMessage: 'Welcome to a16z Crypto IV. Accept this invitation to access your capital account statements and fund communications.' },
+]
+
+// Publishing Rights - GP delegates publishing rights to Fund Admins
+export const mockPublishingRights: PublishingRight[] = [
+  // Kleiner Perkins (2001) -> Genii Admin Services (1001) for all KP assets
+  { id: 'PR-001', assetOwnerId: 2001, publisherId: 1001, assetScope: [9001, 9002, 9101], canManageSubscriptions: true, grantedAt: '2024-01-01T10:00:00.000Z', status: 'Active' },
+  // Andreessen Horowitz (2003) -> Carta Fund Admin (1003) for a16z assets
+  { id: 'PR-002', assetOwnerId: 2003, publisherId: 1003, assetScope: [9005, 9006, 9103], canManageSubscriptions: false, grantedAt: '2024-01-15T10:00:00.000Z', status: 'Active' },
+  // Benchmark (2004) -> Alter Domus (1002) for Benchmark VIII
+  { id: 'PR-003', assetOwnerId: 2004, publisherId: 1002, assetScope: [9007], canManageSubscriptions: false, grantedAt: '2024-02-01T10:00:00.000Z', status: 'Active' },
+  // Insight Partners (2005) -> Alter Domus (1002) for Insight XII
+  { id: 'PR-004', assetOwnerId: 2005, publisherId: 1002, assetScope: [9008], canManageSubscriptions: true, grantedAt: '2024-02-15T10:00:00.000Z', status: 'Active' },
+  // Thoma Bravo (2006) -> Genii Admin Services (1001) for Thoma XV
+  { id: 'PR-005', assetOwnerId: 2006, publisherId: 1001, assetScope: [9009], canManageSubscriptions: false, grantedAt: '2024-03-01T10:00:00.000Z', status: 'Active' },
+  // Vista Equity (2007) -> Alter Domus (1002) for Vista VIII
+  { id: 'PR-006', assetOwnerId: 2007, publisherId: 1002, assetScope: [9010], canManageSubscriptions: false, grantedAt: '2024-03-15T10:00:00.000Z', status: 'Active' },
+  // Note: Sequoia (2002) self-publishes, so no publishing rights to external fund admins
 ]

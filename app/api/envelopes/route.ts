@@ -3,6 +3,8 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
 import { z } from 'zod'
+import { getCurrentUser, checkPermission } from '@/lib/api-guard'
+import { filterEnvelopesByAccess, canAccess } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +22,16 @@ const envelopeSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Check permission
+    const permissionResult = checkPermission(request, 'envelopes', 'view')
+    if (!permissionResult.allowed || !permissionResult.user) {
+      return NextResponse.json(
+        { error: permissionResult.error || 'Access denied' },
+        { status: permissionResult.user ? 403 : 401 }
+      )
+    }
+
+    const user = permissionResult.user
     const searchParams = request.nextUrl.searchParams
     const publisherId = searchParams.get('publisherId')
     const subscriberId = searchParams.get('subscriberId')
@@ -29,16 +41,19 @@ export async function GET(request: NextRequest) {
       const db = getInMemoryDB()
       let envelopes = db.envelopes
 
+      // Apply query filters first
       if (publisherId) {
         envelopes = envelopes.filter(e => e.publisherId === parseInt(publisherId))
       }
       if (subscriberId) {
-        // Filter by recipientId (single recipient per envelope)
         envelopes = envelopes.filter(e => e.recipientId === parseInt(subscriberId))
       }
       if (assetId) {
         envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
       }
+
+      // Then apply permission-based filtering
+      envelopes = filterEnvelopesByAccess(user, envelopes as any) as typeof envelopes
 
       return NextResponse.json(envelopes)
     } else {
@@ -55,7 +70,10 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      return NextResponse.json(envelopes)
+      // Apply permission-based filtering
+      const filteredEnvelopes = filterEnvelopesByAccess(user, envelopes as any)
+
+      return NextResponse.json(filteredEnvelopes)
     }
   } catch (error) {
     console.error('Error fetching envelopes:', error)
@@ -65,6 +83,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check permission to publish envelopes
+    const permissionResult = checkPermission(request, 'envelopes', 'publish')
+    if (!permissionResult.allowed || !permissionResult.user) {
+      return NextResponse.json(
+        { error: permissionResult.error || 'Access denied' },
+        { status: permissionResult.user ? 403 : 401 }
+      )
+    }
+
+    const user = permissionResult.user
     const body = await request.json()
     
     // Support both single envelope and batch creation
@@ -75,6 +103,14 @@ export async function POST(request: NextRequest) {
 
     for (const envelopeData of envelopesToCreate) {
       const validated = envelopeSchema.parse(envelopeData)
+      
+      // Verify user has access to publish for this asset
+      if (!canAccess(user, 'assets', 'view', { assetId: validated.assetId })) {
+        return NextResponse.json(
+          { error: `Access denied: Cannot publish for asset ${validated.assetId}` },
+          { status: 403 }
+        )
+      }
 
       if (isVercel()) {
         const db = getInMemoryDB()

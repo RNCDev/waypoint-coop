@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useMemo } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import {
   DropdownMenu,
@@ -11,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ChevronDown, User } from 'lucide-react'
+import { ChevronDown, Settings } from 'lucide-react'
+import { getNavItemsForUser, getUserOrganization, getManageableSubscriptions } from '@/lib/permissions'
 
 export function Navbar() {
   const router = useRouter()
@@ -33,6 +35,25 @@ export function Navbar() {
       .slice(0, 2)
   }
 
+  // Compute navigation items based on user permissions
+  const navItems = useMemo(() => {
+    if (!currentUser || !currentOrg) return []
+    return getNavItemsForUser(currentUser)
+  }, [currentUser, currentOrg])
+
+  // Check if user can manage subscriptions (for Publishers with that right)
+  const canManageSubscriptions = useMemo(() => {
+    if (!currentUser) return false
+    const org = getUserOrganization(currentUser)
+    if (!org) return false
+    if (org.role === 'Asset Owner' || org.role === 'Platform Admin') return true
+    if (org.role === 'Publisher') {
+      const manageable = getManageableSubscriptions(currentUser)
+      return manageable.length > 0
+    }
+    return false
+  }, [currentUser])
+
   return (
     <nav className="border-b border-border/40 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -47,42 +68,18 @@ export function Navbar() {
             <div className="h-6 w-px bg-border/40 shrink-0" />
           )}
           
-          {/* Navigation */}
+          {/* Navigation - Permission-driven */}
           {currentUser && (
             <div className="flex items-center gap-4">
-              {/* Waypoint Platform Admin - Registry and Audit only */}
-              {currentUser.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin' ? (
-                <>
-                  <Link href="/registry" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    Registry
-                  </Link>
-                  <Link href="/audit" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    Audit
-                  </Link>
-                </>
-              ) : null}
-              {/* Publishers and Asset Owners - Composer and History */}
-              {(currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg?.role !== 'Platform Admin' ? (
-                <>
-                  <Link href="/composer" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    Composer
-                  </Link>
-                  <Link href="/history" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    History
-                  </Link>
-                </>
-              ) : null}
-              {/* Subscribers, Delegates, Analytics - Ledger and Delegations */}
-              {currentUser.role === 'Subscriber' || currentUser.role === 'Analytics' || currentUser.role === 'Auditor' ? (
-                <>
-                  <Link href="/ledger" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    Ledger
-                  </Link>
-                  <Link href="/delegations" className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full">
-                    Delegations
-                  </Link>
-                </>
-              ) : null}
+              {navItems.map((item) => (
+                <Link 
+                  key={item.href}
+                  href={item.href} 
+                  className="text-sm hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary after:transition-all hover:after:w-full"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           )}
           
