@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -59,11 +59,7 @@ export default function SubscriptionsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    fetchSubscriptions()
-  }, [currentUser])
-
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
     if (!currentUser) return
     
     try {
@@ -82,7 +78,11 @@ export default function SubscriptionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    fetchSubscriptions()
+  }, [fetchSubscriptions])
 
   const handleCreateSubscription = async () => {
     if (!currentUser || !currentOrg || !newSubscription.assetId || !newSubscription.subscriberId) return
@@ -206,7 +206,7 @@ export default function SubscriptionsPage() {
             <DialogHeader>
               <DialogTitle>Invite LP to Feed</DialogTitle>
               <DialogDescription>
-                Send an invitation to an LP to subscribe to your asset's data feed. The LP must accept to activate the subscription.
+                Send an invitation to an LP to subscribe to your asset&apos;s data feed. The LP must accept to activate the subscription.
               </DialogDescription>
             </DialogHeader>
 

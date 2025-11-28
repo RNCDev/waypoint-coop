@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,11 +32,7 @@ export default function DelegationApprovalsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    fetchDelegations()
-  }, [currentUser])
-
-  const fetchDelegations = async () => {
+  const fetchDelegations = useCallback(async () => {
     if (!currentUser) return
     
     try {
@@ -55,7 +51,11 @@ export default function DelegationApprovalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    fetchDelegations()
+  }, [fetchDelegations])
 
   const handleApprove = async (id: string) => {
     if (!currentUser) return

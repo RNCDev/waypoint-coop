@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,13 +67,7 @@ export default function DataRightsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchData()
-    }
-  }, [currentUser])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!currentUser || !currentOrg) return
     
     try {
@@ -98,7 +92,13 @@ export default function DataRightsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser, currentOrg])
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchData()
+    }
+  }, [currentUser, fetchData])
 
   const handleCreateRight = async () => {
     if (!currentUser || !newRight.organizationId) return

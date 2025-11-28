@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,18 +52,18 @@ export default function IAMSettingsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    fetchOrgUsers()
-  }, [currentOrg])
-
-  const fetchOrgUsers = async () => {
+  const fetchOrgUsers = useCallback(async () => {
     if (!currentOrg) return
     
     // Filter mock users by current org
     const users = mockUsers.filter(u => u.orgId === currentOrg.id)
     setOrgUsers(users)
     setLoading(false)
-  }
+  }, [currentOrg])
+
+  useEffect(() => {
+    fetchOrgUsers()
+  }, [fetchOrgUsers])
 
   const handleInviteUser = async () => {
     // In a real app, this would send an API request

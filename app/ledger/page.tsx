@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,13 +41,7 @@ export default function LedgerPage() {
     }
   }, [_hasHydrated, currentUser, router])
 
-  useEffect(() => {
-    if (currentUser?.orgId) {
-      fetchEnvelopes()
-    }
-  }, [currentUser])
-
-  const fetchEnvelopes = async () => {
+  const fetchEnvelopes = useCallback(async () => {
     try {
       // Get envelopes for subscriber
       const subscriberId = currentUser?.orgId
@@ -61,7 +55,13 @@ export default function LedgerPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (currentUser?.orgId) {
+      fetchEnvelopes()
+    }
+  }, [currentUser, fetchEnvelopes])
 
   const handleExpand = async (envelope: Envelope) => {
     if (expandedId === envelope.id) {

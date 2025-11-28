@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,13 +43,7 @@ export default function DelegationsPage() {
     }
   }, [_hasHydrated, currentUser, router])
 
-  useEffect(() => {
-    if (currentUser?.orgId) {
-      fetchDelegations()
-    }
-  }, [currentUser])
-
-  const fetchDelegations = async () => {
+  const fetchDelegations = useCallback(async () => {
     try {
       const subscriberId = currentUser?.orgId
       const response = await fetch(`/api/delegations?subscriberId=${subscriberId}`)
@@ -62,7 +56,13 @@ export default function DelegationsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (currentUser?.orgId) {
+      fetchDelegations()
+    }
+  }, [currentUser, fetchDelegations])
 
   const handleAddDelegate = async () => {
     if (!selectedDelegateId || !currentUser) return

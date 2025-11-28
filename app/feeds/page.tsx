@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,18 +30,18 @@ export default function FeedsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    fetchSubscriptions()
-  }, [currentOrg])
-
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
     if (!currentOrg) return
     
     // Get subscriptions for this LP
     const lpSubscriptions = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
     setSubscriptions(lpSubscriptions)
     setLoading(false)
-  }
+  }, [currentOrg])
+
+  useEffect(() => {
+    fetchSubscriptions()
+  }, [fetchSubscriptions])
 
   const handleAccept = async (id: string) => {
     setProcessingId(id)
@@ -201,7 +201,7 @@ export default function FeedsPage() {
                             </div>
                             {sub.inviteMessage && (
                               <div className="mt-3 p-3 bg-secondary/30 rounded-md">
-                                <p className="text-sm italic">"{sub.inviteMessage}"</p>
+                                <p className="text-sm italic">&ldquo;{sub.inviteMessage}&rdquo;</p>
                               </div>
                             )}
                           </div>

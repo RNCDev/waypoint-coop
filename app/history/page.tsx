@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,13 +42,7 @@ export default function HistoryPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    if (currentOrg?.id) {
-      fetchEnvelopes()
-    }
-  }, [currentOrg])
-
-  const fetchEnvelopes = async () => {
+  const fetchEnvelopes = useCallback(async () => {
     try {
       // For Asset Owners, fetch by assetOwnerId; for Publishers, fetch by publisherId
       const queryParam = currentOrg?.role === 'Asset Owner' 
@@ -68,7 +62,13 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentOrg, currentUser])
+
+  useEffect(() => {
+    if (currentOrg?.id) {
+      fetchEnvelopes()
+    }
+  }, [currentOrg, fetchEnvelopes])
 
   const handleView = async (envelope: Envelope) => {
     setSelectedEnvelope(envelope)

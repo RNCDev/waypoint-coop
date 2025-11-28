@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,11 +57,7 @@ export default function PublishingRightsPage() {
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 
-  useEffect(() => {
-    fetchPublishingRights()
-  }, [currentUser])
-
-  const fetchPublishingRights = async () => {
+  const fetchPublishingRights = useCallback(async () => {
     if (!currentUser) return
     
     try {
@@ -80,7 +76,11 @@ export default function PublishingRightsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    fetchPublishingRights()
+  }, [fetchPublishingRights])
 
   const handleCreateRight = async () => {
     if (!currentUser || !newRight.publisherId) return

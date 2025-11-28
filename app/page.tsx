@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -37,10 +38,13 @@ export default function Home() {
       {/* Background Logo */}
       <div className="absolute inset-0 flex items-start justify-end pointer-events-none z-0 overflow-hidden pt-8 pr-8">
         <div className="relative w-[450px] h-[450px] md:w-[600px] md:h-[600px] opacity-10 blur-[1px]">
-          <img 
+          <Image 
             src="/waypoint-logo-dark.svg" 
             alt="" 
+            width={600}
+            height={600}
             className="w-full h-full object-contain"
+            priority={false}
           />
         </div>
       </div>

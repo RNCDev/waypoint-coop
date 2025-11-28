@@ -6,10 +6,11 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { envelopeId: string } }
+  { params }: { params: Promise<{ envelopeId: string }> }
 ) {
   try {
-    const envelopeId = parseInt(params.envelopeId)
+    const { envelopeId: envelopeIdParam } = await params
+    const envelopeId = parseInt(envelopeIdParam)
     const searchParams = request.nextUrl.searchParams
     const orgId = searchParams.get('orgId')
 
