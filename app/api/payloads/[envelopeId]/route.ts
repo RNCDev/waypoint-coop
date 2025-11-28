@@ -25,7 +25,7 @@ export async function GET(
     const user = getCurrentUser(request)
 
     // Fetch envelope to verify authorization
-    const db = getInMemoryDB()
+      const db = getInMemoryDB()
     const envelope = db.envelopes.find(e => e.id === envelopeId)
 
     if (!envelope) {
@@ -82,10 +82,10 @@ export async function GET(
     }
 
     // Fetch the payload - no filtering needed since each envelope is already scoped to one LP
-    const payload = db.payloads.find(p => p.envelopeId === envelopeId)
-    if (!payload) {
-      return NextResponse.json({ error: 'Payload not found' }, { status: 404 })
-    }
+      const payload = db.payloads.find(p => p.envelopeId === envelopeId)
+      if (!payload) {
+        return NextResponse.json({ error: 'Payload not found' }, { status: 404 })
+      }
     const payloadData = payload.data
 
     // Auto-create read receipt if user is the recipient (not publisher) or delegate
@@ -93,19 +93,19 @@ export async function GET(
     if ((isRecipient || delegateHasAccess) && !isPublisher && user) {
       const viewedAt = new Date().toISOString()
       
-      // Check if receipt already exists
-      const existingReceipt = db.readReceipts.find(
-        r => r.envelopeId === envelopeId && r.userId === user.id
-      )
-      
-      if (!existingReceipt) {
-        const receipt = {
-          id: db.nextReceiptId++,
-          envelopeId,
-          userId: user.id,
-          viewedAt,
-        }
-        db.readReceipts.push(receipt)
+        // Check if receipt already exists
+        const existingReceipt = db.readReceipts.find(
+          r => r.envelopeId === envelopeId && r.userId === user.id
+        )
+        
+        if (!existingReceipt) {
+          const receipt = {
+            id: db.nextReceiptId++,
+            envelopeId,
+            userId: user.id,
+            viewedAt,
+          }
+          db.readReceipts.push(receipt)
       }
     }
 

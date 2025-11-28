@@ -39,27 +39,27 @@ export async function GET(request: NextRequest) {
 
     // Use in-memory DB for consistency (works on Vercel and local dev)
     // Prisma can be used if database is properly seeded, but in-memory is simpler
-    const db = getInMemoryDB()
-    let envelopes = db.envelopes
+      const db = getInMemoryDB()
+      let envelopes = db.envelopes
 
-    // Apply query filters first
-    if (publisherId) {
-      envelopes = envelopes.filter(e => e.publisherId === parseInt(publisherId))
-    }
-    if (subscriberId) {
-      envelopes = envelopes.filter(e => e.recipientId === parseInt(subscriberId))
-    }
-    if (assetId) {
-      envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
-    }
-    if (assetOwnerId) {
-      envelopes = envelopes.filter(e => e.assetOwnerId === parseInt(assetOwnerId))
-    }
+      // Apply query filters first
+      if (publisherId) {
+        envelopes = envelopes.filter(e => e.publisherId === parseInt(publisherId))
+      }
+      if (subscriberId) {
+        envelopes = envelopes.filter(e => e.recipientId === parseInt(subscriberId))
+      }
+      if (assetId) {
+        envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
+      }
+      if (assetOwnerId) {
+        envelopes = envelopes.filter(e => e.assetOwnerId === parseInt(assetOwnerId))
+      }
 
-    // Then apply permission-based filtering
-    envelopes = filterEnvelopesByAccess(user, envelopes as any) as typeof envelopes
+      // Then apply permission-based filtering
+      envelopes = filterEnvelopesByAccess(user, envelopes as any) as typeof envelopes
 
-    return NextResponse.json(envelopes)
+      return NextResponse.json(envelopes)
   } catch (error) {
     console.error('Error fetching envelopes:', error)
     return NextResponse.json({ error: 'Failed to fetch envelopes' }, { status: 500 })
@@ -114,38 +114,38 @@ export async function POST(request: NextRequest) {
       }
 
       // Use in-memory DB for consistency
-      const db = getInMemoryDB()
-      const envelopeId = db.nextEnvelopeId++
-      
-      const envelope = {
-        id: envelopeId,
-        publisherId: validated.publisherId,
-        userId: validated.userId,
-        assetOwnerId: validated.assetOwnerId,
-        assetId: validated.assetId,
-        recipientId: validated.recipientId,
-        timestamp: validated.timestamp,
-        version: 1,
-        status: 'Delivered' as const,
-        dataType: validated.dataType as any,
-        period: validated.period,
-      }
-      
-      const hash = generateHash(envelope, validated.payload)
+        const db = getInMemoryDB()
+        const envelopeId = db.nextEnvelopeId++
+        
+        const envelope = {
+          id: envelopeId,
+          publisherId: validated.publisherId,
+          userId: validated.userId,
+          assetOwnerId: validated.assetOwnerId,
+          assetId: validated.assetId,
+          recipientId: validated.recipientId,
+          timestamp: validated.timestamp,
+          version: 1,
+          status: 'Delivered' as const,
+          dataType: validated.dataType as any,
+          period: validated.period,
+        }
+        
+        const hash = generateHash(envelope, validated.payload)
 
-      const envelopeWithHash = {
-        ...envelope,
-        hash,
-      }
+        const envelopeWithHash = {
+          ...envelope,
+          hash,
+        }
 
-      db.envelopes.push(envelopeWithHash)
-      db.payloads.push({
-        id: db.nextPayloadId++,
-        envelopeId,
-        data: validated.payload,
-      })
+        db.envelopes.push(envelopeWithHash)
+        db.payloads.push({
+          id: db.nextPayloadId++,
+          envelopeId,
+          data: validated.payload,
+        })
 
-      createdEnvelopes.push(envelopeWithHash)
+        createdEnvelopes.push(envelopeWithHash)
     }
 
     return NextResponse.json(isBatch ? createdEnvelopes : createdEnvelopes[0], { status: 201 })

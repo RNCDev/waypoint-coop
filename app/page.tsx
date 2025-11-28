@@ -8,6 +8,7 @@ import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import { mockDelegations } from '@/lib/mock-data'
+import Image from 'next/image'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,10 +47,27 @@ export default function Home() {
   }, [currentUser, currentOrg])
 
   return (
-    <div className="container mx-auto px-4 py-12 min-h-[calc(100vh-4rem)]">
+    <div className="container mx-auto px-4 py-12 min-h-[calc(100vh-4rem)] relative">
       <div className="max-w-4xl mx-auto">
+        {/* Logo in upper right */}
+        <motion.div
+          className="absolute top-0 right-0 pt-4 pr-4 opacity-20 hover:opacity-30 transition-opacity duration-300 pointer-events-none"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+        >
+          <Image 
+            src="/waypoint-logo-dark.svg" 
+            alt="Waypoint Logo"
+            width={338}
+            height={413}
+            className="w-[338px] h-[413px]"
+            priority
+          />
+        </motion.div>
+
         <motion.div 
-          className="text-center mb-12 overflow-visible"
+          className="text-center mb-12 overflow-visible relative z-10"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}

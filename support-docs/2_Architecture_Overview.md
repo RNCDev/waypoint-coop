@@ -48,8 +48,8 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 
 ```json
 {
-  "currency": "USD",
-  "due_date": "2025-12-15",
+      "currency": "USD",
+      "due_date": "2025-12-15",
   "bank_details": { ... },
   "line_items": [
     {

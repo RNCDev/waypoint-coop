@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
+import { getInMemoryDB } from '@/lib/in-memory-db'
 import { z } from 'zod'
 import { DataType } from '@/types'
 import { checkPermission } from '@/lib/api-guard'
-import { getAccessibleDelegations, getUserOrganization, getDelegationsRequiringApproval } from '@/lib/permissions'
+import { getUserOrganization } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,24 +41,13 @@ export async function GET(
       )
     }
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      const delegation = db.delegations.find(d => d.id === id)
-      if (!delegation) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-      }
-      return NextResponse.json(delegation)
-    } else {
-      const delegation = await prisma.delegation.findUnique({ where: { id } })
-      if (!delegation) {
-        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-      }
-      return NextResponse.json({
-        ...delegation,
-        assetScope: delegation.assetScope === 'ALL' ? 'ALL' : JSON.parse(delegation.assetScope),
-        typeScope: delegation.typeScope === 'ALL' ? 'ALL' : JSON.parse(delegation.typeScope),
-      })
+    // Use in-memory DB for consistency
+    const db = getInMemoryDB()
+    const delegation = db.delegations.find(d => d.id === id)
+    if (!delegation) {
+      return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
     }
+    return NextResponse.json(delegation)
   } catch (error) {
     console.error('Error fetching delegation:', error)
     return NextResponse.json({ error: 'Failed to fetch delegation' }, { status: 500 })
@@ -87,11 +76,11 @@ export async function PUT(
     const validated = updateSchema.parse(body)
 
     // Fetch delegation first
-    const db = getInMemoryDB()
-    const delegationIndex = db.delegations.findIndex(d => d.id === id)
-    if (delegationIndex === -1) {
-      return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-    }
+      const db = getInMemoryDB()
+      const delegationIndex = db.delegations.findIndex(d => d.id === id)
+      if (delegationIndex === -1) {
+        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+      }
     const delegation = db.delegations[delegationIndex]
 
     // If approving/rejecting, check if user can approve delegations
@@ -110,28 +99,28 @@ export async function PUT(
 
     const timestamp = new Date().toISOString()
 
-    // Update status based on approval
-    if (validated.gpApprovalStatus === 'Approved') {
-      delegation.status = 'Active'
-      delegation.gpApprovalStatus = 'Approved'
-      delegation.gpApprovedAt = timestamp
-      delegation.gpApprovedById = user.id
-    } else if (validated.gpApprovalStatus === 'Rejected') {
-      delegation.status = 'Rejected'
-      delegation.gpApprovalStatus = 'Rejected'
-      delegation.gpApprovedAt = timestamp
-      delegation.gpApprovedById = user.id
-    } else {
+      // Update status based on approval
+      if (validated.gpApprovalStatus === 'Approved') {
+        delegation.status = 'Active'
+        delegation.gpApprovalStatus = 'Approved'
+        delegation.gpApprovedAt = timestamp
+        delegation.gpApprovedById = user.id
+      } else if (validated.gpApprovalStatus === 'Rejected') {
+        delegation.status = 'Rejected'
+        delegation.gpApprovalStatus = 'Rejected'
+        delegation.gpApprovedAt = timestamp
+        delegation.gpApprovedById = user.id
+      } else {
       // Update other fields
-      if (validated.status) delegation.status = validated.status
-      if (validated.gpApprovalStatus) delegation.gpApprovalStatus = validated.gpApprovalStatus
+        if (validated.status) delegation.status = validated.status
+        if (validated.gpApprovalStatus) delegation.gpApprovalStatus = validated.gpApprovalStatus
       if (validated.assetScope !== undefined) delegation.assetScope = validated.assetScope
       if (validated.typeScope !== undefined) delegation.typeScope = validated.typeScope as 'ALL' | DataType[]
       if (validated.canManageSubscriptions !== undefined) delegation.canManageSubscriptions = validated.canManageSubscriptions
-    }
+      }
 
-    db.delegations[delegationIndex] = delegation
-    return NextResponse.json(delegation)
+      db.delegations[delegationIndex] = delegation
+      return NextResponse.json(delegation)
   } catch (error) {
     console.error('Error updating delegation:', error)
     if (error instanceof z.ZodError) {
@@ -160,21 +149,21 @@ export async function DELETE(
     const user = permissionResult.user
     const org = getUserOrganization(user)
 
-    const db = getInMemoryDB()
-    const delegationIndex = db.delegations.findIndex(d => d.id === id)
-    if (delegationIndex === -1) {
-      return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
-    }
+      const db = getInMemoryDB()
+      const delegationIndex = db.delegations.findIndex(d => d.id === id)
+      if (delegationIndex === -1) {
+        return NextResponse.json({ error: 'Delegation not found' }, { status: 404 })
+      }
 
-    const delegation = db.delegations[delegationIndex]
-    
-    // Only the subscriber who created it can delete
-    if (delegation.subscriberId !== org?.id && org?.role !== 'Platform Admin') {
-      return NextResponse.json({ error: 'Only the subscriber can delete their delegation' }, { status: 403 })
-    }
+      const delegation = db.delegations[delegationIndex]
+      
+      // Only the subscriber who created it can delete
+      if (delegation.subscriberId !== org?.id && org?.role !== 'Platform Admin') {
+        return NextResponse.json({ error: 'Only the subscriber can delete their delegation' }, { status: 403 })
+      }
 
-    db.delegations.splice(delegationIndex, 1)
-    return NextResponse.json({ success: true })
+      db.delegations.splice(delegationIndex, 1)
+      return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting delegation:', error)
     return NextResponse.json({ error: 'Failed to delete delegation' }, { status: 500 })

@@ -139,33 +139,33 @@ export default function DataRightsPage() {
       const canApproveSubscriptions = newAccess.accessTypes.includes('approveSubscriptions')
       const canViewData = newAccess.accessTypes.includes('view') || newAccess.accessTypes.includes('publish')
 
-      const response = await fetch('/api/publishing-rights', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': currentUser.id.toString(),
-        },
-        body: JSON.stringify({
+        const response = await fetch('/api/publishing-rights', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': currentUser.id.toString(),
+          },
+          body: JSON.stringify({
           publisherId: parseInt(newAccess.organizationId),
           assetScope,
           canManageSubscriptions,
           canApproveDelegations,
           canApproveSubscriptions,
           canViewData,
-        }),
-      })
+          }),
+        })
 
-      if (response.ok) {
-        setDialogOpen(false)
+        if (response.ok) {
+          setDialogOpen(false)
         setNewAccess({
           assetId: '',
-          organizationId: '',
+            organizationId: '',
           accessTypes: [],
         })
         setSelectedAsset(null)
-        fetchData()
-      } else {
-        const error = await response.json()
+          fetchData()
+        } else {
+          const error = await response.json()
         alert(error.error || 'Failed to delegate access')
       }
     } catch (error) {
@@ -319,192 +319,192 @@ export default function DataRightsPage() {
       </motion.div>
 
       <div className="flex items-center justify-between gap-4 mb-6">
-        <Input
+            <Input
           placeholder="Search by asset or organization..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-md"
+            />
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
               Delegate Access
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
               <DialogTitle>Delegate Access to Organization</DialogTitle>
-              <DialogDescription>
+                  <DialogDescription>
                 Grant an organization access to a specific asset with defined permissions
-              </DialogDescription>
-            </DialogHeader>
+                  </DialogDescription>
+                </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
                 <Label>Asset</Label>
-                <Select
+                    <Select
                   value={newAccess.assetId}
                   onValueChange={(value) => {
                     setNewAccess(prev => ({ ...prev, assetId: value }))
                     const asset = getAvailableAssets().find(a => a.id === parseInt(value))
                     setSelectedAsset(asset || null)
                   }}
-                >
-                  <SelectTrigger>
+                    >
+                      <SelectTrigger>
                     <SelectValue placeholder="Select an asset" />
-                  </SelectTrigger>
-                  <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                     {getAvailableAssets().map(asset => (
                       <SelectItem key={asset.id} value={asset.id.toString()}>
                         {asset.name} ({asset.type})
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2">
+                  <div className="space-y-2">
                 <Label>Organization</Label>
-                <Select
+                    <Select
                   value={newAccess.organizationId}
                   onValueChange={(value) => setNewAccess(prev => ({ ...prev, organizationId: value }))}
-                >
-                  <SelectTrigger>
+                    >
+                      <SelectTrigger>
                     <SelectValue placeholder="Select an organization" />
-                  </SelectTrigger>
-                  <SelectContent>
+                      </SelectTrigger>
+                      <SelectContent>
                     {getAvailableOrgs().map(org => (
-                      <SelectItem key={org.id} value={org.id.toString()}>
+                          <SelectItem key={org.id} value={org.id.toString()}>
                         {org.name} ({org.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2">
+                  <div className="space-y-2">
                 <Label>Access Types</Label>
                 <div className="border rounded-md p-3 space-y-2">
                   {Object.entries(accessTypeLabels).map(([key, { label, icon }]) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
+                            <input
+                              type="checkbox"
                         checked={newAccess.accessTypes.includes(key as AccessType)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
+                              onChange={(e) => {
+                                if (e.target.checked) {
                             setNewAccess(prev => ({
-                              ...prev,
+                                    ...prev,
                               accessTypes: [...prev.accessTypes, key as AccessType],
-                            }))
-                          } else {
+                                  }))
+                                } else {
                             setNewAccess(prev => ({
-                              ...prev,
+                                    ...prev,
                               accessTypes: prev.accessTypes.filter(t => t !== key),
-                            }))
-                          }
-                        }}
-                        className="rounded"
-                      />
+                                  }))
+                                }
+                              }}
+                              className="rounded"
+                            />
                       <span className="flex items-center gap-2 text-sm">
                         {icon}
                         {label}
                       </span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
                   Select one or more access types to grant to this organization
-                </p>
+                      </p>
               </div>
-            </div>
+                </div>
 
-            <DialogFooter>
+                <DialogFooter>
               <Button variant="outline" onClick={() => {
                 setDialogOpen(false)
                 setNewAccess({ assetId: '', organizationId: '', accessTypes: [] })
                 setSelectedAsset(null)
               }}>
-                Cancel
-              </Button>
-              <Button 
+                    Cancel
+                  </Button>
+                  <Button 
                 onClick={handleCreateAccess}
                 disabled={!newAccess.assetId || !newAccess.organizationId || newAccess.accessTypes.length === 0}
-              >
+                  >
                 Delegate Access
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+                  </Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        {/* Edit Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
             <DialogTitle>Edit Access Permissions</DialogTitle>
-            <DialogDescription>
+              <DialogDescription>
               Update access types for {editingRight && getOrgName(editingRight.publisherId)} on {selectedAsset?.name}
-            </DialogDescription>
-          </DialogHeader>
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
               <Label>Access Types</Label>
               <div className="border rounded-md p-3 space-y-2">
                 {Object.entries(accessTypeLabels).map(([key, { label, icon }]) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                        <input
+                          type="checkbox"
                       checked={editAccess.accessTypes.includes(key as AccessType)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+                          onChange={(e) => {
+                            if (e.target.checked) {
                           setEditAccess(prev => ({
-                            ...prev,
+                                ...prev,
                             accessTypes: [...prev.accessTypes, key as AccessType],
-                          }))
-                        } else {
+                              }))
+                            } else {
                           setEditAccess(prev => ({
-                            ...prev,
+                                ...prev,
                             accessTypes: prev.accessTypes.filter(t => t !== key),
-                          }))
-                        }
-                      }}
-                      className="rounded"
-                    />
+                              }))
+                            }
+                          }}
+                          className="rounded"
+                        />
                     <span className="flex items-center gap-2 text-sm">
                       {icon}
                       {label}
                     </span>
-                  </label>
-                ))}
+                      </label>
+                    ))}
               </div>
             </div>
-          </div>
+            </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setEditDialogOpen(false)
-              setEditingRight(null)
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setEditDialogOpen(false)
+                setEditingRight(null)
               setSelectedAsset(null)
               setEditAccess({
-                assetScope: 'ALL',
-                selectedAssets: [],
+                  assetScope: 'ALL',
+                  selectedAssets: [],
                 accessTypes: [],
-              })
-            }}>
-              Cancel
-            </Button>
-            <Button 
+                })
+              }}>
+                Cancel
+              </Button>
+              <Button 
               onClick={handleUpdateAccess}
               disabled={editAccess.accessTypes.length === 0}
-            >
+              >
               Update Access
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       {filteredAssetAccess.length === 0 ? (
         <Card>
@@ -519,22 +519,22 @@ export default function DataRightsPage() {
         <div className="space-y-6">
           {filteredAssetAccess.map(({ asset, rights }) => (
             <Card key={asset.id}>
-              <CardHeader>
+            <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>{asset.name}</CardTitle>
-                    <CardDescription>
+              <CardDescription>
                       {asset.type} • {rights.length} organization{rights.length !== 1 ? 's' : ''} with access
-                    </CardDescription>
+              </CardDescription>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 {rights.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8 border border-dashed rounded-lg">
                     No organizations have access to this asset
-                  </div>
-                ) : (
+                </div>
+              ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -597,11 +597,11 @@ export default function DataRightsPage() {
                       ))}
                     </TableBody>
                   </Table>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
           ))}
-        </div>
+              </div>
       )}
     </div>
   )

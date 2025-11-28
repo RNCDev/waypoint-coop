@@ -203,75 +203,75 @@ function ComposerContent() {
       } else {
         // Standard Publish Flow (Batch)
         const asset = mockAssets.find(a => a.id === parseInt(selectedAsset))
-        
-        // Extract LP IDs from parsed data and create one envelope per LP
-        const lpIds = new Set<number>()
-        parsedData.forEach((row: any) => {
-          const lpId = getLpIdFromRow(row)
-          if (lpId !== null) {
-            lpIds.add(lpId)
-          }
+
+      // Extract LP IDs from parsed data and create one envelope per LP
+      const lpIds = new Set<number>()
+      parsedData.forEach((row: any) => {
+        const lpId = getLpIdFromRow(row)
+        if (lpId !== null) {
+          lpIds.add(lpId)
+        }
+      })
+
+      if (lpIds.size === 0) {
+        const availableColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).join(', ') : 'none'
+        alert(`No valid LP IDs found in data.\n\nFound columns: ${availableColumns}\n\nPlease include a column named "LP ID", "lp_id", or "lpId" with numeric values (e.g., 3001, 3002). Valid LP IDs start with 3001-3008.`)
+        setIsPublishing(false)
+        return
+      }
+
+      // Create one envelope per LP with LP-specific payload
+      const envelopesToCreate = Array.from(lpIds).map(lpId => {
+        // Extract LP-specific data from parsed data
+        const lpPayload = parsedData.filter((row: any) => {
+          const rowLpId = getLpIdFromRow(row)
+          return rowLpId !== null && rowLpId === lpId
         })
 
-        if (lpIds.size === 0) {
-          const availableColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).join(', ') : 'none'
-          alert(`No valid LP IDs found in data.\n\nFound columns: ${availableColumns}\n\nPlease include a column named "LP ID", "lp_id", or "lpId" with numeric values (e.g., 3001, 3002). Valid LP IDs start with 3001-3008.`)
-          setIsPublishing(false)
-          return
+        // Build payload structure based on data type
+        let payload: any = {}
+        if (dataType === 'CAPITAL_CALL' || parsedData[0]?.amount) {
+          // Capital Call structure
+          payload = {
+            currency: parsedData[0]?.currency || 'USD',
+            due_date: parsedData[0]?.due_date || parsedData[0]?.dueDate,
+            bank_details: parsedData[0]?.bank_details || parsedData[0]?.bankDetails || {},
+            line_items: lpPayload,
+          }
+        } else {
+          // Generic structure - use LP-specific rows
+          payload = lpPayload.length === 1 ? lpPayload[0] : lpPayload
         }
 
-        // Create one envelope per LP with LP-specific payload
-        const envelopesToCreate = Array.from(lpIds).map(lpId => {
-          // Extract LP-specific data from parsed data
-          const lpPayload = parsedData.filter((row: any) => {
-            const rowLpId = getLpIdFromRow(row)
-            return rowLpId !== null && rowLpId === lpId
-          })
+        return {
+          publisherId: currentOrg?.id || 1001,
+          userId: currentUser?.id || 501,
+          assetOwnerId: asset?.ownerId || 2001,
+          assetId: parseInt(selectedAsset),
+          timestamp,
+          recipientId: lpId, // One envelope per LP
+          dataType,
+          payload,
+        }
+      })
 
-          // Build payload structure based on data type
-          let payload: any = {}
-          if (dataType === 'CAPITAL_CALL' || parsedData[0]?.amount) {
-            // Capital Call structure
-            payload = {
-              currency: parsedData[0]?.currency || 'USD',
-              due_date: parsedData[0]?.due_date || parsedData[0]?.dueDate,
-              bank_details: parsedData[0]?.bank_details || parsedData[0]?.bankDetails || {},
-              line_items: lpPayload,
-            }
-          } else {
-            // Generic structure - use LP-specific rows
-            payload = lpPayload.length === 1 ? lpPayload[0] : lpPayload
-          }
+      const response = await fetch('/api/envelopes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(envelopesToCreate), // Batch create
+      })
 
-          return {
-            publisherId: currentOrg?.id || 1001,
-            userId: currentUser?.id || 501,
-            assetOwnerId: asset?.ownerId || 2001,
-            assetId: parseInt(selectedAsset),
-            timestamp,
-            recipientId: lpId, // One envelope per LP
-            dataType,
-            payload,
-          }
-        })
-
-        const response = await fetch('/api/envelopes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(envelopesToCreate), // Batch create
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          const count = Array.isArray(result) ? result.length : 1
-          alert(`Successfully published ${count} envelope(s) (one per LP)!`)
-          setInputData('')
-          setParsedData([])
-          setSelectedAsset('')
-          setTags('')
-        } else {
-          const error = await response.json()
-          alert(`Failed to publish: ${error.error || 'Unknown error'}`)
+      if (response.ok) {
+        const result = await response.json()
+        const count = Array.isArray(result) ? result.length : 1
+        alert(`Successfully published ${count} envelope(s) (one per LP)!`)
+        setInputData('')
+        setParsedData([])
+        setSelectedAsset('')
+        setTags('')
+      } else {
+        const error = await response.json()
+        alert(`Failed to publish: ${error.error || 'Unknown error'}`)
         }
       }
     } catch (error) {
