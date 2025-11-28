@@ -30,6 +30,7 @@ import { Plus, Trash2, Mail, Check, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Subscription, Asset, Organization } from '@/types'
 import { mockAssets, mockOrganizations, mockSubscriptions } from '@/lib/mock-data'
+import { getAccessibleAssets } from '@/lib/permissions'
 
 export default function SubscriptionsPage() {
   const router = useRouter()
@@ -142,13 +143,16 @@ export default function SubscriptionsPage() {
 
   // Get available assets based on current org
   const getAvailableAssets = () => {
-    if (!currentOrg) return []
+    if (!currentUser || !currentOrg) return []
     if (currentOrg.role === 'Platform Admin') return mockAssets
     if (currentOrg.role === 'Asset Owner') {
       return mockAssets.filter(a => a.ownerId === currentOrg.id)
     }
-    // For publishers, show assets they can publish for
-    return mockAssets.filter(a => a.publisherId === currentOrg.id)
+    // For publishers, show assets they have publishing rights for
+    if (currentOrg.role === 'Publisher') {
+      return getAccessibleAssets(currentUser)
+    }
+    return []
   }
 
   // Get available subscribers (LPs)

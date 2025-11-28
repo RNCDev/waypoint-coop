@@ -126,52 +126,36 @@ export default function IAMSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="mb-8"
       >
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Organization Settings
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Manage users and permissions for {currentOrg?.name}
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {currentOrg?.role === 'Platform Admin' ? 'IAM' : 'Organization Settings'}
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              {currentOrg?.role === 'Platform Admin' 
+                ? 'Manage Waypoint team members and platform permissions'
+                : `Manage users and permissions for ${currentOrg?.name}`}
+            </p>
+          </div>
+          {currentOrg?.role !== 'Platform Admin' && (
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">{currentOrg?.type}</Badge>
+              <Badge variant={currentOrg?.status === 'Verified' ? 'default' : 'secondary'} className="text-sm">
+                {currentOrg?.status}
+              </Badge>
+            </div>
+          )}
+        </div>
       </motion.div>
 
-      <div className="grid gap-6">
-        {/* Organization Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Organization Details</CardTitle>
-            <CardDescription>Your organization information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Name</Label>
-                <p className="font-medium">{currentOrg?.name}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Type</Label>
-                <p className="font-medium">{currentOrg?.type}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Role</Label>
-                <Badge variant="outline">{currentOrg?.role}</Badge>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Status</Label>
-                <Badge variant={currentOrg?.status === 'Verified' ? 'default' : 'secondary'}>
-                  {currentOrg?.status}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="space-y-6">
         {/* User Management */}
         <Card>
           <CardHeader>
@@ -253,76 +237,84 @@ export default function IAMSettingsPage() {
               </Dialog>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="mb-4">
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
               <Input
-                placeholder="Search users..."
+                placeholder="Search users by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-md"
+                className="max-w-sm"
               />
             </div>
 
             {filteredUsers.length === 0 ? (
-              <div className="text-center text-muted-foreground py-12">
-                No users found
+              <div className="text-center text-muted-foreground py-12 border border-dashed rounded-lg">
+                <p className="text-sm">No users found</p>
+                {searchTerm && (
+                  <p className="text-xs mt-1">Try adjusting your search</p>
+                )}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Org Admin</TableHead>
-                    <TableHead className="w-[120px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.name}
-                        {user.id === currentUser?.id && (
-                          <Badge variant="outline" className="ml-2 text-xs">You</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {user.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleColor(user.role) as any}>
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {user.isOrgAdmin ? (
-                          <Badge variant="default" className="bg-green-600">
-                            <Shield className="w-3 h-3 mr-1" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            <ShieldOff className="w-3 h-3 mr-1" />
-                            Member
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {user.id !== currentUser?.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleAdmin(user.id)}
-                          >
-                            {user.isOrgAdmin ? 'Remove Admin' : 'Make Admin'}
-                          </Button>
-                        )}
-                      </TableCell>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead className="w-[140px]">Role</TableHead>
+                      <TableHead className="w-[120px]">Status</TableHead>
+                      <TableHead className="w-[140px] text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{user.name}</span>
+                            {user.id === currentUser?.id && (
+                              <Badge variant="outline" className="text-xs">You</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-mono text-sm text-muted-foreground">{user.email}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getRoleColor(user.role) as any} className="text-xs">
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.isOrgAdmin ? (
+                            <Badge variant="default" className="bg-green-600/20 text-green-400 border-green-600/30">
+                              <Shield className="w-3 h-3 mr-1" />
+                              Admin
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              <ShieldOff className="w-3 h-3 mr-1" />
+                              Member
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {user.id !== currentUser?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleAdmin(user.id)}
+                              className="h-8"
+                            >
+                              {user.isOrgAdmin ? 'Remove Admin' : 'Make Admin'}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

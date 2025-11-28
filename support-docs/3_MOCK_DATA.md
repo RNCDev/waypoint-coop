@@ -59,21 +59,21 @@
 | `520` | **Tina Tax** | tina@pwc.com | `4002` | Tax Delegate |
 
 ## 3. Assets
-| ID | Name | Owner ID | Publisher ID | Type |
-| :--- | :--- | :--- | :--- | :--- |
-| `9001` | **KP Fund XVIII** | `2001` | `1001` (Genii) | Fund |
-| `9002` | **KP Growth III** | `2001` | `1001` (Genii) | Fund |
-| `9003` | **Sequoia Seed 2025** | `2002` | `2002` (Self) | Fund |
-| `9004` | **Sequoia Growth X** | `2002` | `2002` (Self) | Fund |
-| `9005` | **a16z Crypto IV** | `2003` | `1003` (Carta) | Fund |
-| `9006` | **a16z Bio II** | `2003` | `1003` (Carta) | Fund |
-| `9007` | **Benchmark VIII** | `2004` | `1002` (Alter Domus) | Fund |
-| `9008` | **Insight Partners XII** | `2005` | `1002` (Alter Domus) | Fund |
-| `9009` | **Thoma Bravo XV** | `2006` | `1001` (Genii) | Fund |
-| `9010` | **Vista Equity VIII** | `2007` | `1002` (Alter Domus) | Fund |
-| `9101` | **Project SpaceX Co-Invest** | `2001` | `1001` (Genii) | Co-Investment |
-| `9102` | **Project Stripe SPV** | `2002` | `2002` (Self) | SPV |
-| `9103` | **Project Databricks** | `2003` | `1003` (Carta) | Co-Investment |
+| ID | Name | Owner ID | Publisher ID | Type | Require GP Approval |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `9001` | **KP Fund XVIII** | `2001` | `1001` (Genii) | Fund | Yes |
+| `9002` | **KP Growth III** | `2001` | `1001` (Genii) | Fund | No |
+| `9003` | **Sequoia Seed 2025** | `2002` | `2002` (Self) | Fund | No |
+| `9004` | **Sequoia Growth X** | `2002` | `2002` (Self) | Fund | Yes |
+| `9005` | **a16z Crypto IV** | `2003` | `1003` (Carta) | Fund | No |
+| `9006` | **a16z Bio II** | `2003` | `1003` (Carta) | Fund | No |
+| `9007` | **Benchmark VIII** | `2004` | `1002` (Alter Domus) | Fund | Yes |
+| `9008` | **Insight Partners XII** | `2005` | `1002` (Alter Domus) | Fund | No |
+| `9009` | **Thoma Bravo XV** | `2006` | `1001` (Genii) | Fund | Yes |
+| `9010` | **Vista Equity VIII** | `2007` | `1002` (Alter Domus) | Fund | No |
+| `9101` | **Project SpaceX Co-Invest** | `2001` | `1001` (Genii) | Co-Investment | Yes |
+| `9102` | **Project Stripe SPV** | `2002` | `2002` (Self) | SPV | No |
+| `9103` | **Project Databricks** | `2003` | `1003` (Carta) | Co-Investment | No |
 
 ## 4. Transaction Envelopes (The Ledger)
 
@@ -90,20 +90,60 @@
 | `10009` | `1001` (Genii) | `2001` (KP) | `9101` | 2025-10-23 | `LEGAL_NOTICE` | `3001`, `3002` |
 | `10010` | `1002` (AD) | `2007` (Vista) | `9010` | 2025-10-24 | `DISTRIBUTION` | `3008`, `3004` |
 
-## 5. Delegation Relationships (The "Access Graph")
+## 5. Subscriptions
+*Note: This defines which LPs can access which assets.*
+
+| Subscription ID | Asset ID | Subscriber ID | Granted By | Status | Granted At |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `S-1001` | `9001` (KP Fund XVIII) | `3001` (Ohio) | `2001` (KP) | Active | 2025-10-01 |
+| `S-1002` | `9001` (KP Fund XVIII) | `3002` (Harvard) | `2001` (KP) | Active | 2025-10-01 |
+| `S-1003` | `9001` (KP Fund XVIII) | `3007` (CalPERS) | `2001` (KP) | Active | 2025-10-01 |
+| `S-1004` | `9003` (Sequoia Seed) | `3002` (Harvard) | `2002` (Sequoia) | Active | 2025-10-02 |
+| `S-1005` | `9003` (Sequoia Seed) | `3003` (Yale) | `2002` (Sequoia) | Active | 2025-10-02 |
+| `S-1006` | `9005` (a16z Crypto) | `3005` (BlackRock) | `2003` (a16z) | Active | 2025-10-03 |
+| `S-1007` | `9005` (a16z Crypto) | `3006` (GIC) | `2003` (a16z) | Active | 2025-10-03 |
+| `S-1008` | `9007` (Benchmark VIII) | `3001` (Ohio) | `2004` (Benchmark) | Pending LP Acceptance | 2025-10-04 |
+| `S-1009` | `9009` (Thoma Bravo) | `3004` (CPPIB) | `2006` (Thoma) | Active | 2025-10-05 |
+| `S-1010` | `9009` (Thoma Bravo) | `3007` (CalPERS) | `2006` (Thoma) | Active | 2025-10-05 |
+
+## 6. Publishing Rights
+*Note: This defines which Publishers can publish on behalf of which Asset Owners.*
+
+| Right ID | Asset Owner ID | Publisher ID | Asset Scope | Can Manage Subscriptions | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `PR-1001` | `2001` (KP) | `1001` (Genii) | ALL | Yes | Active |
+| `PR-1002` | `2002` (Sequoia) | `2002` (Self) | ALL | Yes | Active |
+| `PR-1003` | `2003` (a16z) | `1003` (Carta) | `9005`, `9006` | No | Active |
+| `PR-1004` | `2004` (Benchmark) | `1002` (Alter Domus) | `9007` | Yes | Active |
+| `PR-1005` | `2005` (Insight) | `1002` (Alter Domus) | `9008` | No | Active |
+| `PR-1006` | `2006` (Thoma) | `1001` (Genii) | `9009` | Yes | Active |
+| `PR-1007` | `2007` (Vista) | `1002` (Alter Domus) | `9010` | No | Active |
+
+## 7. Delegation Relationships (The "Access Graph")
 *Note: This defines who can see what on behalf of the Subscriber.*
 
-| Delegation ID | Subscriber (Grantor) | Delegate (Grantee) | Scope (Assets) | Scope (Type) | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `D-101` | `3001` (Ohio) | `4003` (Chronograph) | ALL | ALL | **Active** |
-| `D-102` | `3002` (Harvard) | `4004` (Mantle) | `9001`, `9002` | `CAPITAL_CALL`, `DIST` | **Active** |
-| `D-103` | `3003` (Yale) | `4006` (Burgiss) | ALL | `NAV_UPDATE`, `SOI` | **Active** |
-| `D-104` | `3007` (CalPERS) | `4003` (Chronograph) | ALL | ALL | **Active** |
-| `D-105` | `3005` (BlackRock) | `4005` (Carta LP) | `9005`, `9006` | ALL | **Active** |
-| `D-106` | `3008` (TRS Texas) | `4001` (Deloitte) | ALL | `K-1_TAX_FORM` | **Active** |
-| `D-107` | `3004` (CPPIB) | `4002` (PwC) | `9009` | `K-1_TAX_FORM` | **Pending GP Approval** |
+| Delegation ID | Subscriber (Grantor) | Delegate (Grantee) | Scope (Assets) | Scope (Type) | Status | GP Approved |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `D-101` | `3001` (Ohio) | `4003` (Chronograph) | ALL | ALL | **Active** | N/A |
+| `D-102` | `3002` (Harvard) | `4004` (Mantle) | `9001`, `9002` | `CAPITAL_CALL`, `DIST` | **Active** | Yes |
+| `D-103` | `3003` (Yale) | `4006` (Burgiss) | ALL | `NAV_UPDATE`, `SOI` | **Active** | N/A |
+| `D-104` | `3007` (CalPERS) | `4003` (Chronograph) | ALL | ALL | **Active** | N/A |
+| `D-105` | `3005` (BlackRock) | `4005` (Carta LP) | `9005`, `9006` | ALL | **Active** | N/A |
+| `D-106` | `3008` (TRS Texas) | `4001` (Deloitte) | ALL | `K-1_TAX_FORM` | **Active** | N/A |
+| `D-107` | `3004` (CPPIB) | `4002` (PwC) | `9009` | `K-1_TAX_FORM` | **Pending GP Approval** | Pending |
 
-## 6. Sample Payloads
+## 8. Permissions
+*Note: Fine-grained permissions per user (beyond role-based defaults).*
+
+| Permission ID | User ID | Resource | Action | Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| `P-1001` | `501` (Alice) | `registry` | `view`, `update` | All |
+| `P-1002` | `501` (Alice) | `audit` | `view` | All |
+| `P-1003` | `502` (Bob) | `subscriptions` | `view`, `create`, `update`, `delete` | Assets: `9001`, `9002` |
+| `P-1004` | `502` (Bob) | `publishing-rights` | `view`, `create`, `update` | All owned assets |
+| `P-1005` | `521` (Genii Publisher) | `subscriptions` | `view` | Assets: `9001`, `9002`, `9009` |
+
+## 9. Sample Payloads
 
 ### A. Capital Call (Envelope `10001`)
 ```json

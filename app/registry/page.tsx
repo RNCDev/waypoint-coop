@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { motion } from 'framer-motion'
 
 interface Organization {
   id: number
@@ -77,10 +78,17 @@ export default function RegistryPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Entity Registry</h1>
-        <p className="text-muted-foreground">Manage organizations and users</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          Entity Registry
+        </h1>
+        <p className="text-muted-foreground text-lg">Manage organizations and users</p>
+      </motion.div>
 
       <Tabs defaultValue="organizations" className="space-y-4">
         <TabsList>

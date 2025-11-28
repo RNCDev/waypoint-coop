@@ -67,10 +67,17 @@ export default function AuditPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Global Audit</h1>
-        <p className="text-muted-foreground">System-wide transaction log</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          Global Audit
+        </h1>
+        <p className="text-muted-foreground text-lg">System-wide transaction log</p>
+      </motion.div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card>

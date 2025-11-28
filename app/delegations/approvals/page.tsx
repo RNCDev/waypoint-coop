@@ -157,10 +157,10 @@ export default function DelegationApprovalsPage() {
         className="mb-8"
       >
         <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Delegation Approvals
+          LP Delegation Approvals
         </h1>
         <p className="text-muted-foreground text-lg">
-          Review and approve LP delegation requests for your assets
+          Review and approve LP delegation requests (optional, based on asset settings)
         </p>
       </motion.div>
 

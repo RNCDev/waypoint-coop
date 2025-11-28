@@ -15,8 +15,8 @@ interface AuthState {
 // Predefined demo personas
 const personas = [
   { userId: 501 }, // Alice Admin (Waypoint Platform Admin)
-  { userId: 521 }, // Genii Publisher (Genii Admin Services Publisher)
   { userId: 502 }, // Bob GP (Asset Owner)
+  { userId: 521 }, // Genii Publisher (Genii Admin Services Publisher)
   { userId: 503 }, // Charlie LP (Subscriber)
   { userId: 504 }, // Dana Delegate (Auditor)
 ]

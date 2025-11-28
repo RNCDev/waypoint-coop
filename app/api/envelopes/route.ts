@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const publisherId = searchParams.get('publisherId')
     const subscriberId = searchParams.get('subscriberId')
     const assetId = searchParams.get('assetId')
+    const assetOwnerId = searchParams.get('assetOwnerId')
 
     if (isVercel()) {
       const db = getInMemoryDB()
@@ -51,6 +52,9 @@ export async function GET(request: NextRequest) {
       if (assetId) {
         envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
       }
+      if (assetOwnerId) {
+        envelopes = envelopes.filter(e => e.assetOwnerId === parseInt(assetOwnerId))
+      }
 
       // Then apply permission-based filtering
       envelopes = filterEnvelopesByAccess(user, envelopes as any) as typeof envelopes
@@ -61,6 +65,7 @@ export async function GET(request: NextRequest) {
       if (publisherId) where.publisherId = parseInt(publisherId)
       if (subscriberId) where.recipientId = parseInt(subscriberId)
       if (assetId) where.assetId = parseInt(assetId)
+      if (assetOwnerId) where.assetOwnerId = parseInt(assetOwnerId)
 
       const envelopes = await prisma.envelope.findMany({
         where,

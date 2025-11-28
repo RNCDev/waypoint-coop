@@ -36,6 +36,7 @@ export interface Asset {
   ownerId: number
   publisherId: number
   type: string
+  requireGPApprovalForDelegations?: boolean // Whether LP delegations require GP approval
 }
 
 export interface Envelope {

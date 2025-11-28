@@ -131,6 +131,47 @@ export function getAccessibleAssets(user: User): Asset[] {
   }
 }
 
+// Get subscriptions that a user can view (for Publishers, includes all assets they have publishing rights to)
+export function getViewableSubscriptions(user: User): Subscription[] {
+  const org = getUserOrganization(user)
+  if (!org) return []
+
+  switch (org.role) {
+    case 'Platform Admin':
+      return mockSubscriptions
+
+    case 'Asset Owner':
+      // Asset owner can view subscriptions for their assets
+      const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
+      return mockSubscriptions.filter(s => ownedAssetIds.includes(s.assetId))
+
+    case 'Publisher':
+      // Publisher can view subscriptions for assets they have publishing rights to
+      const publisherRights = mockPublishingRights.filter(
+        pr => pr.publisherId === org.id && pr.status === 'Active'
+      )
+      if (publisherRights.length === 0) return []
+      
+      // Get assets from those publishing rights
+      const viewableAssetIds = new Set<number>()
+      publisherRights.forEach(pr => {
+        if (pr.assetScope === 'ALL') {
+          mockAssets.filter(a => a.ownerId === pr.assetOwnerId).forEach(a => viewableAssetIds.add(a.id))
+        } else {
+          (pr.assetScope as number[]).forEach(id => viewableAssetIds.add(id))
+        }
+      })
+      return mockSubscriptions.filter(s => viewableAssetIds.has(s.assetId))
+
+    case 'Subscriber':
+      // Subscriber can only view their own subscriptions
+      return mockSubscriptions.filter(s => s.subscriberId === org.id)
+
+    default:
+      return []
+  }
+}
+
 // Get subscriptions that a user can manage
 export function getManageableSubscriptions(user: User): Subscription[] {
   const org = getUserOrganization(user)
@@ -365,23 +406,18 @@ export function getNavItemsForUser(user: User): NavItem[] {
     case 'Asset Owner':
       navItems.push(
         { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
-        { label: 'Publishing Rights', href: '/publishing-rights', permission: { resource: 'publishing-rights', action: 'view' } },
-        { label: 'Delegation Approvals', href: '/delegations/approvals', permission: { resource: 'delegations', action: 'approve' } },
+        { label: 'Data Rights', href: '/data-rights', permission: { resource: 'publishing-rights', action: 'view' } },
+        { label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
+        { label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } },
       )
       break
 
     case 'Publisher':
       navItems.push(
-        { label: 'Composer', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
+        { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
+        { label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
         { label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } },
       )
-      // Add subscriptions if they have management rights
-      const manageableSubs = getManageableSubscriptions(user)
-      if (manageableSubs.length > 0) {
-        navItems.push(
-          { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
-        )
-      }
       break
 
     case 'Subscriber':
@@ -399,10 +435,10 @@ export function getNavItemsForUser(user: User): NavItem[] {
       break
   }
 
-  // Add Settings for org admins
+  // Add IAM last for all org admins
   if (user.isOrgAdmin) {
     navItems.push(
-      { label: 'Settings', href: '/settings/iam', permission: { resource: 'users', action: 'view' } },
+      { label: 'IAM', href: '/settings/iam', permission: { resource: 'users', action: 'view' } },
     )
   }
 

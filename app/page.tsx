@@ -68,17 +68,34 @@ export default function Home() {
           initial="hidden"
           animate="visible"
         >
-          {(currentUser?.role === 'Publisher' || currentUser?.role === 'Asset Owner') && (
+          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, IAM */}
+          {currentUser?.role === 'Publisher' && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
-                    <CardTitle className="group-hover:text-primary transition-colors">Composer</CardTitle>
-                    <CardDescription>Create and publish data packets</CardDescription>
+                    <CardTitle className="group-hover:text-primary transition-colors">Subscriptions</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View and manage subscriptions for assets you publish</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/subscriptions">
+                      <Button className="w-full group/btn" variant="outline">
+                        Manage Subscriptions
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Publish Data</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Compose and publish data packets for your assets</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/composer">
-                      <Button className="w-full group/btn">
+                      <Button className="w-full group/btn" variant="outline">
                         Open Composer
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Button>
@@ -90,7 +107,113 @@ export default function Home() {
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors">History</CardTitle>
-                    <CardDescription>View published envelopes</CardDescription>
+                    <CardDescription className="min-h-[2.5rem]">View history of published data packets and envelopes</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/history">
+                      <Button className="w-full group/btn" variant="outline">
+                        View History
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              {currentUser?.isOrgAdmin && (
+                <motion.div variants={itemVariants}>
+                  <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-primary transition-colors">IAM</CardTitle>
+                      <CardDescription className="min-h-[2.5rem]">Manage team members and organization permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link href="/settings/iam">
+                        <Button className="w-full group/btn" variant="outline">
+                          Manage IAM
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </>
+          )}
+
+          {/* Asset Owner (GP) - Subscriptions, Data Rights, IAM, Publish Data */}
+          {currentUser?.role === 'Asset Owner' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Subscriptions</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Issue and manage subscriptions for your assets</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/subscriptions">
+                      <Button className="w-full group/btn" variant="outline">
+                        Manage Subscriptions
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Data Rights</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Grant organizations access to view, use, or publish data for your assets</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/data-rights">
+                      <Button className="w-full group/btn" variant="outline">
+                        Manage Data Rights
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              {currentUser?.isOrgAdmin && (
+                <motion.div variants={itemVariants}>
+                  <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-primary transition-colors">IAM</CardTitle>
+                      <CardDescription className="min-h-[2.5rem]">Manage team members and organization permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link href="/settings/iam">
+                        <Button className="w-full group/btn" variant="outline">
+                          Manage IAM
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">Publish Data</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Compose and publish data packets for your assets</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/composer">
+                      <Button className="w-full group/btn" variant="outline">
+                        Open Composer
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">History</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">View history of published data packets and envelopes</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/history">
@@ -115,7 +238,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent>
                     <Link href="/ledger">
-                      <Button className="w-full group/btn">
+                      <Button className="w-full group/btn" variant="outline">
                         Open Ledger
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Button>
@@ -142,14 +265,14 @@ export default function Home() {
             </>
           )}
 
-          {/* Waypoint Platform Admin - Registry and Audit */}
+          {/* Waypoint Platform Admin - Registry, Audit, and IAM */}
           {(currentUser?.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin') && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors">Entity Registry</CardTitle>
-                    <CardDescription>Manage organizations and users</CardDescription>
+                    <CardDescription className="min-h-[2.5rem]">Manage organizations and users across the platform</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/registry">
@@ -165,12 +288,28 @@ export default function Home() {
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
                   <CardHeader>
                     <CardTitle className="group-hover:text-primary transition-colors">Global Audit</CardTitle>
-                    <CardDescription>View system-wide audit log</CardDescription>
+                    <CardDescription className="min-h-[2.5rem]">View system-wide audit log and activity history</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Link href="/audit">
                       <Button className="w-full group/btn" variant="outline">
                         View Audit
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+                  <CardHeader>
+                    <CardTitle className="group-hover:text-primary transition-colors">IAM</CardTitle>
+                    <CardDescription className="min-h-[2.5rem]">Manage Waypoint team members and permissions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link href="/settings/iam">
+                      <Button className="w-full group/btn" variant="outline">
+                        Manage IAM
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                       </Button>
                     </Link>

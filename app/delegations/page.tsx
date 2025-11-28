@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { motion } from 'framer-motion'
 import { mockOrganizations } from '@/lib/mock-data'
 
 interface Delegation {
@@ -105,10 +106,17 @@ export default function DelegationsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-8 flex items-center justify-between"
+      >
         <div>
-          <h1 className="text-3xl font-bold mb-2">Delegation Center</h1>
-          <p className="text-muted-foreground">Manage delegate access to your data</p>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Delegation Center
+          </h1>
+          <p className="text-muted-foreground text-lg">Manage delegate access to your data</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -154,7 +162,7 @@ export default function DelegationsPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
 
       <Card>
         <CardHeader>

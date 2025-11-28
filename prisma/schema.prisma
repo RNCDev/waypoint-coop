@@ -41,6 +41,7 @@ model Asset {
   ownerId     Int
   publisherId Int
   type        String     // Fund, Co-Investment, SPV
+  requireGPApprovalForDelegations Boolean @default(false) // Whether LP delegations require GP approval
   owner       Organization @relation("AssetOwner", fields: [ownerId], references: [id])
   publisher   Organization @relation("Publisher", fields: [publisherId], references: [id])
   envelopes   Envelope[]

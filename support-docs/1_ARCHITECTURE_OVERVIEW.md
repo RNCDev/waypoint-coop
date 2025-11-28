@@ -75,23 +75,34 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 ## System Components
 
 ### 1. Frontend (The Terminal)
-*   **Stack:** React / Next.js
+*   **Stack:** React / Next.js (App Router)
 *   **Role:**
-    *   **Publisher:** Data entry, envelope configuration, signing.
-    *   **Subscriber:** Feed view, search, delegation management.
-    *   **Admin:** Identity verification and system monitoring.
+    *   **Asset Owner (GP):** Subscription management, data rights management, data entry, envelope configuration, signing, history view.
+    *   **Publisher (Fund Admin):** Subscription viewing, data entry, envelope configuration, signing, history view.
+    *   **Subscriber (LP):** Feed view, subscription acceptance, search, delegation management, ledger view.
+    *   **Delegate (Service Provider):** Delegated data view, ledger view.
+    *   **Platform Admin:** Identity verification, system monitoring, audit log, IAM management.
 
 ### 2. API Layer (The Switch)
-*   **Stack:** Node.js / Python (FastAPI) / Go
+*   **Stack:** Next.js API Routes (Node.js)
 *   **Role:**
-    *   Authentication (OAuth/JWT).
+    *   Authentication (Mock authentication with persona switcher).
+    *   Permission-based access control (API guards).
     *   Envelope Validation.
     *   Routing logic.
-    *   Webhook dispatch.
+    *   Subscription management.
+    *   Publishing rights management.
+    *   Delegation management.
+    *   Webhook dispatch (planned).
 
 ### 3. Storage Layer (The Vault)
-*   **Database:** PostgreSQL (for relational data: Users, Orgs, Permissions).
-*   **Object Storage / Blob Store:** S3-compatible (for the raw JSON payloads).
+*   **Database:** Prisma ORM with SQLite (local) / In-memory (Vercel)
+*   **Models:**
+    *   Organizations, Users, Assets, Envelopes, Payloads
+    *   Subscriptions (which LPs can access which assets)
+    *   Publishing Rights (which Publishers can publish for which Asset Owners)
+    *   Delegations (LP delegations to service providers)
+    *   Permissions (fine-grained user permissions)
 *   **Ledger:** An append-only table recording the hash of every payload + envelope combination.
 
 ---
@@ -99,6 +110,29 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 ## Security Model
 
 1.  **Identity:** All actions are tied to a verified Organization Identity.
-2.  **Immutability:** Once a `version` is committed, it cannot be changed. Updates are strictly `version + 1`.
-3.  **Transport:** TLS 1.3 for all data in transit.
-4.  **At Rest:** AES-256 encryption for stored payloads.
+2.  **Role-Based Access Control (RBAC):** Permissions are determined by user role (Platform Admin, Asset Owner, Publisher, Subscriber, Delegate) and organization-level admin status.
+3.  **Permission System:** Centralized permission checking at the API level ensures users can only access resources they're authorized to view or modify.
+4.  **Immutability:** Once a `version` is committed, it cannot be changed. Updates are strictly `version + 1`.
+5.  **Transport:** TLS 1.3 for all data in transit.
+6.  **At Rest:** AES-256 encryption for stored payloads (planned).
+
+## IAM Architecture
+
+### Permission Model
+*   **Resources:** `assets`, `subscriptions`, `delegations`, `envelopes`, `users`, `audit`, `registry`, `publishing-rights`
+*   **Actions:** `view`, `create`, `update`, `delete`, `publish`, `approve`
+*   **Role-Based Defaults:** Each role has default permissions that can be overridden by fine-grained permissions
+*   **Organization-Level Admin:** Users with `isOrgAdmin` flag can manage users within their organization
+
+### Access Control Flow
+1. User authenticates (currently mock authentication)
+2. System determines user's role and organization
+3. Permission system checks if user has access to requested resource/action
+4. API guard middleware enforces permissions at route level
+5. Frontend navigation is dynamically generated based on user permissions
+
+### Key Concepts
+*   **Subscriptions:** Asset Owners (GPs) control which LPs can access which assets. Publishers can view subscriptions for assets they have publishing rights to, and may manage them if granted that right.
+*   **Publishing Rights:** Asset Owners grant Publishers the right to publish data on their behalf, with optional subscription management rights.
+*   **Delegations:** LPs can delegate access to their data to service providers. Asset Owners can optionally require approval for delegations at the asset level.
+*   **Data Rights:** Asset Owners manage both publishing rights and (future) access rights for their assets.

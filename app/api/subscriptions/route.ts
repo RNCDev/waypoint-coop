@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Subscription } from '@/types'
 import { getCurrentUser, checkPermission } from '@/lib/api-guard'
-import { getManageableSubscriptions, getUserOrganization } from '@/lib/permissions'
+import { getManageableSubscriptions, getViewableSubscriptions, getUserOrganization } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,11 +31,15 @@ export async function GET(request: NextRequest) {
     const assetId = searchParams.get('assetId')
     const subscriberId = searchParams.get('subscriberId')
 
-    if (isVercel()) {
-      // Get subscriptions the user can manage/view
-      let subscriptions = getManageableSubscriptions(user)
+    // For Publishers, use viewable subscriptions (all assets with publishing rights)
+    // For others, use manageable subscriptions
+    const isPublisher = org?.role === 'Publisher'
+    const baseSubscriptions = isPublisher ? getViewableSubscriptions(user) : getManageableSubscriptions(user)
 
+    if (isVercel()) {
       // Apply additional filters
+      let subscriptions = baseSubscriptions
+      
       if (assetId) {
         subscriptions = subscriptions.filter(s => s.assetId === parseInt(assetId))
       }
@@ -47,7 +51,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Note: Prisma Subscription model requires migration
       // For now, use in-memory data for non-Vercel environments as well
-      let subscriptions = getManageableSubscriptions(user)
+      let subscriptions = baseSubscriptions
       
       if (assetId) {
         subscriptions = subscriptions.filter(s => s.assetId === parseInt(assetId))

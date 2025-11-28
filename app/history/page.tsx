@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { Eye, FileEdit, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { motion } from 'framer-motion'
 
 interface Envelope {
   id: number
@@ -49,7 +50,15 @@ export default function HistoryPage() {
 
   const fetchEnvelopes = async () => {
     try {
-      const response = await fetch(`/api/envelopes?publisherId=${currentOrg?.id}`)
+      // For Asset Owners, fetch by assetOwnerId; for Publishers, fetch by publisherId
+      const queryParam = currentOrg?.role === 'Asset Owner' 
+        ? `assetOwnerId=${currentOrg?.id}`
+        : `publisherId=${currentOrg?.id}`
+      const response = await fetch(`/api/envelopes?${queryParam}`, {
+        headers: {
+          'x-user-id': currentUser?.id.toString() || '',
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setEnvelopes(data)
@@ -119,10 +128,17 @@ export default function HistoryPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Published History</h1>
-        <p className="text-muted-foreground">View and manage your published envelopes</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          Published History
+        </h1>
+        <p className="text-muted-foreground text-lg">View and manage your published envelopes</p>
+      </motion.div>
 
       <Card>
         <CardHeader>

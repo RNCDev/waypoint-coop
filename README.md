@@ -8,9 +8,12 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 ## Features
 
-- **Publisher Terminal (GP)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
+- **Publisher Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
 - **Subscriber Ledger (LP)**: View chronological feed of data events with read receipt tracking
-- **Delegation Management**: Grant access to third-party service providers (auditors, analytics)
+- **Subscription Management**: Asset Owners and Publishers manage which LPs can access which assets
+- **Data Rights Management**: Asset Owners grant publishing rights and manage delegations
+- **Delegation Management**: LPs grant access to third-party service providers (auditors, analytics) with optional GP approval
+- **IAM System**: Role-based access control (RBAC) with organization-level user management
 - **Admin Console**: Entity registry and global audit log
 - **Mock Authentication**: Persona switcher for demo purposes
 - **Cryptographic Signing**: SHA-256 hash generation for data integrity
@@ -62,10 +65,11 @@ The application will be available at `http://localhost:3000`.
 
 Switch between demo personas using the dropdown in the navigation:
 
-- **Alice Admin** (Publisher: Genii Admin Services) - Can compose and publish data
-- **Bob GP** (Asset Owner: Kleiner Perkins) - Can view assets and publish
-- **Charlie LP** (Subscriber: State of Ohio Pension) - Can view ledger and manage delegations
-- **Dana Delegate** (Auditor: Deloitte) - Can view delegated data
+- **Alice Admin** (Platform Admin: Waypoint) - Manages platform registry, audit logs, and IAM
+- **Bob GP** (Asset Owner: Kleiner Perkins) - Manages subscriptions, data rights, publishes data, and views history
+- **Genii Publisher** (Publisher: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
+- **Charlie LP** (Subscriber: State of Ohio Pension) - Views feeds, ledger, manages delegations, and IAM
+- **Dana Delegate** (Auditor: Deloitte) - Views delegated data and manages IAM
 
 ## Project Structure
 
@@ -73,10 +77,18 @@ Switch between demo personas using the dropdown in the navigation:
 waypoint-coop/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
+│   │   ├── subscriptions/      # Subscription CRUD
+│   │   ├── publishing-rights/  # Publishing rights CRUD
+│   │   ├── delegations/        # Delegation management
+│   │   └── envelopes/          # Envelope CRUD
 │   ├── composer/          # Publisher composer page
-│   ├── history/           # Publisher history page
+│   ├── history/           # Published data history
 │   ├── ledger/            # Subscriber ledger page
+│   ├── feeds/             # LP subscription feeds
+│   ├── subscriptions/     # Subscription management
+│   ├── data-rights/       # Data rights management (Asset Owners)
 │   ├── delegations/       # Delegation management
+│   ├── settings/iam/      # IAM settings page
 │   ├── registry/          # Admin entity registry
 │   └── audit/             # Admin audit log
 ├── components/            # React components
@@ -84,6 +96,8 @@ waypoint-coop/
 │   └── shared/           # Shared components
 ├── lib/                  # Utilities
 │   ├── prisma.ts         # Prisma client
+│   ├── permissions.ts    # Permission system & RBAC
+│   ├── api-guard.ts      # API route guards
 │   ├── mock-data.ts      # Mock data definitions
 │   ├── in-memory-db.ts   # In-memory DB for Vercel
 │   └── crypto.ts         # Cryptographic utilities
@@ -130,12 +144,11 @@ NODE_ENV="development"
 
 ## Documentation
 
-See the `docs/` folder for detailed documentation:
-- `0_PHASE_1_REQUIREMENTS.md` - Feature requirements
+See the `support-docs/` folder for detailed documentation:
+- `0_PHASE_1_REQUIREMENTS.md` - Feature requirements and user stories
 - `1_ARCHITECTURE_OVERVIEW.md` - System architecture
 - `2_WIREFRAMES.md` - UI wireframes and specifications
 - `3_MOCK_DATA.md` - Mock data definitions
-- `4_INFRA_BUILD.md` - Infrastructure and build setup
 - `5_Design_Guide.md` - Design system and UI patterns
 
 ## License

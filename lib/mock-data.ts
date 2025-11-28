@@ -53,19 +53,19 @@ export const mockUsers: User[] = [
 ]
 
 export const mockAssets: Asset[] = [
-  { id: 9001, name: 'KP Fund XVIII', ownerId: 2001, publisherId: 1001, type: 'Fund' },
-  { id: 9002, name: 'KP Growth III', ownerId: 2001, publisherId: 1001, type: 'Fund' },
-  { id: 9003, name: 'Sequoia Seed 2025', ownerId: 2002, publisherId: 2002, type: 'Fund' },
-  { id: 9004, name: 'Sequoia Growth X', ownerId: 2002, publisherId: 2002, type: 'Fund' },
-  { id: 9005, name: 'a16z Crypto IV', ownerId: 2003, publisherId: 1003, type: 'Fund' },
-  { id: 9006, name: 'a16z Bio II', ownerId: 2003, publisherId: 1003, type: 'Fund' },
-  { id: 9007, name: 'Benchmark VIII', ownerId: 2004, publisherId: 1002, type: 'Fund' },
-  { id: 9008, name: 'Insight Partners XII', ownerId: 2005, publisherId: 1002, type: 'Fund' },
-  { id: 9009, name: 'Thoma Bravo XV', ownerId: 2006, publisherId: 1001, type: 'Fund' },
-  { id: 9010, name: 'Vista Equity VIII', ownerId: 2007, publisherId: 1002, type: 'Fund' },
-  { id: 9101, name: 'Project SpaceX Co-Invest', ownerId: 2001, publisherId: 1001, type: 'Co-Investment' },
-  { id: 9102, name: 'Project Stripe SPV', ownerId: 2002, publisherId: 2002, type: 'SPV' },
-  { id: 9103, name: 'Project Databricks', ownerId: 2003, publisherId: 1003, type: 'Co-Investment' },
+  { id: 9001, name: 'KP Fund XVIII', ownerId: 2001, publisherId: 1001, type: 'Fund', requireGPApprovalForDelegations: true },
+  { id: 9002, name: 'KP Growth III', ownerId: 2001, publisherId: 1001, type: 'Fund', requireGPApprovalForDelegations: false },
+  { id: 9003, name: 'Sequoia Seed 2025', ownerId: 2002, publisherId: 2002, type: 'Fund', requireGPApprovalForDelegations: true },
+  { id: 9004, name: 'Sequoia Growth X', ownerId: 2002, publisherId: 2002, type: 'Fund', requireGPApprovalForDelegations: false },
+  { id: 9005, name: 'a16z Crypto IV', ownerId: 2003, publisherId: 1003, type: 'Fund', requireGPApprovalForDelegations: true },
+  { id: 9006, name: 'a16z Bio II', ownerId: 2003, publisherId: 1003, type: 'Fund', requireGPApprovalForDelegations: false },
+  { id: 9007, name: 'Benchmark VIII', ownerId: 2004, publisherId: 1002, type: 'Fund', requireGPApprovalForDelegations: false },
+  { id: 9008, name: 'Insight Partners XII', ownerId: 2005, publisherId: 1002, type: 'Fund', requireGPApprovalForDelegations: true },
+  { id: 9009, name: 'Thoma Bravo XV', ownerId: 2006, publisherId: 1001, type: 'Fund', requireGPApprovalForDelegations: false },
+  { id: 9010, name: 'Vista Equity VIII', ownerId: 2007, publisherId: 1002, type: 'Fund', requireGPApprovalForDelegations: true },
+  { id: 9101, name: 'Project SpaceX Co-Invest', ownerId: 2001, publisherId: 1001, type: 'Co-Investment', requireGPApprovalForDelegations: false },
+  { id: 9102, name: 'Project Stripe SPV', ownerId: 2002, publisherId: 2002, type: 'SPV', requireGPApprovalForDelegations: false },
+  { id: 9103, name: 'Project Databricks', ownerId: 2003, publisherId: 1003, type: 'Co-Investment', requireGPApprovalForDelegations: true },
 ]
 
 // Helper to extract LP-specific payload from full payload
