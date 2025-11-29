@@ -10,7 +10,7 @@
 | ID | Name | Role | Type | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | `1001` | **Genii Admin Services** | Delegate | Fund Administrator | Verified |
-| `1002` | **Alter Domus** | Delegate | Fund Administrator | Verified |
+| `1002` | **Aduro Advisors** | Delegate | Fund Administrator | Verified |
 | `1003` | **Carta (Fund Admin)** | Delegate | Fund Administrator | Verified |
 | `2001` | **Kleiner Perkins** | Asset Manager | General Partner (GP) | Verified |
 | `2002` | **Sequoia Capital** | Asset Manager | General Partner (GP) | Verified |
@@ -37,7 +37,7 @@
 ## 2. Users
 | ID | Name | Email | Org ID | Role | Is Org Admin? |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `501` | **Alice Admin** | alice@genii.com | `1001` | Delegate | Yes |
+| `501` | **Alice Admin** | alice@waypoint.coop | `1` | Platform Admin | Yes |
 | `502` | **Bob GP** | bob@kleinerperkins.com | `2001` | Asset Manager | Yes |
 | `503` | **Charlie LP** | charlie@ohio.gov | `3001` | Limited Partner | No |
 | `504` | **Dana Delegate** | dana@deloitte.com | `4001` | Auditor | No |
@@ -51,15 +51,16 @@
 | `512` | **Leo Thoma** | leo@thomabravo.com | `2006` | Asset Manager | Yes |
 | `513` | **Mike Mantle** | mike@mantle.co | `4004` | Delegate | No |
 | `514` | **Nancy Nexla** | nancy@nexla.com | `4003` | Delegate | No |
-| `515` | **Oscar Ops** | oscar@alterdomus.com | `1002` | Delegate | No |
+| `515` | **Oscar Ops** | oscar@aduroadvisors.com | `1002` | Delegate | Yes |
 | `516` | **Pat Partner** | pat@benchmark.com | `2004` | Asset Manager | No |
 | `517` | **Quinn Quant** | quinn@msci.com | `4006` | Delegate | No |
 | `518` | **Rachel Risk** | rachel@calpers.ca.gov | `3007` | Limited Partner | No |
 | `519` | **Steve Sequoia** | steve@sequoia.com | `2002` | Asset Manager | No |
 | `520` | **Tina Tax** | tina@pwc.com | `4002` | Tax Delegate | No |
+| `521` | **Genii Publisher** | publisher@genii.com | `1001` | Delegate | Yes |
 
 ## 3. Assets
-*Note: `Default Delegate ID` indicates the primary publisher for display purposes. Actual publishing rights are managed via Publishing Rights (Section 6).*
+*Note: `Default Delegate ID` indicates the primary publisher for display purposes. Actual publishing rights are managed via Access Grants (Section 6).*
 
 | ID | Name | Owner ID | Default Delegate ID | Type | Require GP Approval |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -69,10 +70,10 @@
 | `9004` | **Sequoia Growth X** | `2002` | `2002` (Self) | Fund | Yes |
 | `9005` | **a16z Crypto IV** | `2003` | `1003` (Carta) | Fund | No |
 | `9006` | **a16z Bio II** | `2003` | `1003` (Carta) | Fund | No |
-| `9007` | **Benchmark VIII** | `2004` | `1002` (Alter Domus) | Fund | Yes |
-| `9008` | **Insight Partners XII** | `2005` | `1002` (Alter Domus) | Fund | No |
+| `9007` | **Benchmark VIII** | `2004` | `1002` (Aduro) | Fund | Yes |
+| `9008` | **Insight Partners XII** | `2005` | `1002` (Aduro) | Fund | No |
 | `9009` | **Thoma Bravo XV** | `2006` | `1001` (Genii) | Fund | Yes |
-| `9010` | **Vista Equity VIII** | `2007` | `1002` (Alter Domus) | Fund | No |
+| `9010` | **Vista Equity VIII** | `2007` | `1002` (Aduro) | Fund | No |
 | `9101` | **Project SpaceX Co-Invest** | `2001` | `1001` (Genii) | Co-Investment | Yes |
 | `9102` | **Project Stripe SPV** | `2002` | `2002` (Self) | SPV | No |
 | `9103` | **Project Databricks** | `2003` | `1003` (Carta) | Co-Investment | No |

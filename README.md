@@ -69,10 +69,10 @@ The application will be available at `http://localhost:3000`.
 
 Switch between demo personas using the dropdown in the navigation:
 
-- **Alice Admin** (Platform Admin: Waypoint) - Manages platform registry, audit logs, and IAM
-- **Bob GP** (Asset Manager: Kleiner Perkins) - Manages subscriptions, delegations, publishes data, and views history
+- **Alice Admin** (Platform Admin: Waypoint Coop) - Manages platform registry, audit logs, and IAM
+- **Bob GP** (Asset Manager: Kleiner Perkins) - Manages subscriptions, access grants, publishes data, and views history
 - **Genii Publisher** (Delegate: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
-- **Charlie LP** (Limited Partner: State of Ohio Pension) - Views feeds, ledger, manages delegations, and IAM
+- **Charlie LP** (Limited Partner: State of Ohio Pension) - Views feeds, ledger, manages access grants, and IAM
 - **Dana Delegate** (Auditor: Deloitte) - Views delegated data and manages IAM
 
 ## Project Structure

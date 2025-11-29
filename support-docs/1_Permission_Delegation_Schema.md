@@ -48,27 +48,27 @@ An Access Grant represents an "edge" in the permission graph where a grantor (As
 | **Create Assets** | `POST /api/assets` | ✅ Implemented |
 | **Define Limited Partner Universe** | `Subscription` management | ✅ Implemented |
 | **Publish Data** | `Envelope` creation | ✅ Implemented |
-| **Delegate Subscription Management** | `PublishingRight.canManageSubscriptions = true` | ✅ Implemented |
-| **Delegate Publishing Rights** | `PublishingRight` (without canManageSubscriptions) | ✅ Implemented |
-| **Delegate Both** | `PublishingRight` with `canManageSubscriptions = true` | ✅ Implemented |
-| **Delegate Approval Rights** | `PublishingRight.canApproveDelegations = true` | ✅ Implemented |
-| **Delegate Subscription Approval** | `PublishingRight.canApproveSubscriptions = true` | ✅ Implemented |
-| **Delegate View-Only Access** | ✅ `PublishingRight` with `canViewData = true` (no other flags needed) | ✅ Implemented |
+| **Delegate Subscription Management** | `AccessGrant.canManageSubscriptions = true` | ✅ Implemented |
+| **Delegate Publishing Rights** | `AccessGrant` with `canPublish = true` | ✅ Implemented |
+| **Delegate Both** | `AccessGrant` with `canPublish = true, canManageSubscriptions = true` | ✅ Implemented |
+| **Delegate Approval Rights** | `AccessGrant.canApproveDelegations = true` | ✅ Implemented |
+| **Delegate Subscription Approval** | `AccessGrant.canApproveSubscriptions = true` | ✅ Implemented |
+| **Delegate View-Only Access** | ✅ `AccessGrant` with `canViewData = true` (no other flags needed) | ✅ Implemented |
 
-### Organization with Publishing Rights (Delegate from Asset Manager)
+### Delegate (GP Grant Recipient)
 
 | Action | Right Required | Status |
 |--------|----------------|--------|
-| **Publish Data** | Has `PublishingRight` | ✅ Implemented |
-| **View Data** | `canViewData = true` in PublishingRight | ✅ Implemented |
+| **Publish Data** | Has `AccessGrant` with `canPublish = true` | ✅ Implemented |
+| **View Data** | `canViewData = true` in AccessGrant | ✅ Implemented |
 | **Manage Subscriptions** | `canManageSubscriptions = true` | ✅ Implemented |
 | **Approve LP Delegations** | `canApproveDelegations = true` AND asset requires approval | ✅ Implemented |
 | **Approve Subscriptions** | `canApproveSubscriptions = true` | ✅ Implemented |
 
-**Note**: `canViewData` flag allows granular control:
+**Note**: Capability flags allow granular control:
 - Organization managing subscriptions: `canManageSubscriptions = true, canViewData = false`
 - Organization with view-only access: `canViewData = true` (no other flags)
-- Organization publishing data: `canViewData = true` (default)
+- Organization publishing data: `canPublish = true, canViewData = true` (typical)
 
 ### Limited Partner (LP) Actions
 
@@ -78,26 +78,26 @@ An Access Grant represents an "edge" in the permission graph where a grantor (As
 | **Decline Subscriptions** | `POST /api/subscriptions/[id]/decline` | ✅ Implemented |
 | **Request Subscriptions** | `POST /api/subscriptions/request` | ✅ Implemented |
 | **View Data** | After subscription is "Active" | ✅ Implemented |
-| **Delegate View-Only Access** | `Delegation` to service providers | ✅ Implemented |
-| **Delegate Subscription Management** | `Delegation.canManageSubscriptions = true` | ✅ Implemented |
+| **Delegate View-Only Access** | `AccessGrant` (LP Grant) to service providers | ✅ Implemented |
+| **Delegate Subscription Management** | `AccessGrant.canManageSubscriptions = true` | ✅ Implemented |
 | **Request Secondary Approval** | `Asset.requireGPApprovalForDelegations` | ✅ Implemented |
 
 ### Delegate from Limited Partner - View Access
 
 | Action | Right/Scope | Status |
 |--------|-------------|--------|
-| **View Data Only** | Scoped by `Delegation.assetScope` and `Delegation.typeScope` | ✅ Implemented |
+| **View Data Only** | Scoped by `AccessGrant.assetScope` and `AccessGrant.dataTypeScope` | ✅ Implemented |
 
 ### Delegate from Limited Partner - Subscription Management
 
 | Action | Right/Scope | Status |
 |--------|-------------|--------|
-| **Accept Subscriptions** | Delegate with `canManageSubscriptions = true` | ✅ Implemented |
-| **Decline Subscriptions** | Delegate with `canManageSubscriptions = true` | ✅ Implemented |
-| **Request Subscriptions** | Delegate with `canManageSubscriptions = true` | ✅ Implemented |
-| **Manage Subscription Lifecycle** | Delegate with `canManageSubscriptions = true` | ✅ Implemented (accept/decline) |
+| **Accept Subscriptions** | AccessGrant with `canManageSubscriptions = true` | ✅ Implemented |
+| **Decline Subscriptions** | AccessGrant with `canManageSubscriptions = true` | ✅ Implemented |
+| **Request Subscriptions** | AccessGrant with `canManageSubscriptions = true` | ✅ Implemented |
+| **Manage Subscription Lifecycle** | AccessGrant with `canManageSubscriptions = true` | ✅ Implemented (accept/decline) |
 
-**Note**: Limited Partners can delegate subscription management (accept/decline subscriptions) to portfolio managers via `Delegation.canManageSubscriptions = true`. This allows portfolio managers to handle subscription workflows on behalf of the LP. The delegate must have an active delegation with `canManageSubscriptions = true` for the specific subscriber.
+**Note**: Limited Partners can delegate subscription management (accept/decline subscriptions) to portfolio managers via `AccessGrant.canManageSubscriptions = true`. This allows portfolio managers to handle subscription workflows on behalf of the LP. The delegate must have an active LP Grant with `canManageSubscriptions = true` for the specific subscriber.
 
 ---
 
@@ -268,20 +268,20 @@ An Access Grant represents an "edge" in the permission graph where a grantor (As
                     └───────────┘   └───────────┘
 ```
 
-### Delegation Approval Logic
+### Access Grant Approval Logic
 
-**Who Can Approve:**
-1. **Asset Manager** - Always can approve delegations for their assets
-2. **Organization with Publishing Rights** - Can approve if:
-   - Has `PublishingRight` with `canApproveDelegations = true`
-   - Delegation involves assets in their `assetScope`
+**Who Can Approve LP Grants:**
+1. **Asset Manager** - Always can approve LP grants for their assets
+2. **Delegate with GP Grant** - Can approve if:
+   - Has `AccessGrant` with `canApproveDelegations = true`
+   - LP Grant involves assets in their `assetScope`
    - Asset has `requireGPApprovalForDelegations = true`
 
-**Delegation Scope:**
-- `assetScope: 'ALL'` - All assets the subscriber is subscribed to
+**Access Grant Scope:**
+- `assetScope: 'ALL'` - All assets the grantor has access to
 - `assetScope: [assetId1, assetId2]` - Specific assets
-- `typeScope: 'ALL'` - All data types
-- `typeScope: ['CAPITAL_CALL', 'DISTRIBUTION']` - Specific data types
+- `dataTypeScope: 'ALL'` - All data types
+- `dataTypeScope: ['CAPITAL_CALL', 'DISTRIBUTION']` - Specific data types
 
 ---
 
@@ -289,20 +289,20 @@ An Access Grant represents an "edge" in the permission graph where a grantor (As
 
 ### Understanding `assetScope: 'ALL'`
 
-When a Delegation or PublishingRight uses `assetScope: 'ALL'`, this is evaluated **dynamically** at access-check time:
+When an AccessGrant uses `assetScope: 'ALL'`, this is evaluated **dynamically** at access-check time:
 
-| Context | `'ALL'` Means |
-|---------|---------------|
-| **PublishingRight** | All assets owned by the Asset Manager who granted the right |
-| **Delegation** | All assets the Limited Partner currently has active subscriptions to |
+| Grant Type | `'ALL'` Means |
+|------------|---------------|
+| **GP Grant** (`canPublish: true`) | All assets owned by the Asset Manager who granted the right |
+| **LP Grant** (`canPublish: false`) | All assets the Limited Partner currently has active subscriptions to |
 
-**Important Behavior for Delegations:**
+**Important Behavior for LP Grants:**
 
-The `'ALL'` scope is not a snapshot—it expands automatically as the subscriber gains new subscriptions:
+The `'ALL'` scope is not a snapshot—it expands automatically as the LP gains new subscriptions:
 
 ```
 Example:
-1. LP delegates to Auditor with assetScope: 'ALL'
+1. LP grants access to Auditor with assetScope: 'ALL'
 2. LP currently subscribed to: Fund A, Fund B
 3. Auditor can view: Fund A, Fund B data
 
@@ -313,15 +313,15 @@ Later:
 
 **GP Approval Consideration:**
 
-If a subscriber has an `'ALL'` scope delegation and later subscribes to a new asset that has `requireGPApprovalForDelegations: true`, the existing delegation **will still grant access** to the new asset without requiring re-approval. 
+If an LP has an `'ALL'` scope grant to a delegate and later subscribes to a new asset that has `requireGPApprovalForDelegations: true`, the existing grant **will still provide access** to the new asset without requiring re-approval. 
 
 GPs who want strict control should:
-- Use specific asset IDs in delegation scopes rather than `'ALL'`
-- Or require new delegations to be created for sensitive assets
+- Use specific asset IDs in grant scopes rather than `'ALL'`
+- Or require new grants to be created for sensitive assets
 
-### Delegation Chaining (Not Supported)
+### Grant Chaining (Not Supported)
 
-Delegations **cannot be chained**. A delegate with `canManageSubscriptions: true` can manage subscriptions on behalf of the subscriber, but **cannot create new delegations** for that subscriber.
+Access Grants **cannot be chained**. A delegate with `canManageSubscriptions: true` can manage subscriptions on behalf of the grantor, but **cannot create new grants** for that grantor.
 
 ```
 Allowed:
@@ -333,7 +333,7 @@ NOT Allowed:
   Delegate A → Delegate B (BLOCKED)
 ```
 
-This prevents unauthorized expansion of data access through delegation chains.
+This prevents unauthorized expansion of data access through grant chains.
 
 ---
 
@@ -417,22 +417,22 @@ These two flags serve distinct purposes in the subscription workflow:
 ### Who Can View Envelopes?
 
 1. **Asset Manager**: Can view all envelopes for assets they own
-2. **Organization with Publishing Rights**: Can view envelopes for assets where:
-   - They have `PublishingRight` with `canViewData = true`
-   - Asset is in their `PublishingRight.assetScope`
+2. **Delegate (GP Grant)**: Can view envelopes for assets where:
+   - They have `AccessGrant` with `canViewData = true`
+   - Asset is in their `AccessGrant.assetScope`
 3. **Limited Partner**: Can view envelopes where:
-   - `envelope.recipientId === subscriber.orgId`
+   - `envelope.recipientId === lp.orgId`
    - Limited Partner has `Active` subscription to `envelope.assetId`
    - Subscription is not expired (`expiresAt` check)
-4. **Delegate (View Access)**: Can view envelopes where:
-   - Delegation is `Active`
-   - `envelope.recipientId === delegation.subscriberId`
-   - Asset matches `delegation.assetScope`
-   - Data type matches `delegation.typeScope`
+4. **Delegate (LP Grant)**: Can view envelopes where:
+   - AccessGrant is `Active`
+   - `envelope.recipientId === grant.grantorId` (the LP who granted access)
+   - Asset matches `grant.assetScope`
+   - Data type matches `grant.dataTypeScope`
 
 ### Publishing Rules
 
-- **Organization can publish** if they have `PublishingRight` for the asset
+- **Organization can publish** if they have `AccessGrant` with `canPublish = true` for the asset
 - **Recipient must have subscription** (Active or Pending LP Acceptance)
 - **Data sent before acceptance** becomes visible after LP accepts subscription
 
@@ -440,35 +440,35 @@ These two flags serve distinct purposes in the subscription workflow:
 
 ## View-Only Access Implementation
 
-**Implementation**: `canViewData` flag added to `PublishingRight` model.
+**Implementation**: `canViewData` flag on the unified `AccessGrant` model.
 
 **Use Cases**:
 
-1. **Organization Managing Subscriptions** - Manages subscriber universe and delegation rights
-   - Configuration: `canManageSubscriptions=true, canApproveDelegations=true, canViewData=false`
-   - Result: Can manage subscriptions and approve delegations, but cannot view actual data envelopes
+1. **Delegate Managing Subscriptions** - Manages subscriber universe and delegation rights
+   - Configuration: `canPublish=true, canManageSubscriptions=true, canApproveDelegations=true, canViewData=false`
+   - Result: Can manage subscriptions and approve grants, but cannot view actual data envelopes
    - Rationale: Manages access control but doesn't need to see the data itself
 
-2. **Organization with View-Only Access** - Needs to audit/review data
-   - Configuration: `canViewData=true` (no other flags)
+2. **Delegate with View-Only Access** - Needs to audit/review data
+   - Configuration: `canViewData=true` (no publishing or management flags)
    - Result: Can view all data envelopes for auditing, but cannot publish or manage subscriptions
    - Rationale: Needs read-only access to verify data integrity
 
-3. **Organization Publishing Data** - Publishes data
-   - Configuration: `canViewData=true` (default)
+3. **Delegate Publishing Data** - Publishes data
+   - Configuration: `canPublish=true, canViewData=true` (typical GP Grant)
    - Result: Can publish and view data they publish
    - Rationale: Needs to see what they've published
 
 **How It Works**:
-- `canViewData` defaults to `true` for backward compatibility
-- Organizations with Publishing Rights can only view envelopes for assets where they have `PublishingRight` with `canViewData=true`
-- Asset Managers can grant granular permissions by setting appropriate flags
+- `canViewData` defaults to `true` for typical grants
+- Delegates can only view envelopes for assets where they have an `AccessGrant` with `canViewData=true`
+- Asset Managers can grant granular permissions by setting appropriate capability flags
 
-**Limited Partner Delegation for Subscription Management**:
-- Limited Partners can delegate subscription management rights to portfolio managers
-- Portfolio managers can accept/request subscriptions on behalf of the subscriber
-- Delegation requires subscriber approval (similar to view-access delegations)
-- This allows portfolio managers to handle subscription workflows without the subscriber being directly involved
+**Limited Partner Grants for Subscription Management**:
+- Limited Partners can grant subscription management rights to portfolio managers
+- Portfolio managers can accept/request subscriptions on behalf of the LP
+- LP Grants may require GP approval if the asset requires it
+- This allows portfolio managers to handle subscription workflows without the LP being directly involved
 
 ---
 
@@ -476,20 +476,22 @@ These two flags serve distinct purposes in the subscription workflow:
 
 **What's Working Well**:
 - ✅ Core permission model is clean and matches requirements
-- ✅ Publishing rights delegation works correctly
-- ✅ Subscription management delegation (from Asset Manager) works correctly
-- ✅ LP delegation with approval works correctly
+- ✅ Unified AccessGrant model for both GP and LP grants
+- ✅ Publishing rights delegation (GP Grants) works correctly
+- ✅ Subscription management delegation works correctly
+- ✅ LP data access delegation (LP Grants) with approval works correctly
 - ✅ Asset creation with approval requirements
-- ✅ Organization approval of delegations (via Publishing Rights)
+- ✅ Delegate approval of LP grants (via GP Grant with `canApproveDelegations`)
 - ✅ Granular view access control via `canViewData` flag
-  - Organizations can manage subscriptions without viewing data (`canViewData = false`)
-  - Organizations can have view-only access for audit/compliance (`canViewData = true`, no other flags)
-  - Organizations can view data they publish (`canViewData = true`, default)
+  - Delegates can manage subscriptions without viewing data (`canViewData = false`)
+  - Delegates can have view-only access for audit/compliance (`canViewData = true`, no other flags)
+  - Delegates can view data they publish (`canPublish = true, canViewData = true`)
 
 **Status**:
 - ✅ All core features are implemented
+- ✅ Unified AccessGrant API endpoints
 - ✅ Asset creation API with approval requirements
-- ✅ Organization approval of delegations (via Publishing Rights)
+- ✅ Delegate approval of LP grants
 - ✅ Subscription acceptance/decline endpoints
 - ✅ Subscription expiration checking
 - ✅ Status transition validation
@@ -497,9 +499,9 @@ These two flags serve distinct purposes in the subscription workflow:
 **Key Design Decisions**:
 - Subscriptions separate from data access (subscriptions define who CAN access, envelopes are the delivery)
 - Data sent before subscription acceptance becomes visible after acceptance (incentivizes onboarding)
-- Delegation approval can be delegated via Publishing Rights (granular control)
+- LP Grant approval can be delegated via GP Grants (granular control)
 - All data is immutable (revoked subscriptions hide data but don't delete it)
-- Rights-based model: Permissions described in terms of rights and actions, not specific organizational roles
-- Limited Partners can delegate subscription management to portfolio managers via `Delegation.canManageSubscriptions`
+- Unified AccessGrant model: Permissions described in terms of capability flags, not separate models
+- Limited Partners can grant subscription management to portfolio managers via `AccessGrant.canManageSubscriptions`
 - Subscription management (`canManageSubscriptions`) and subscription approval (`canApproveSubscriptions`) are separate concerns
-- Delegation chaining is not supported (delegates cannot create delegations for their managed subscribers)
+- Grant chaining is not supported (delegates cannot create grants for their managed grantors)

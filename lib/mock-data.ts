@@ -670,13 +670,13 @@ export const mockPublishingRights: PublishingRight[] = [
   { id: 'PR-001', assetOwnerId: 2001, publisherId: 1001, assetScope: [9001, 9002, 9101], canManageSubscriptions: true, canApproveSubscriptions: true, canApproveDelegations: true, canViewData: true, grantedAt: '2024-01-01T10:00:00.000Z', status: 'Active' },
   // Andreessen Horowitz (2003) -> Carta Fund Admin (1003) for a16z assets
   { id: 'PR-002', assetOwnerId: 2003, publisherId: 1003, assetScope: [9005, 9006, 9051, 9103], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-01-15T10:00:00.000Z', status: 'Active' },
-  // Benchmark (2004) -> Alter Domus (1002)
+  // Benchmark (2004) -> Aduro Advisors (1002)
   { id: 'PR-003', assetOwnerId: 2004, publisherId: 1002, assetScope: [9007, 9052], canManageSubscriptions: true, canApproveSubscriptions: false, canApproveDelegations: true, canViewData: true, grantedAt: '2024-02-01T10:00:00.000Z', status: 'Active' },
-  // Insight Partners (2005) -> Alter Domus (1002)
+  // Insight Partners (2005) -> Aduro Advisors (1002)
   { id: 'PR-004', assetOwnerId: 2005, publisherId: 1002, assetScope: [9008, 9053], canManageSubscriptions: false, canApproveSubscriptions: true, canApproveDelegations: false, canViewData: true, grantedAt: '2024-02-15T10:00:00.000Z', status: 'Active' },
   // Thoma Bravo (2006) -> Genii Admin Services (1001)
   { id: 'PR-005', assetOwnerId: 2006, publisherId: 1001, assetScope: [9009, 9054], canManageSubscriptions: true, canApproveSubscriptions: true, canApproveDelegations: false, canViewData: true, grantedAt: '2024-03-01T10:00:00.000Z', status: 'Active' },
-  // Vista Equity (2007) -> Alter Domus (1002)
+  // Vista Equity (2007) -> Aduro Advisors (1002)
   { id: 'PR-006', assetOwnerId: 2007, publisherId: 1002, assetScope: [9010, 9055], canManageSubscriptions: false, canApproveSubscriptions: false, canApproveDelegations: false, canViewData: true, grantedAt: '2024-03-15T10:00:00.000Z', status: 'Active' },
   // Blackstone (2008) -> SS&C Technologies (1004)
   { id: 'PR-007', assetOwnerId: 2008, publisherId: 1004, assetScope: [9011, 9012, 9104], canManageSubscriptions: true, canApproveSubscriptions: true, canApproveDelegations: true, canViewData: true, grantedAt: '2024-04-01T10:00:00.000Z', status: 'Active' },
