@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatDateTime } from '@/lib/utils'
 import {
   ChevronDown,
   ChevronUp,
@@ -171,17 +172,6 @@ export function EnvelopeCard({ envelope, onMarkAsRead, showReadStatus = false }:
       </CardContent>
     </Card>
   )
-}
-
-// Helper function to format datetime (client-side compatible)
-function formatDateTime(date: string): string {
-  return new Date(date).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 // Helper function for short hash display

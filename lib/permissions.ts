@@ -188,15 +188,23 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
   })
   subscriptions.forEach((s) => accessibleAssetIds.add(s.assetId))
 
-  // Assets where org has active grant
+  // Assets where org has active grant (either view or publish)
   const grants = await prisma.accessGrant.findMany({
     where: {
       granteeId: orgId,
       status: 'ACTIVE',
-      canViewData: true,
       OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
+        { canViewData: true },
+        { canPublish: true },
+        { canManageSubscriptions: true },
+      ],
+      AND: [
+        {
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
       ],
     },
     select: { assetId: true },
@@ -204,6 +212,38 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
   grants.forEach((g) => {
     if (g.assetId) accessibleAssetIds.add(g.assetId)
   })
+  
+  // Also check for global grants (assetId = null)
+  const globalGrants = await prisma.accessGrant.findMany({
+    where: {
+      granteeId: orgId,
+      status: 'ACTIVE',
+      assetId: null,
+      OR: [
+        { canViewData: true },
+        { canPublish: true },
+        { canManageSubscriptions: true },
+      ],
+      AND: [
+        {
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
+      ],
+    },
+    select: { grantorId: true },
+  })
+  
+  // For global grants, get all assets managed by the grantor
+  for (const grant of globalGrants) {
+    const grantorAssets = await prisma.asset.findMany({
+      where: { managerId: grant.grantorId },
+      select: { id: true },
+    })
+    grantorAssets.forEach((a) => accessibleAssetIds.add(a.id))
+  }
 
   return Array.from(accessibleAssetIds)
 }

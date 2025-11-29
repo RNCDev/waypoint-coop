@@ -57,7 +57,7 @@ export default function ComposerPage() {
   useEffect(() => {
     async function fetchAssets() {
       try {
-        const response = await fetch('/api/assets')
+        const response = await fetch(`/api/assets?orgId=${currentPersona.organizationId}`)
         const data = await response.json()
         setAssets(data)
       } catch (error) {
@@ -65,7 +65,7 @@ export default function ComposerPage() {
       }
     }
     fetchAssets()
-  }, [])
+  }, [currentPersona.organizationId])
 
   // Parse input when it changes
   useEffect(() => {

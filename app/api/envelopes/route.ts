@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const publisherId = searchParams.get('publisherId')
     const type = searchParams.get('type')
     const subscriberId = searchParams.get('subscriberId') // For LP ledger view
+    const userId = searchParams.get('userId') // For read receipt checking
 
     let assetIds: string[] = []
 
@@ -67,6 +68,18 @@ export async function GET(request: NextRequest) {
             version: true,
           },
         },
+        readReceipts: userId
+          ? {
+              where: {
+                userId,
+              },
+              select: {
+                id: true,
+                userId: true,
+                readAt: true,
+              },
+            }
+          : false,
         _count: {
           select: {
             readReceipts: true,

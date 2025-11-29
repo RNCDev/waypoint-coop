@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { AssetType } from '@prisma/client'
+import { getAccessibleAssets } from '@/lib/permissions'
 
 // GET /api/assets - List all assets
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const managerId = searchParams.get('managerId')
+    const orgId = searchParams.get('orgId') // For filtering by organization permissions
     const type = searchParams.get('type') as AssetType | null
+
+    // If orgId is provided, filter by accessible assets
+    let accessibleAssetIds: string[] | null = null
+    if (orgId) {
+      accessibleAssetIds = await getAccessibleAssets(orgId)
+    }
 
     const assets = await prisma.asset.findMany({
       where: {
         ...(managerId && { managerId }),
         ...(type && { type }),
+        ...(accessibleAssetIds && { id: { in: accessibleAssetIds } }),
       },
       include: {
         manager: {

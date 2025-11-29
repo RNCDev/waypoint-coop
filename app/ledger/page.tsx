@@ -26,7 +26,7 @@ export default function LedgerPage() {
     async function fetchEnvelopes() {
       try {
         const response = await fetch(
-          `/api/envelopes?subscriberId=${currentPersona.organizationId}`
+          `/api/envelopes?subscriberId=${currentPersona.organizationId}&userId=${currentPersona.userId}`
         )
         const data = await response.json()
 
@@ -43,7 +43,8 @@ export default function LedgerPage() {
           assetId: env.assetId,
           assetName: env.asset?.name || 'Unknown',
           createdAt: env.createdAt,
-          isRead: readEnvelopes.has(env.id),
+          // Check if user has read receipt for this envelope
+          isRead: env.readReceipts && env.readReceipts.length > 0 ? true : readEnvelopes.has(env.id),
         }))
 
         setEnvelopes(transformed)
@@ -55,7 +56,7 @@ export default function LedgerPage() {
     }
 
     fetchEnvelopes()
-  }, [currentPersona.organizationId, readEnvelopes])
+  }, [currentPersona.organizationId, currentPersona.userId])
 
   const handleMarkAsRead = async (envelopeId: string) => {
     try {
