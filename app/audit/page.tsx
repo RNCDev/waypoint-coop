@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ScrollText, Filter } from 'lucide-react'
+import { Pagination } from '@/components/ui/pagination'
 
 interface AuditLog {
   id: string
@@ -52,18 +53,22 @@ const ACTION_COLORS: Record<string, string> = {
   VIEW: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 }
 
+const PAGE_SIZE = 50
+
 export default function AuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState<string>('all')
   const [entityFilter, setEntityFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     async function fetchLogs() {
       setLoading(true)
       try {
-        let url = '/api/audit?limit=100'
+        const offset = (currentPage - 1) * PAGE_SIZE
+        let url = `/api/audit?limit=${PAGE_SIZE}&offset=${offset}`
         if (actionFilter !== 'all') url += `&action=${actionFilter}`
         if (entityFilter !== 'all') url += `&entityType=${entityFilter}`
 
@@ -80,7 +85,7 @@ export default function AuditPage() {
     }
 
     fetchLogs()
-  }, [actionFilter, entityFilter])
+  }, [actionFilter, entityFilter, currentPage])
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('en-US', {
@@ -130,7 +135,10 @@ export default function AuditPage() {
         >
           <Filter className="w-4 h-4 text-muted-foreground" />
 
-          <Select value={actionFilter} onValueChange={setActionFilter}>
+          <Select value={actionFilter} onValueChange={(value) => {
+            setActionFilter(value)
+            setCurrentPage(1)
+          }}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Action" />
             </SelectTrigger>
@@ -144,7 +152,10 @@ export default function AuditPage() {
             </SelectContent>
           </Select>
 
-          <Select value={entityFilter} onValueChange={setEntityFilter}>
+          <Select value={entityFilter} onValueChange={(value) => {
+            setEntityFilter(value)
+            setCurrentPage(1)
+          }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Entity Type" />
             </SelectTrigger>
@@ -159,7 +170,7 @@ export default function AuditPage() {
           </Select>
 
           <span className="text-sm text-muted-foreground">
-            Showing {logs.length} of {total} events
+            Showing {((currentPage - 1) * PAGE_SIZE + 1).toLocaleString()} to {Math.min(currentPage * PAGE_SIZE, total).toLocaleString()} of {total.toLocaleString()} events
           </span>
         </motion.div>
 
@@ -185,69 +196,82 @@ export default function AuditPage() {
                   <p>No audit logs found</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Timestamp</TableHead>
-                        <TableHead>Action</TableHead>
-                        <TableHead>Entity</TableHead>
-                        <TableHead>Actor</TableHead>
-                        <TableHead>Organization</TableHead>
-                        <TableHead>Details</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {logs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell className="font-mono text-xs whitespace-nowrap">
-                            {formatDate(log.createdAt)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={ACTION_COLORS[log.action] || ''}
-                            >
-                              {log.action}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{log.entityType}</span>
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {log.entityId.slice(0, 12)}...
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {log.actor ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Timestamp</TableHead>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Entity</TableHead>
+                          <TableHead>Actor</TableHead>
+                          <TableHead>Organization</TableHead>
+                          <TableHead>Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {logs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-mono text-xs whitespace-nowrap">
+                              {formatDate(log.createdAt)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={ACTION_COLORS[log.action] || ''}
+                              >
+                                {log.action}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex flex-col">
-                                <span>{log.actor.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {log.actor.email}
+                                <span className="font-medium">{log.entityType}</span>
+                                <span className="text-xs text-muted-foreground font-mono">
+                                  {log.entityId.slice(0, 12)}...
                                 </span>
                               </div>
-                            ) : (
-                              <span className="text-muted-foreground">System</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {log.organization?.name || '-'}
-                          </TableCell>
-                          <TableCell className="max-w-[200px]">
-                            {log.details ? (
-                              <code className="text-xs bg-secondary px-2 py-1 rounded block overflow-x-auto">
-                                {JSON.stringify(log.details).slice(0, 50)}...
-                              </code>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </TableCell>
+                            <TableCell>
+                              {log.actor ? (
+                                <div className="flex flex-col">
+                                  <span>{log.actor.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {log.actor.email}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">System</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {log.organization?.name || '-'}
+                            </TableCell>
+                            <TableCell className="max-w-[200px]">
+                              {log.details ? (
+                                <code className="text-xs bg-secondary px-2 py-1 rounded block overflow-x-auto">
+                                  {JSON.stringify(log.details).slice(0, 50)}...
+                                </code>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {Math.ceil(total / PAGE_SIZE) > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(total / PAGE_SIZE)}
+                      onPageChange={setCurrentPage}
+                      pageSize={PAGE_SIZE}
+                      total={total}
+                      showingStart={total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
+                      showingEnd={Math.min(currentPage * PAGE_SIZE, total)}
+                    />
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

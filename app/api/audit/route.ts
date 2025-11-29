@@ -12,16 +12,31 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action')
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+
+    const whereClause: any = {
+      ...(entityType && { entityType }),
+      ...(entityId && { entityId }),
+      ...(organizationId && { organizationId }),
+      ...(actorId && { actorId }),
+      ...(action && { action }),
+    }
+
+    // Add date filtering if provided
+    if (startDate || endDate) {
+      whereClause.createdAt = {}
+      if (startDate) {
+        whereClause.createdAt.gte = new Date(startDate)
+      }
+      if (endDate) {
+        whereClause.createdAt.lte = new Date(endDate)
+      }
+    }
 
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
-        where: {
-          ...(entityType && { entityType }),
-          ...(entityId && { entityId }),
-          ...(organizationId && { organizationId }),
-          ...(actorId && { actorId }),
-          ...(action && { action }),
-        },
+        where: whereClause,
         include: {
           actor: {
             select: {
@@ -43,13 +58,7 @@ export async function GET(request: NextRequest) {
         skip: offset,
       }),
       prisma.auditLog.count({
-        where: {
-          ...(entityType && { entityType }),
-          ...(entityId && { entityId }),
-          ...(organizationId && { organizationId }),
-          ...(actorId && { actorId }),
-          ...(action && { action }),
-        },
+        where: whereClause,
       }),
     ])
 

@@ -118,7 +118,7 @@ export default function IAMPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-4xl font-semibold mb-3 gradient-text">IAM Settings</h1>
+          <h1 className="text-4xl font-semibold mb-3 gradient-text">Identity and Access Management</h1>
           <p className="text-muted-foreground text-base">
             Manage users and roles for {currentPersona.organizationName}
           </p>

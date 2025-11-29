@@ -99,28 +99,30 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
     case OrgType.GP:
       return [
         { label: 'Dashboard', href: '/' },
-        { label: 'Composer', href: '/composer' },
-        { label: 'History', href: '/history' },
+        { label: 'Registry', href: '/registry' },
         { label: 'Subscriptions', href: '/subscriptions' },
         { label: 'Access Grants', href: '/access-grants' },
+        { label: 'Composer', href: '/composer' },
+        { label: 'History', href: '/history' },
         { label: 'IAM', href: '/settings/iam' },
       ]
 
     case OrgType.FUND_ADMIN:
       return [
         { label: 'Dashboard', href: '/' },
+        { label: 'Subscriptions', href: '/subscriptions' },
+        { label: 'Access Grants', href: '/access-grants' },
         { label: 'Composer', href: '/composer' },
         { label: 'History', href: '/history' },
-        { label: 'Subscriptions', href: '/subscriptions' },
         { label: 'IAM', href: '/settings/iam' },
       ]
 
     case OrgType.LP:
       return [
         { label: 'Dashboard', href: '/' },
-        { label: 'Feeds', href: '/feeds' },
-        { label: 'Ledger', href: '/ledger' },
+        { label: 'Subscriptions', href: '/subscriptions' },
         { label: 'Access Grants', href: '/access-grants' },
+        { label: 'History', href: '/history' },
         { label: 'IAM', href: '/settings/iam' },
       ]
 
@@ -129,7 +131,8 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
     case OrgType.TAX_ADVISOR:
       return [
         { label: 'Dashboard', href: '/' },
-        { label: 'Ledger', href: '/ledger' },
+        { label: 'Access Grants', href: '/access-grants' },
+        { label: 'History', href: '/history' },
         { label: 'IAM', href: '/settings/iam' },
       ]
 
@@ -173,7 +176,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
         canViewLedger: true,
         canManageSubscriptions: true,
         canManageGrants: true,
-        canViewRegistry: false,
+        canViewRegistry: true,
         canViewAudit: false,
         canManageIAM: true,
       }

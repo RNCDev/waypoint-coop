@@ -118,6 +118,8 @@
 .gradient-text {
   @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
   font-weight: 600;
+  line-height: 1.3;
+  padding-bottom: 0.1em;
 }
 
 /* =============================================================================

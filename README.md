@@ -126,7 +126,7 @@ waypoint-coop/
 │   ├── feeds/              # LP subscription feeds
 │   ├── subscriptions/      # Subscription management
 │   ├── access-grants/      # Access Grant management
-│   ├── settings/iam/       # IAM settings page
+│   ├── settings/iam/       # Identity and Access Management page
 │   ├── registry/           # Admin entity registry
 │   └── audit/              # Admin audit log
 ├── components/             # React components

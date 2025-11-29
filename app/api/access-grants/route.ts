@@ -9,15 +9,34 @@ export async function GET(request: NextRequest) {
     const grantorId = searchParams.get('grantorId')
     const granteeId = searchParams.get('granteeId')
     const assetId = searchParams.get('assetId')
+    const managerId = searchParams.get('managerId') // For GP to see grants for their assets
     const status = searchParams.get('status')
+    const startDate = searchParams.get('startDate')
+    const countOnly = searchParams.get('countOnly') === 'true'
+
+    const whereClause: any = {}
+    if (grantorId) whereClause.grantorId = grantorId
+    if (granteeId) whereClause.granteeId = granteeId
+    if (assetId) whereClause.assetId = assetId
+    if (managerId) {
+      whereClause.asset = { managerId }
+    }
+    if (status) {
+      whereClause.status = status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED'
+    }
+    if (startDate) {
+      whereClause.createdAt = { gte: new Date(startDate) }
+    }
+
+    if (countOnly) {
+      const count = await prisma.accessGrant.count({
+        where: Object.keys(whereClause).length > 0 ? whereClause : {},
+      })
+      return NextResponse.json({ count })
+    }
 
     const grants = await prisma.accessGrant.findMany({
-      where: {
-        ...(grantorId && { grantorId }),
-        ...(granteeId && { granteeId }),
-        ...(assetId && { assetId }),
-        ...(status && { status: status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED' }),
-      },
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         grantor: true,
         grantee: true,

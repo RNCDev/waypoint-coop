@@ -7,9 +7,25 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') as OrgType | null
+    const startDate = searchParams.get('startDate')
+    const countOnly = searchParams.get('countOnly') === 'true'
+
+    const whereClause: any = {}
+    if (type) whereClause.type = type
+    if (startDate) {
+      whereClause.createdAt = { gte: new Date(startDate) }
+    }
+
+    if (countOnly) {
+      // For count queries, if whereClause is empty, count all records
+      const count = await prisma.organization.count({
+        where: Object.keys(whereClause).length > 0 ? whereClause : {},
+      })
+      return NextResponse.json({ count })
+    }
 
     const organizations = await prisma.organization.findMany({
-      where: type ? { type } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         _count: {
           select: {

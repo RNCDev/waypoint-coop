@@ -25,10 +25,10 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'px-3 py-2 text-sm font-light rounded-md transition-colors',
+                    'px-3 py-2 text-sm font-normal rounded-md transition-colors uppercase tracking-wide',
                     'hover:text-primary',
                     pathname === item.href
-                      ? 'text-primary font-normal'
+                      ? 'text-primary'
                       : 'text-muted-foreground'
                   )}
                 >
@@ -52,10 +52,10 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'px-3 py-1.5 text-sm font-light rounded-md transition-colors whitespace-nowrap',
+                  'px-3 py-1.5 text-sm font-bold rounded-md transition-colors whitespace-nowrap uppercase tracking-wide',
                   'hover:text-primary',
                   pathname === item.href
-                    ? 'text-primary font-normal'
+                    ? 'text-primary'
                     : 'text-muted-foreground'
                 )}
               >

@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/subscriptions/[id] - Get a single subscription
-export async function GET(
+// PATCH /api/subscriptions/[id] - Update subscription status
+export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { status } = await request.json()
+
+    if (!status || !['ACTIVE', 'PENDING', 'CLOSED'].includes(status)) {
+      return NextResponse.json(
+        { error: 'Valid status (ACTIVE, PENDING, CLOSED) is required' },
+        { status: 400 }
+      )
+    }
 
     const subscription = await prisma.subscription.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: {
         asset: {
           include: {
@@ -28,35 +35,15 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(subscription)
-  } catch (error) {
-    console.error('Error fetching subscription:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch subscription' },
-      { status: 500 }
-    )
-  }
-}
-
-// PUT /api/subscriptions/[id] - Update a subscription
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params
-    const body = await request.json()
-    const { status, accessLevel, commitment } = body
-
-    const subscription = await prisma.subscription.update({
-      where: { id },
-      data: {
-        ...(status && { status }),
-        ...(accessLevel && { accessLevel }),
-        ...(commitment !== undefined && { commitment }),
-      },
+    const updated = await prisma.subscription.update({
+      where: { id: params.id },
+      data: { status: status as 'ACTIVE' | 'PENDING' | 'CLOSED' },
       include: {
-        asset: true,
+        asset: {
+          include: {
+            manager: true,
+          },
+        },
         subscriber: true,
       },
     })
@@ -64,15 +51,20 @@ export async function PUT(
     // Create audit log
     await prisma.auditLog.create({
       data: {
-        action: 'UPDATE',
+        action: status === 'ACTIVE' ? 'APPROVE' : status === 'CLOSED' ? 'REVOKE' : 'UPDATE',
         entityType: 'Subscription',
-        entityId: subscription.id,
-        organizationId: subscription.subscriberId,
-        details: body,
+        entityId: updated.id,
+        organizationId: subscription.asset.managerId,
+        details: {
+          previousStatus: subscription.status,
+          newStatus: status,
+          asset: subscription.asset.name,
+          subscriber: subscription.subscriber.name,
+        },
       },
     })
 
-    return NextResponse.json(subscription)
+    return NextResponse.json(updated)
   } catch (error) {
     console.error('Error updating subscription:', error)
     return NextResponse.json(
@@ -82,21 +74,25 @@ export async function PUT(
   }
 }
 
-// DELETE /api/subscriptions/[id] - Delete a subscription
+// DELETE /api/subscriptions/[id] - Delete subscription
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
-
     const subscription = await prisma.subscription.findUnique({
-      where: { id },
-      select: { subscriberId: true },
+      where: { id: params.id },
     })
 
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'Subscription not found' },
+        { status: 404 }
+      )
+    }
+
     await prisma.subscription.delete({
-      where: { id },
+      where: { id: params.id },
     })
 
     // Create audit log
@@ -104,9 +100,11 @@ export async function DELETE(
       data: {
         action: 'DELETE',
         entityType: 'Subscription',
-        entityId: id,
-        organizationId: subscription?.subscriberId,
-        details: { deleted: true },
+        entityId: params.id,
+        organizationId: subscription.subscriberId,
+        details: {
+          assetId: subscription.assetId,
+        },
       },
     })
 
@@ -119,4 +117,3 @@ export async function DELETE(
     )
   }
 }
-

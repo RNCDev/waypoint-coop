@@ -9,11 +9,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const assetId = searchParams.get('assetId')
     const publisherId = searchParams.get('publisherId')
+    const managerId = searchParams.get('managerId') // For GP to see envelopes for their assets
     const type = searchParams.get('type')
     const subscriberId = searchParams.get('subscriberId') // For LP ledger view
     const userId = searchParams.get('userId') // For read receipt checking
+    const startDate = searchParams.get('startDate')
+    const countOnly = searchParams.get('countOnly') === 'true'
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const offset = parseInt(searchParams.get('offset') || '0')
 
     let assetIds: string[] = []
+
+    // If managerId is provided, get assets managed by that organization
+    if (managerId) {
+      const managedAssets = await prisma.asset.findMany({
+        where: {
+          managerId,
+        },
+        select: { id: true },
+      })
+      assetIds = managedAssets.map((a) => a.id)
+    }
 
     // If subscriberId is provided, get assets they have access to
     if (subscriberId) {
@@ -34,63 +50,91 @@ export async function GET(request: NextRequest) {
         select: { assetId: true },
       })
 
-      assetIds = [
+      const subscriberAssetIds = [
         ...subscriptions.map((s) => s.assetId),
         ...grants.filter((g) => g.assetId).map((g) => g.assetId as string),
       ]
+      
+      // Merge with manager asset IDs if both are present
+      if (assetIds.length > 0) {
+        assetIds = assetIds.filter((id) => subscriberAssetIds.includes(id))
+      } else {
+        assetIds = subscriberAssetIds
+      }
     }
 
-    const envelopes = await prisma.envelope.findMany({
-      where: {
-        ...(assetId && { assetId }),
-        ...(publisherId && { publisherId }),
-        ...(type && { type: type as any }),
-        ...(subscriberId && assetIds.length > 0 && { assetId: { in: assetIds } }),
-      },
-      include: {
-        publisher: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        asset: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            version: true,
-          },
-        },
-        readReceipts: userId
-          ? {
-              where: {
-                userId,
-              },
-              select: {
-                id: true,
-                userId: true,
-                readAt: true,
-              },
-            }
-          : false,
-        _count: {
-          select: {
-            readReceipts: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50, // Limit for performance
-    })
+    const whereClause: any = {}
+    if (assetId) whereClause.assetId = assetId
+    if (publisherId) whereClause.publisherId = publisherId
+    if (type) whereClause.type = type as any
+    if ((managerId || subscriberId) && assetIds.length > 0) {
+      whereClause.assetId = { in: assetIds }
+    }
+    if (startDate) {
+      whereClause.createdAt = { gte: new Date(startDate) }
+    }
 
-    return NextResponse.json(envelopes)
+    if (countOnly) {
+      const count = await prisma.envelope.count({ where: whereClause })
+      return NextResponse.json({ count })
+    }
+
+    const [envelopes, total] = await Promise.all([
+      prisma.envelope.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        include: {
+          publisher: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+          asset: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
+          parent: {
+            select: {
+              id: true,
+              version: true,
+            },
+          },
+          readReceipts: userId
+            ? {
+                where: {
+                  userId,
+                },
+                select: {
+                  id: true,
+                  userId: true,
+                  readAt: true,
+                },
+              }
+            : false,
+          _count: {
+            select: {
+              readReceipts: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.envelope.count({ where: Object.keys(whereClause).length > 0 ? whereClause : undefined }),
+    ])
+
+    return NextResponse.json({
+      envelopes,
+      total,
+      limit,
+      offset,
+      hasMore: offset + envelopes.length < total,
+    })
   } catch (error) {
     console.error('Error fetching envelopes:', error)
     return NextResponse.json(

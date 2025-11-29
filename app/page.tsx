@@ -3,88 +3,264 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Navbar } from '@/components/shared/navbar'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { useAuthStore } from '@/store/auth-store'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Building2,
-  FileText,
-  Shield,
-  Users,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-} from 'lucide-react'
-import Link from 'next/link'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useAuthStore } from '@/store/auth-store'
+import { Activity } from 'lucide-react'
 
-interface DashboardStats {
-  organizations: number
-  assets: number
-  activeGrants: number
-  pendingGrants: number
-  envelopes: number
-  subscriptions: number
+interface ActivityMetrics {
+  organizations: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
+  assets: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
+  envelopes: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
 }
 
 export default function DashboardPage() {
-  const { currentPersona, permissions, navItems } = useAuthStore()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const { currentPersona } = useAuthStore()
+  const [activity, setActivity] = useState<ActivityMetrics | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       try {
-        const [orgsRes, assetsRes, grantsRes, envelopesRes, subscriptionsRes] = await Promise.all([
-          fetch('/api/organizations'),
-          fetch('/api/assets'),
-          fetch('/api/access-grants'),
-          fetch('/api/envelopes'),
-          fetch('/api/subscriptions'),
-        ])
+        // Fetch activity metrics (only for Platform Admin)
+        if (currentPersona.organizationType === 'PLATFORM_ADMIN') {
+          const now = new Date()
+          const daily = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          const weekly = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          const monthly = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          const annual = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
 
-        const orgs = orgsRes.ok ? await orgsRes.json() : []
-        const assets = assetsRes.ok ? await assetsRes.json() : []
-        const grants = grantsRes.ok ? await grantsRes.json() : []
-        const envelopes = envelopesRes.ok ? await envelopesRes.json() : []
-        const subscriptions = subscriptionsRes.ok ? await subscriptionsRes.json() : []
+          // Fetch organizations counts
+          const [orgsDaily, orgsWeekly, orgsMonthly, orgsAnnual, orgsInception] = await Promise.all([
+            fetch(`/api/organizations?countOnly=true&startDate=${daily.toISOString()}`),
+            fetch(`/api/organizations?countOnly=true&startDate=${weekly.toISOString()}`),
+            fetch(`/api/organizations?countOnly=true&startDate=${monthly.toISOString()}`),
+            fetch(`/api/organizations?countOnly=true&startDate=${annual.toISOString()}`),
+            fetch(`/api/organizations?countOnly=true`),
+          ])
 
-        // Ensure we have arrays
-        const orgsArray = Array.isArray(orgs) ? orgs : []
-        const assetsArray = Array.isArray(assets) ? assets : []
-        const grantsArray = Array.isArray(grants) ? grants : []
-        const envelopesArray = Array.isArray(envelopes) ? envelopes : []
-        const subscriptionsArray = Array.isArray(subscriptions) ? subscriptions : []
+          // Fetch assets counts
+          const [assetsDaily, assetsWeekly, assetsMonthly, assetsAnnual, assetsInception] = await Promise.all([
+            fetch(`/api/assets?countOnly=true&startDate=${daily.toISOString()}`),
+            fetch(`/api/assets?countOnly=true&startDate=${weekly.toISOString()}`),
+            fetch(`/api/assets?countOnly=true&startDate=${monthly.toISOString()}`),
+            fetch(`/api/assets?countOnly=true&startDate=${annual.toISOString()}`),
+            fetch(`/api/assets?countOnly=true`),
+          ])
 
-        setStats({
-          organizations: orgsArray.length,
-          assets: assetsArray.length,
-          activeGrants: grantsArray.filter((g: any) => g.status === 'ACTIVE').length,
-          pendingGrants: grantsArray.filter((g: any) => g.status === 'PENDING_APPROVAL').length,
-          envelopes: envelopesArray.length,
-          subscriptions: subscriptionsArray.length,
-        })
+          // Fetch envelopes counts (using audit logs for PUBLISH action)
+          const [envelopesDaily, envelopesWeekly, envelopesMonthly, envelopesAnnual, envelopesInception] = await Promise.all([
+            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${daily.toISOString()}`),
+            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${weekly.toISOString()}`),
+            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${monthly.toISOString()}`),
+            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${annual.toISOString()}`),
+            fetch(`/api/audit?entityType=Envelope&action=PUBLISH`),
+          ])
+
+          const [
+            orgsDailyData,
+            orgsWeeklyData,
+            orgsMonthlyData,
+            orgsAnnualData,
+            orgsInceptionData,
+            assetsDailyData,
+            assetsWeeklyData,
+            assetsMonthlyData,
+            assetsAnnualData,
+            assetsInceptionData,
+            envelopesDailyData,
+            envelopesWeeklyData,
+            envelopesMonthlyData,
+            envelopesAnnualData,
+            envelopesInceptionData,
+          ] = await Promise.all([
+            orgsDaily.json(),
+            orgsWeekly.json(),
+            orgsMonthly.json(),
+            orgsAnnual.json(),
+            orgsInception.json(),
+            assetsDaily.json(),
+            assetsWeekly.json(),
+            assetsMonthly.json(),
+            assetsAnnual.json(),
+            assetsInception.json(),
+            envelopesDaily.json(),
+            envelopesWeekly.json(),
+            envelopesMonthly.json(),
+            envelopesAnnual.json(),
+            envelopesInception.json(),
+          ])
+
+          setActivity({
+            organizations: {
+              daily: orgsDailyData.count || 0,
+              weekly: orgsWeeklyData.count || 0,
+              monthly: orgsMonthlyData.count || 0,
+              annual: orgsAnnualData.count || 0,
+              inception: orgsInceptionData.count || 0,
+            },
+            assets: {
+              daily: assetsDailyData.count || 0,
+              weekly: assetsWeeklyData.count || 0,
+              monthly: assetsMonthlyData.count || 0,
+              annual: assetsAnnualData.count || 0,
+              inception: assetsInceptionData.count || 0,
+            },
+            envelopes: {
+              daily: envelopesDailyData.total || 0,
+              weekly: envelopesWeeklyData.total || 0,
+              monthly: envelopesMonthlyData.total || 0,
+              annual: envelopesAnnualData.total || 0,
+              inception: envelopesInceptionData.total || 0,
+            },
+          })
+        }
       } catch (error) {
-        console.error('Error fetching stats:', error)
-        // Set empty stats on error
-        setStats({
-          organizations: 0,
-          assets: 0,
-          activeGrants: 0,
-          pendingGrants: 0,
-          envelopes: 0,
-          subscriptions: 0,
+        console.error('Error fetching data:', error)
+        setActivity({
+          organizations: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
+          assets: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
+          envelopes: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
         })
       } finally {
         setLoading(false)
       }
     }
 
-    fetchStats()
-  }, [])
+    fetchData()
+  }, [currentPersona.organizationType])
 
-  const quickActions = navItems.slice(1) // Skip Dashboard
+  // Show admin dashboard for Platform Admin
+  if (currentPersona.organizationType === 'PLATFORM_ADMIN') {
+    return (
+      <div className="flex-1 bg-background">
+        <Navbar />
 
+        <main className="container mx-auto px-4 py-12 max-w-7xl">
+          {/* Header */}
+          <motion.div
+            className="mb-12"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <h1 className="text-4xl font-semibold mb-3 gradient-text">
+              Welcome back, {currentPersona.userName}
+            </h1>
+            <p className="text-muted-foreground text-base">
+              Platform activity monitoring
+            </p>
+          </motion.div>
+
+          {/* Activity Table */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <Card className="border-border/50">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl">Activity Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="empty-state py-12">
+                    <p className="text-lg">Loading...</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[250px] text-base font-semibold py-4">Category</TableHead>
+                          <TableHead className="text-right text-base font-semibold py-4">Daily</TableHead>
+                          <TableHead className="text-right text-base font-semibold py-4">Weekly</TableHead>
+                          <TableHead className="text-right text-base font-semibold py-4">Monthly</TableHead>
+                          <TableHead className="text-right text-base font-semibold py-4">Annual</TableHead>
+                          <TableHead className="text-right text-base font-semibold py-4">Since Inception</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="py-5">
+                            <span className="text-base font-medium">Organizations</span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.organizations.daily ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.organizations.weekly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.organizations.monthly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.organizations.annual ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.organizations.inception ?? '-'}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="py-5">
+                            <span className="text-base font-medium">Assets</span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.assets.daily ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.assets.weekly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.assets.monthly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.assets.annual ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.assets.inception ?? '-'}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="py-5">
+                            <span className="text-base font-medium">Envelopes</span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.envelopes.daily ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.envelopes.weekly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.envelopes.monthly ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.envelopes.annual ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-base py-5">
+                            {activity?.envelopes.inception ?? '-'}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </main>
+      </div>
+    )
+  }
+
+  // Default dashboard for other personas
   return (
     <div className="flex-1 bg-background">
       <Navbar />
@@ -104,126 +280,7 @@ export default function DashboardPage() {
             {currentPersona.organizationName}
           </p>
         </motion.div>
-
-        {/* Stats Grid */}
-        <motion.div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <StatCard
-            icon={<Building2 className="w-4 h-4" />}
-            label="Organizations"
-            value={stats?.organizations ?? '-'}
-            loading={loading}
-          />
-          <StatCard
-            icon={<FileText className="w-4 h-4" />}
-            label="Assets"
-            value={stats?.assets ?? '-'}
-            loading={loading}
-          />
-          <StatCard
-            icon={<Shield className="w-4 h-4" />}
-            label="Active Grants"
-            value={stats?.activeGrants ?? '-'}
-            loading={loading}
-            color="text-green-400"
-          />
-          <StatCard
-            icon={<Clock className="w-4 h-4" />}
-            label="Pending"
-            value={stats?.pendingGrants ?? '-'}
-            loading={loading}
-            color="text-yellow-400"
-          />
-          <StatCard
-            icon={<TrendingUp className="w-4 h-4" />}
-            label="Envelopes"
-            value={stats?.envelopes ?? '-'}
-            loading={loading}
-          />
-          <StatCard
-            icon={<Users className="w-4 h-4" />}
-            label="Subscriptions"
-            value={stats?.subscriptions ?? '-'}
-            loading={loading}
-          />
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <h2 className="text-xl font-semibold mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {quickActions.map((action) => (
-              <Link key={action.href} href={action.href}>
-                <Card className="card-interactive h-full border-border/50 hover:border-border transition-colors">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-normal">{action.label}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {getActionDescription(action.label)}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
       </main>
     </div>
   )
 }
-
-function StatCard({
-  icon,
-  label,
-  value,
-  loading,
-  color = 'text-primary',
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number | string
-  loading: boolean
-  color?: string
-}) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="pt-6 pb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <span className={color}>{icon}</span>
-          <span className="text-xs text-muted-foreground font-light">{label}</span>
-        </div>
-        <div className="text-2xl font-semibold">
-          {loading ? (
-            <span className="animate-pulse text-muted-foreground">—</span>
-          ) : (
-            value
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-
-function getActionDescription(label: string): string {
-  const descriptions: Record<string, string> = {
-    Composer: 'Create and publish data packets to your fund subscribers',
-    History: 'View all published envelopes and their versions',
-    Ledger: 'Chronological feed of data packets with read tracking',
-    Feeds: 'View data from your subscribed funds',
-    Subscriptions: 'Manage LP subscriptions to your funds',
-    'Access Grants': 'Delegate capabilities to service providers',
-    Registry: 'Manage organizations and users in the platform',
-    'Audit Log': 'View complete audit trail of all actions',
-    IAM: 'Manage users and roles within your organization',
-  }
-  return descriptions[label] || 'Navigate to this section'
-}
-

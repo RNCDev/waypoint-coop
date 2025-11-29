@@ -7,24 +7,58 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const assetId = searchParams.get('assetId')
     const subscriberId = searchParams.get('subscriberId')
+    const managerId = searchParams.get('managerId') // For GP to see subscriptions to their assets
+    const startDate = searchParams.get('startDate')
+    const status = searchParams.get('status')
+    const countOnly = searchParams.get('countOnly') === 'true'
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const offset = parseInt(searchParams.get('offset') || '0')
 
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        ...(assetId && { assetId }),
-        ...(subscriberId && { subscriberId }),
-      },
-      include: {
-        asset: {
-          include: {
-            manager: true,
+    const whereClause: any = {}
+    if (assetId) whereClause.assetId = assetId
+    if (subscriberId) whereClause.subscriberId = subscriberId
+    if (status) whereClause.status = status
+    if (managerId) {
+      whereClause.asset = { managerId }
+    }
+    if (startDate) {
+      whereClause.createdAt = { gte: new Date(startDate) }
+    }
+
+    if (countOnly) {
+      const count = await prisma.subscription.count({
+        where: Object.keys(whereClause).length > 0 ? whereClause : {},
+      })
+      return NextResponse.json({ count })
+    }
+
+    const [subscriptions, total] = await Promise.all([
+      prisma.subscription.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        include: {
+          asset: {
+            include: {
+              manager: true,
+            },
           },
+          subscriber: true,
         },
-        subscriber: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.subscription.count({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+      }),
+    ])
 
-    return NextResponse.json(subscriptions)
+    return NextResponse.json({
+      subscriptions,
+      total,
+      limit,
+      offset,
+      hasMore: offset + subscriptions.length < total,
+    })
   } catch (error) {
     console.error('Error fetching subscriptions:', error)
     return NextResponse.json(

@@ -125,7 +125,7 @@ waypoint-coop/
 │   ├── access-grants/            # Access Grant management
 │   ├── registry/                 # Admin: Organization and User registry
 │   ├── audit/                    # Admin: Global audit log
-│   └── settings/iam/             # Organization IAM settings
+│   └── settings/iam/             # Organization Identity and Access Management
 │
 ├── components/
 │   ├── ui/                       # shadcn/ui components

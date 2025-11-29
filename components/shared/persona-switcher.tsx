@@ -9,9 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, User, Building2, Shield } from 'lucide-react'
+import { ChevronDown, User } from 'lucide-react'
 
 const orgTypeColors: Record<string, string> = {
   PLATFORM_ADMIN: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -45,10 +44,7 @@ export function PersonaSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 bg-card border-border/50 hover:bg-card hover:border-border"
-        >
+        <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
               <User className="w-3.5 h-3.5 text-primary" />
@@ -61,7 +57,7 @@ export function PersonaSwitcher() {
             </div>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-        </Button>
+        </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-72">

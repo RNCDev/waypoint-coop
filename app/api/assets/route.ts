@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const managerId = searchParams.get('managerId')
     const orgId = searchParams.get('orgId') // For filtering by organization permissions
     const type = searchParams.get('type') as AssetType | null
+    const startDate = searchParams.get('startDate')
+    const countOnly = searchParams.get('countOnly') === 'true'
 
     // If orgId is provided, filter by accessible assets
     let accessibleAssetIds: string[] | null = null
@@ -17,12 +19,24 @@ export async function GET(request: NextRequest) {
       accessibleAssetIds = await getAccessibleAssets(orgId)
     }
 
+    const whereClause: any = {}
+    if (managerId) whereClause.managerId = managerId
+    if (type) whereClause.type = type
+    if (accessibleAssetIds) whereClause.id = { in: accessibleAssetIds }
+    if (startDate) {
+      whereClause.createdAt = { gte: new Date(startDate) }
+    }
+
+    if (countOnly) {
+      // For count queries, if whereClause is empty, count all records
+      const count = await prisma.asset.count({
+        where: Object.keys(whereClause).length > 0 ? whereClause : {},
+      })
+      return NextResponse.json({ count })
+    }
+
     const assets = await prisma.asset.findMany({
-      where: {
-        ...(managerId && { managerId }),
-        ...(type && { type }),
-        ...(accessibleAssetIds && { id: { in: accessibleAssetIds } }),
-      },
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         manager: {
           select: {

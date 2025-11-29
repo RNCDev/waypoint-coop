@@ -32,7 +32,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Building2, Users, Plus, Shield } from 'lucide-react'
+import { Building2, Users, Plus, Shield, FolderOpen } from 'lucide-react'
+import { useAuthStore } from '@/store/auth-store'
+import { AssetType } from '@prisma/client'
 
 interface Organization {
   id: string
@@ -60,6 +62,22 @@ interface User {
   }
 }
 
+interface Asset {
+  id: string
+  name: string
+  type: AssetType
+  vintage: number | null
+  createdAt: string
+  manager: {
+    id: string
+    name: string
+  }
+  _count: {
+    subscriptions: number
+    envelopes: number
+  }
+}
+
 const ORG_TYPES = [
   'GP',
   'LP',
@@ -71,11 +89,14 @@ const ORG_TYPES = [
 ]
 
 export default function RegistryPage() {
+  const { currentPersona } = useAuthStore()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [orgDialogOpen, setOrgDialogOpen] = useState(false)
   const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [assetDialogOpen, setAssetDialogOpen] = useState(false)
 
   // Form state
   const [newOrg, setNewOrg] = useState({ name: '', type: '', lei: '' })
@@ -85,22 +106,36 @@ export default function RegistryPage() {
     organizationId: '',
     role: 'MEMBER',
   })
+  const [newAsset, setNewAsset] = useState({
+    name: '',
+    type: 'FUND' as AssetType,
+    vintage: '',
+    requireGPApprovalForDelegations: false,
+  })
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [orgsRes, usersRes] = await Promise.all([
-          fetch('/api/organizations'),
-          fetch('/api/users'),
-        ])
+        if (currentPersona.organizationType === 'GP') {
+          // For GP: fetch their assets
+          const assetsRes = await fetch(`/api/assets?managerId=${currentPersona.organizationId}`)
+          const assetsData = await assetsRes.json()
+          setAssets(assetsData)
+        } else {
+          // For Platform Admin: fetch organizations and users
+          const [orgsRes, usersRes] = await Promise.all([
+            fetch('/api/organizations'),
+            fetch('/api/users'),
+          ])
 
-        const [orgsData, usersData] = await Promise.all([
-          orgsRes.json(),
-          usersRes.json(),
-        ])
+          const [orgsData, usersData] = await Promise.all([
+            orgsRes.json(),
+            usersRes.json(),
+          ])
 
-        setOrganizations(orgsData)
-        setUsers(usersData)
+          setOrganizations(orgsData)
+          setUsers(usersData)
+        }
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
@@ -109,7 +144,7 @@ export default function RegistryPage() {
     }
 
     fetchData()
-  }, [])
+  }, [currentPersona.organizationType, currentPersona.organizationId])
 
   const handleCreateOrg = async () => {
     try {
@@ -149,6 +184,29 @@ export default function RegistryPage() {
     }
   }
 
+  const handleCreateAsset = async () => {
+    try {
+      const response = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newAsset,
+          managerId: currentPersona.organizationId,
+          vintage: newAsset.vintage ? parseInt(newAsset.vintage) : null,
+        }),
+      })
+
+      if (response.ok) {
+        const created = await response.json()
+        setAssets((prev) => [...prev, { ...created, _count: { subscriptions: 0, envelopes: 0 } }])
+        setAssetDialogOpen(false)
+        setNewAsset({ name: '', type: 'FUND', vintage: '', requireGPApprovalForDelegations: false })
+      }
+    } catch (error) {
+      console.error('Error creating asset:', error)
+    }
+  }
+
   const getOrgTypeColor = (type: string) => {
     const colors: Record<string, string> = {
       PLATFORM_ADMIN: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -161,6 +219,189 @@ export default function RegistryPage() {
     }
     return colors[type] || ''
   }
+
+  const getAssetTypeColor = (type: AssetType) => {
+    const colors: Record<string, string> = {
+      FUND: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      PORTFOLIO: 'bg-green-500/20 text-green-400 border-green-500/30',
+      COMPANY: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    }
+    return colors[type] || ''
+  }
+
+  // GP view: Asset management
+  if (currentPersona.organizationType === 'GP') {
+    return (
+      <div className="flex-1 bg-background">
+        <Navbar />
+
+        <main className="container mx-auto px-4 py-12 max-w-7xl">
+          {/* Header */}
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-semibold mb-3 gradient-text">Registry</h1>
+                <p className="text-muted-foreground text-base">
+                  Manage assets for {currentPersona.organizationName}
+                </p>
+              </div>
+              <Dialog open={assetDialogOpen} onOpenChange={setAssetDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Asset
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Asset</DialogTitle>
+                    <DialogDescription>
+                      Add a new asset to your organization
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input
+                        value={newAsset.name}
+                        onChange={(e) =>
+                          setNewAsset((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        placeholder="Asset name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Type</Label>
+                      <Select
+                        value={newAsset.type}
+                        onValueChange={(v) =>
+                          setNewAsset((prev) => ({ ...prev, type: v as AssetType }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="FUND">Fund</SelectItem>
+                          <SelectItem value="PORTFOLIO">Portfolio</SelectItem>
+                          <SelectItem value="COMPANY">Company</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vintage (Optional)</Label>
+                      <Input
+                        type="number"
+                        value={newAsset.vintage}
+                        onChange={(e) =>
+                          setNewAsset((prev) => ({ ...prev, vintage: e.target.value }))
+                        }
+                        placeholder="e.g., 2024"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="requireApproval"
+                        checked={newAsset.requireGPApprovalForDelegations}
+                        onChange={(e) =>
+                          setNewAsset((prev) => ({
+                            ...prev,
+                            requireGPApprovalForDelegations: e.target.checked,
+                          }))
+                        }
+                        className="rounded border-border"
+                      />
+                      <Label htmlFor="requireApproval" className="cursor-pointer">
+                        Require GP approval for delegations
+                      </Label>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={handleCreateAsset}
+                      disabled={!newAsset.name || !newAsset.type}
+                    >
+                      Create Asset
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </motion.div>
+
+          {/* Assets Table */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <Card>
+              <CardContent className="pt-6">
+                {loading ? (
+                  <div className="empty-state">Loading...</div>
+                ) : assets.length === 0 ? (
+                  <div className="empty-state">
+                    <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p>No assets found</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create your first asset to get started
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Vintage</TableHead>
+                          <TableHead>Subscriptions</TableHead>
+                          <TableHead>Envelopes</TableHead>
+                          <TableHead>Created</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assets.map((asset) => (
+                          <TableRow key={asset.id}>
+                            <TableCell className="font-medium">
+                              {asset.name}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={getAssetTypeColor(asset.type)}
+                              >
+                                {asset.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {asset.vintage || '-'}
+                            </TableCell>
+                            <TableCell>{asset._count.subscriptions}</TableCell>
+                            <TableCell>{asset._count.envelopes}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(asset.createdAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </main>
+      </div>
+    )
+  }
+
+  // Platform Admin view: Organizations and Users
 
   return (
     <div className="flex-1 bg-background">
