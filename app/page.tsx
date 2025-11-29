@@ -128,7 +128,7 @@ export default function Home() {
             initial="hidden"
             animate="visible"
           >
-          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, IAM */}
+          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, Access Grants, Ledger, IAM */}
           {currentUser?.role === 'Delegate' && (
             <>
               <ActionCard
@@ -151,6 +151,20 @@ export default function Home() {
                 description="View history of published data packets and envelopes"
                 href="/history"
                 buttonText="View History"
+              />
+              <ActionCard
+                icon={Share2}
+                title="Access Grants"
+                description="View your access grants"
+                href="/access-grants"
+                buttonText="View Grants"
+              />
+              <ActionCard
+                icon={BookOpen}
+                title="Ledger"
+                description="View your delegated data feed"
+                href="/ledger"
+                buttonText="Open Ledger"
               />
               {currentUser?.isOrgAdmin && (
                 <ActionCard
