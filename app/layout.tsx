@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { Footer } from '@/components/shared/footer'
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
@@ -37,9 +38,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} font-sans font-light antialiased min-h-screen`}
+        className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} font-sans font-light antialiased min-h-screen flex flex-col`}
       >
         {children}
+        <Footer />
       </body>
     </html>
   )

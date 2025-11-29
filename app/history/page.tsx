@@ -64,7 +64,7 @@ export default function HistoryPage() {
   const correctionCount = envelopes.filter((env) => env.version > 1).length
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 bg-background">
       <Navbar />
 
       <main className="container mx-auto px-4 py-12 max-w-7xl">

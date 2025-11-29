@@ -141,7 +141,7 @@ export default function ComposerPage() {
   const isValid = selectedAsset && dataType && parsedData && !parseError
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex-1 bg-background">
       <Navbar />
 
       <main className="container mx-auto px-4 py-12 max-w-7xl">
