@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ArrowRight, Building2, FileSearch, Users, FolderOpen, Send, History, BookOpen, Share2, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
-import { mockDelegations } from '@/lib/mock-data'
+import { mockDelegations, mockAccessGrants } from '@/lib/mock-data'
 import Image from 'next/image'
 
 const containerVariants = {
@@ -80,6 +80,33 @@ export default function Home() {
     )
   }, [currentUser, currentOrg])
 
+  // Check if user can view data (has canViewData grants or is LP/Asset Manager)
+  const canViewData = useMemo(() => {
+    if (!currentUser || !currentOrg) return false
+    
+    // Asset Managers and Limited Partners can always view data
+    if (currentOrg.role === 'Asset Manager' || currentOrg.role === 'Limited Partner') {
+      return true
+    }
+    
+    // Platform Admins can view everything
+    if (currentOrg.role === 'Platform Admin') {
+      return true
+    }
+    
+    // Delegates can view if they have any active grants with canViewData
+    if (currentOrg.role === 'Delegate') {
+      const hasViewGrants = mockAccessGrants.some(
+        g => g.granteeId === currentOrg.id && 
+             g.status === 'Active' && 
+             g.canViewData === true
+      )
+      return hasViewGrants
+    }
+    
+    return false
+  }, [currentUser, currentOrg])
+
   return (
     <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
       {/* Logo in upper right */}
@@ -128,7 +155,7 @@ export default function Home() {
             initial="hidden"
             animate="visible"
           >
-          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, Access Grants, Ledger, IAM */}
+          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, Access Grants, Ledger (if canViewData), IAM */}
           {currentUser?.role === 'Delegate' && (
             <>
               <ActionCard
@@ -155,17 +182,19 @@ export default function Home() {
               <ActionCard
                 icon={Share2}
                 title="Access Grants"
-                description="View your access grants"
+                description="View and manage your access grants"
                 href="/access-grants"
                 buttonText="View Grants"
               />
-              <ActionCard
-                icon={BookOpen}
-                title="Ledger"
-                description="View your delegated data feed"
-                href="/ledger"
-                buttonText="Open Ledger"
-              />
+              {canViewData && (
+                <ActionCard
+                  icon={BookOpen}
+                  title="Ledger"
+                  description="View your delegated data feed"
+                  href="/ledger"
+                  buttonText="Open Ledger"
+                />
+              )}
               {currentUser?.isOrgAdmin && (
                 <ActionCard
                   icon={Shield}
@@ -178,7 +207,7 @@ export default function Home() {
             </>
           )}
 
-          {/* Asset Manager (GP) - Assets, Subscriptions, Access Grants, IAM, Publish Data */}
+          {/* Asset Manager (GP) - Assets, Subscriptions, Access Grants, Publish Data, History, Ledger, IAM */}
           {currentUser?.role === 'Asset Manager' && (
             <>
               <ActionCard
@@ -216,6 +245,15 @@ export default function Home() {
                 href="/history"
                 buttonText="View History"
               />
+              {canViewData && (
+                <ActionCard
+                  icon={BookOpen}
+                  title="Ledger"
+                  description="View your data feed"
+                  href="/ledger"
+                  buttonText="Open Ledger"
+                />
+              )}
               {currentUser?.isOrgAdmin && (
                 <ActionCard
                   icon={Shield}
@@ -245,13 +283,15 @@ export default function Home() {
                 href="/access-grants"
                 buttonText="Manage Grants"
               />
-              <ActionCard
-                icon={BookOpen}
-                title="Ledger"
-                description="View your chronological data feed"
-                href="/ledger"
-                buttonText="Open Ledger"
-              />
+              {canViewData && (
+                <ActionCard
+                  icon={BookOpen}
+                  title="Ledger"
+                  description="View your chronological data feed"
+                  href="/ledger"
+                  buttonText="Open Ledger"
+                />
+              )}
               {currentUser?.isOrgAdmin && (
                 <ActionCard
                   icon={Shield}
@@ -264,7 +304,7 @@ export default function Home() {
             </>
           )}
 
-          {/* Delegate (Service Provider) - Access Grants, Ledger, IAM */}
+          {/* Delegate (Service Provider) - Access Grants, Ledger (if canViewData), IAM */}
           {currentOrg?.role === 'Delegate' && currentUser?.role !== 'Delegate' && (
             <>
               {canManageSubscriptions && (
@@ -283,13 +323,15 @@ export default function Home() {
                 href="/access-grants"
                 buttonText="View Grants"
               />
-              <ActionCard
-                icon={BookOpen}
-                title="Ledger"
-                description="View your delegated data feed"
-                href="/ledger"
-                buttonText="Open Ledger"
-              />
+              {canViewData && (
+                <ActionCard
+                  icon={BookOpen}
+                  title="Ledger"
+                  description="View your delegated data feed"
+                  href="/ledger"
+                  buttonText="Open Ledger"
+                />
+              )}
               {currentUser?.isOrgAdmin && (
                 <ActionCard
                   icon={Shield}
@@ -302,7 +344,7 @@ export default function Home() {
             </>
           )}
 
-          {/* Waypoint Platform Admin - Registry, Audit, and IAM */}
+          {/* Waypoint Platform Admin - Registry, Audit, Access Grants, Ledger, IAM */}
           {(currentUser?.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin') && (
             <>
               <ActionCard
@@ -319,6 +361,22 @@ export default function Home() {
                 href="/audit"
                 buttonText="View Audit"
               />
+              <ActionCard
+                icon={Share2}
+                title="Access Grants"
+                description="View all access grants across the platform"
+                href="/access-grants"
+                buttonText="View Grants"
+              />
+              {canViewData && (
+                <ActionCard
+                  icon={BookOpen}
+                  title="Ledger"
+                  description="View platform data feed"
+                  href="/ledger"
+                  buttonText="Open Ledger"
+                />
+              )}
               <ActionCard
                 icon={Shield}
                 title="IAM"
