@@ -59,7 +59,7 @@ export async function PUT(
     const grant = await prisma.accessGrant.update({
       where: { id },
       data: {
-        ...(status && { status }),
+        ...(status && { status: status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED' }),
         ...(canPublish !== undefined && { canPublish }),
         ...(canViewData !== undefined && { canViewData }),
         ...(canManageSubscriptions !== undefined && { canManageSubscriptions }),

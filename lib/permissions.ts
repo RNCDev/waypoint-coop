@@ -1,5 +1,4 @@
 import { prisma } from './prisma'
-import { GrantStatus, SubscriptionStatus, OrgType } from '@prisma/client'
 
 /**
  * Permission actions that can be checked
@@ -58,7 +57,7 @@ export async function canPerformAction(
       where: {
         assetId,
         subscriberId: orgId,
-        status: SubscriptionStatus.ACTIVE,
+        status: 'ACTIVE',
       },
     })
 
@@ -76,7 +75,7 @@ export async function canPerformAction(
     where: {
       granteeId: orgId,
       assetId,
-      status: GrantStatus.ACTIVE,
+      status: 'ACTIVE',
       OR: [
         { expiresAt: null },
         { expiresAt: { gt: new Date() } },
@@ -101,7 +100,7 @@ export async function canPerformAction(
     where: {
       granteeId: orgId,
       assetId: null,
-      status: GrantStatus.ACTIVE,
+      status: 'ACTIVE',
       OR: [
         { expiresAt: null },
         { expiresAt: { gt: new Date() } },
@@ -165,7 +164,7 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
   if (!org) return []
 
   // Platform admins can see everything
-  if (org.type === OrgType.PLATFORM_ADMIN) {
+  if (org.type === 'PLATFORM_ADMIN') {
     const allAssets = await prisma.asset.findMany({ select: { id: true } })
     return allAssets.map((a) => a.id)
   }
@@ -183,7 +182,7 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
   const subscriptions = await prisma.subscription.findMany({
     where: {
       subscriberId: orgId,
-      status: SubscriptionStatus.ACTIVE,
+      status: 'ACTIVE',
     },
     select: { assetId: true },
   })
@@ -193,7 +192,7 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
   const grants = await prisma.accessGrant.findMany({
     where: {
       granteeId: orgId,
-      status: GrantStatus.ACTIVE,
+      status: 'ACTIVE',
       canViewData: true,
       OR: [
         { expiresAt: null },
@@ -251,7 +250,7 @@ export async function getContextualRole(
     where: {
       assetId,
       subscriberId: orgId,
-      status: SubscriptionStatus.ACTIVE,
+      status: 'ACTIVE',
     },
   })
 
@@ -261,7 +260,7 @@ export async function getContextualRole(
     where: {
       granteeId: orgId,
       assetId,
-      status: GrantStatus.ACTIVE,
+      status: 'ACTIVE',
     },
   })
 

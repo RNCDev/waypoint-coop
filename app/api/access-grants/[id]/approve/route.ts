@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { GrantStatus } from '@prisma/client'
 
 // POST /api/access-grants/[id]/approve - Approve a pending access grant
 export async function POST(
@@ -31,7 +30,7 @@ export async function POST(
       )
     }
 
-    if (grant.status !== GrantStatus.PENDING_APPROVAL) {
+    if (grant.status !== 'PENDING_APPROVAL') {
       return NextResponse.json(
         { error: 'Grant is not pending approval' },
         { status: 400 }
@@ -42,7 +41,7 @@ export async function POST(
     const updatedGrant = await prisma.accessGrant.update({
       where: { id },
       data: {
-        status: GrantStatus.ACTIVE,
+        status: 'ACTIVE',
         approvedBy: approverId,
         approvedAt: new Date(),
       },

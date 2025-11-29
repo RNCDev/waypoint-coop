@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requiresGPApproval } from '@/lib/permissions'
-import { GrantStatus } from '@prisma/client'
 
 // GET /api/access-grants - List access grants
 export async function GET(request: NextRequest) {
@@ -10,14 +9,14 @@ export async function GET(request: NextRequest) {
     const grantorId = searchParams.get('grantorId')
     const granteeId = searchParams.get('granteeId')
     const assetId = searchParams.get('assetId')
-    const status = searchParams.get('status') as GrantStatus | null
+    const status = searchParams.get('status')
 
     const grants = await prisma.accessGrant.findMany({
       where: {
         ...(grantorId && { grantorId }),
         ...(granteeId && { granteeId }),
         ...(assetId && { assetId }),
-        ...(status && { status }),
+        ...(status && { status: status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED' }),
       },
       include: {
         grantor: true,
@@ -60,11 +59,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine if this grant needs GP approval
-    let status: GrantStatus = GrantStatus.ACTIVE
+    let status: string = 'ACTIVE'
     if (assetId) {
       const needsApproval = await requiresGPApproval(grantorId, assetId)
       if (needsApproval) {
-        status = GrantStatus.PENDING_APPROVAL
+        status = 'PENDING_APPROVAL'
       }
     }
 
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
         grantorId,
         granteeId,
         assetId,
-        status,
+        status: status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED',
         canPublish: canPublish ?? false,
         canViewData: canViewData ?? true,
         canManageSubscriptions: canManageSubscriptions ?? false,
