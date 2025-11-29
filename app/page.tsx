@@ -250,8 +250,8 @@ export default function Home() {
             </>
           )}
 
-          {/* Delegate - Subscriptions (conditional), Access Grants, Ledger, IAM */}
-          {currentOrg?.role === 'Delegate' && (
+          {/* Delegate (Service Provider) - Access Grants, Ledger, IAM */}
+          {currentOrg?.role === 'Delegate' && currentUser?.role !== 'Delegate' && (
             <>
               {canManageSubscriptions && (
                 <ActionCard
