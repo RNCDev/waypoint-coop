@@ -350,8 +350,8 @@ export default function LedgerPage() {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[140px]">
+                  <TableRow className="h-8">
+                    <TableHead className="w-[100px] text-xs py-1.5">
                       <button 
                         onClick={() => handleSort('timestamp')} 
                         className="flex items-center hover:text-foreground transition-colors"
@@ -359,7 +359,7 @@ export default function LedgerPage() {
                         Date {getSortIcon('timestamp')}
                       </button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="text-xs py-1.5">
                       <button 
                         onClick={() => handleSort('asset')} 
                         className="flex items-center hover:text-foreground transition-colors"
@@ -367,7 +367,7 @@ export default function LedgerPage() {
                         Asset {getSortIcon('asset')}
                       </button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="text-xs py-1.5">
                       <button 
                         onClick={() => handleSort('dataType')} 
                         className="flex items-center hover:text-foreground transition-colors"
@@ -375,7 +375,7 @@ export default function LedgerPage() {
                         Type {getSortIcon('dataType')}
                       </button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="text-xs py-1.5">
                       <button 
                         onClick={() => handleSort('publisher')} 
                         className="flex items-center hover:text-foreground transition-colors"
@@ -383,43 +383,40 @@ export default function LedgerPage() {
                         Publisher {getSortIcon('publisher')}
                       </button>
                     </TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
+                    <TableHead className="w-[50px] text-xs py-1.5"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedEnvelopes.map((envelope) => (
                     <TableRow 
                       key={envelope.id} 
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-muted/50 h-9"
                       onClick={() => handleViewDetails(envelope)}
                     >
-                      <TableCell className="text-sm tabular-nums">
+                      <TableCell className="text-xs tabular-nums py-1.5">
                         {format(new Date(envelope.timestamp), 'MMM d, yyyy')}
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(envelope.timestamp), 'HH:mm')}
-                        </div>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="text-sm py-1.5">
                         {getAssetName(envelope.assetId)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1.5">
                         {envelope.dataType && (
-                          <Badge variant="outline" className="text-xs">
+                          <span className="text-xs text-muted-foreground">
                             {envelope.dataType.replace(/_/g, ' ')}
-                          </Badge>
+                          </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground py-1.5">
                         {getPublisherName(envelope.publisherId)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-1.5">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8"
+                          className="h-6 w-6"
                           onClick={(e) => { e.stopPropagation(); handleViewDetails(envelope); }}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
