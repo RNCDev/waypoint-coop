@@ -3,7 +3,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&amp;display=swap');
       .primary-text { 
-        fill: #1E242B; 
+        fill: #FFFFFF; 
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
         font-weight: 700; 
         font-size: 72px; 
@@ -17,17 +17,17 @@
         letter-spacing: -0.025em;
       }
       .compass-stroke { 
-        stroke: #1E242B; 
+        stroke: #FFFFFF; 
         stroke-width: 3; 
         fill: none; 
         stroke-linecap: round;
       }
       .compass-fill { 
-        fill: #1E242B; 
+        fill: #FFFFFF; 
       }
       .compass-outline {
         fill: none;
-        stroke: #1E242B;
+        stroke: #FFFFFF;
         stroke-width: 2;
       }
     </style>
@@ -62,7 +62,7 @@
     <!-- Outer Ring -->
     <circle cx="0" cy="0" r="32" class="compass-stroke" />
     <!-- Inner Ring -->
-    <circle cx="0" cy="0" r="26" stroke="#1E242B" stroke-width="1.5" fill="none" opacity="0.3" />
+    <circle cx="0" cy="0" r="26" stroke="#FFFFFF" stroke-width="1.5" fill="none" opacity="0.3" />
     
     <!-- Needle Group: Rotated 60 degrees (2 o'clock) -->
     <g transform="rotate(60)">
@@ -84,3 +84,4 @@
   </g>
 
 </svg>
+
