@@ -113,12 +113,12 @@ export default function IAMSettingsPage() {
   }
 
   const handleSaveEdit = async () => {
-    if (!editingUser) return
+    if (!editingUser || !editUser.role) return
     
     // In a real app, this would update via API
     setOrgUsers(users => users.map(u => {
       if (u.id === editingUser.id) {
-        return { ...u, name: editUser.name, email: editUser.email, role: editUser.role }
+        return { ...u, name: editUser.name, email: editUser.email, role: editUser.role as UserRole }
       }
       return u
     }))
