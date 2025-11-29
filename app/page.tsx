@@ -82,19 +82,19 @@ export default function Home() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
-      {/* Background logo - subtle watermark */}
+      {/* Logo in upper right */}
       <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+        className="absolute top-0 right-0 pointer-events-none select-none"
         initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 0.03, scale: 1 }}
+        animate={{ opacity: 0.05, scale: 1 }}
         transition={{ duration: 1.2, delay: 0.3 }}
       >
         <Image 
           src="/waypoint-logo-dark.svg" 
           alt=""
-          width={600}
-          height={733}
-          className="w-[600px] h-auto"
+          width={400}
+          height={489}
+          className="w-[400px] h-auto"
           priority
         />
       </motion.div>
