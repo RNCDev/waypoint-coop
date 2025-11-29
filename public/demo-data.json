@@ -1,0 +1,317 @@
+{
+  "demoConfig": {
+    "defaultPersona": "lp",
+    "presentationDate": "2025-11-29",
+    "presenterName": "Waypoint Team",
+    "recipientCompany": "Demo Participant"
+  },
+  "personas": {
+    "lp": {
+      "id": "lp",
+      "label": "Limited Partner",
+      "description": "Institutional investor seeking data transparency",
+      "organization": {
+        "name": "Ohio Public Employees Retirement System",
+        "shortName": "OPERS",
+        "type": "LP",
+        "typeLabel": "Limited Partner",
+        "lei": "549300EXAMPLE0LP001",
+        "leiLookupResult": {
+          "valid": true,
+          "status": "ISSUED",
+          "legalName": "Ohio Public Employees Retirement System",
+          "jurisdiction": "US-OH",
+          "registrationDate": "2014-03-15",
+          "lastUpdateDate": "2024-01-10",
+          "managingLou": "EVK05KS7XY1DEII3R011"
+        },
+        "ein": "31-6402911",
+        "entityType": "PENSION",
+        "formationJurisdiction": "US-OH",
+        "formationDate": "1935-01-01",
+        "address": {
+          "street1": "277 East Town Street",
+          "street2": "",
+          "city": "Columbus",
+          "state": "OH",
+          "postalCode": "43215",
+          "country": "US"
+        },
+        "registeredAgent": {
+          "name": "Ohio Secretary of State",
+          "address": "22 North Fourth Street, Columbus, OH 43215"
+        }
+      },
+      "contact": {
+        "name": "Sarah Chen",
+        "title": "Director of Private Markets",
+        "email": "s.chen@opers.org",
+        "phone": "+1 (614) 555-0123"
+      },
+      "beneficialOwners": [
+        {
+          "id": "ubo-1",
+          "name": "Karen Carraher",
+          "role": "Executive Director",
+          "ownershipPercentage": 0,
+          "controlType": "SENIOR_OFFICER",
+          "citizenship": "US",
+          "idDocumentType": "DRIVERS_LICENSE",
+          "idDocumentCountry": "US",
+          "verified": true
+        },
+        {
+          "id": "ubo-2",
+          "name": "Christopher Roe",
+          "role": "Chief Investment Officer",
+          "ownershipPercentage": 0,
+          "controlType": "SENIOR_OFFICER",
+          "citizenship": "US",
+          "idDocumentType": "PASSPORT",
+          "idDocumentCountry": "US",
+          "verified": true
+        }
+      ],
+      "requiredDocuments": [
+        {
+          "type": "BOARD_RESOLUTION",
+          "label": "Board Resolution",
+          "description": "Authorizing participation in Waypoint",
+          "status": "uploaded",
+          "fileName": "OPERS_Board_Resolution_2024.pdf",
+          "uploadedAt": "2024-11-15T10:30:00Z"
+        },
+        {
+          "type": "AUTHORIZED_SIGNATORY_LIST",
+          "label": "Authorized Signatories",
+          "description": "List of authorized personnel",
+          "status": "uploaded",
+          "fileName": "OPERS_Authorized_Signatories.pdf",
+          "uploadedAt": "2024-11-15T10:32:00Z"
+        },
+        {
+          "type": "W9",
+          "label": "Form W-9",
+          "description": "Tax identification form",
+          "status": "uploaded",
+          "fileName": "OPERS_W9_2024.pdf",
+          "uploadedAt": "2024-11-15T10:35:00Z"
+        }
+      ],
+      "subscriptions": [
+        {
+          "fundName": "KKR North America Fund XIV",
+          "gpName": "KKR & Co. Inc.",
+          "commitment": "$150,000,000",
+          "vintage": "2023"
+        },
+        {
+          "fundName": "Blackstone Capital Partners IX",
+          "gpName": "Blackstone Inc.",
+          "commitment": "$200,000,000",
+          "vintage": "2024"
+        }
+      ],
+      "dashboardStats": {
+        "pendingEnvelopes": 12,
+        "activeSubscriptions": 47,
+        "pendingAccessRequests": 3
+      }
+    },
+    "fund_admin": {
+      "id": "fund_admin",
+      "label": "Fund Administrator",
+      "description": "Service provider managing fund operations",
+      "organization": {
+        "name": "Genii Capital Administration LLC",
+        "shortName": "Genii",
+        "type": "FUND_ADMIN",
+        "typeLabel": "Fund Administrator",
+        "lei": "549300EXAMPLE0FA002",
+        "leiLookupResult": {
+          "valid": true,
+          "status": "ISSUED",
+          "legalName": "Genii Capital Administration LLC",
+          "jurisdiction": "US-DE",
+          "registrationDate": "2018-07-22",
+          "lastUpdateDate": "2024-06-15",
+          "managingLou": "EVK05KS7XY1DEII3R011"
+        },
+        "ein": "82-4521903",
+        "entityType": "LLC",
+        "formationJurisdiction": "US-DE",
+        "formationDate": "2018-06-15",
+        "address": {
+          "street1": "1209 Orange Street",
+          "street2": "Suite 400",
+          "city": "Wilmington",
+          "state": "DE",
+          "postalCode": "19801",
+          "country": "US"
+        },
+        "registeredAgent": {
+          "name": "Corporation Service Company",
+          "address": "251 Little Falls Drive, Wilmington, DE 19808"
+        }
+      },
+      "contact": {
+        "name": "Michael Torres",
+        "title": "Managing Director, Client Services",
+        "email": "m.torres@geniiadmin.com",
+        "phone": "+1 (302) 555-0456"
+      },
+      "beneficialOwners": [
+        {
+          "id": "ubo-1",
+          "name": "Jennifer Walsh",
+          "role": "CEO & Founder",
+          "ownershipPercentage": 60,
+          "controlType": "OWNERSHIP",
+          "citizenship": "US",
+          "idDocumentType": "PASSPORT",
+          "idDocumentCountry": "US",
+          "verified": true
+        },
+        {
+          "id": "ubo-2",
+          "name": "David Park",
+          "role": "COO & Co-Founder",
+          "ownershipPercentage": 40,
+          "controlType": "OWNERSHIP",
+          "citizenship": "US",
+          "idDocumentType": "PASSPORT",
+          "idDocumentCountry": "US",
+          "verified": true
+        }
+      ],
+      "requiredDocuments": [
+        {
+          "type": "CERTIFICATE_OF_FORMATION",
+          "label": "Certificate of Formation",
+          "description": "Delaware LLC formation document",
+          "status": "uploaded",
+          "fileName": "Genii_Certificate_of_Formation.pdf",
+          "uploadedAt": "2024-11-10T09:00:00Z"
+        },
+        {
+          "type": "OPERATING_AGREEMENT",
+          "label": "Operating Agreement",
+          "description": "LLC operating agreement",
+          "status": "uploaded",
+          "fileName": "Genii_Operating_Agreement.pdf",
+          "uploadedAt": "2024-11-10T09:05:00Z"
+        },
+        {
+          "type": "CERTIFICATE_OF_GOOD_STANDING",
+          "label": "Certificate of Good Standing",
+          "description": "Delaware good standing certificate",
+          "status": "uploaded",
+          "fileName": "Genii_Good_Standing_2024.pdf",
+          "uploadedAt": "2024-11-10T09:10:00Z"
+        },
+        {
+          "type": "IRS_LETTER_147C",
+          "label": "IRS EIN Confirmation (147C)",
+          "description": "EIN verification letter",
+          "status": "uploaded",
+          "fileName": "Genii_IRS_147C.pdf",
+          "uploadedAt": "2024-11-10T09:15:00Z"
+        },
+        {
+          "type": "W9",
+          "label": "Form W-9",
+          "description": "Tax identification form",
+          "status": "uploaded",
+          "fileName": "Genii_W9.pdf",
+          "uploadedAt": "2024-11-10T09:20:00Z"
+        }
+      ],
+      "gpClients": [
+        {
+          "gpName": "Kleiner Perkins",
+          "fundsManaged": 3,
+          "aum": "$2.1B"
+        },
+        {
+          "gpName": "Greylock Partners",
+          "fundsManaged": 2,
+          "aum": "$1.4B"
+        },
+        {
+          "gpName": "Benchmark Capital",
+          "fundsManaged": 2,
+          "aum": "$890M"
+        }
+      ],
+      "dashboardStats": {
+        "fundsAdministered": 7,
+        "pendingCapitalCalls": 4,
+        "lpRecordsManaged": 312
+      }
+    }
+  },
+  "verificationSteps": [
+    {
+      "id": "lei",
+      "number": 1,
+      "title": "LEI Verification",
+      "description": "Validate your Legal Entity Identifier"
+    },
+    {
+      "id": "org",
+      "number": 2,
+      "title": "Organization Details",
+      "description": "Confirm entity information"
+    },
+    {
+      "id": "ubo",
+      "number": 3,
+      "title": "Beneficial Owners",
+      "description": "Identify controlling persons"
+    },
+    {
+      "id": "docs",
+      "number": 4,
+      "title": "Documents",
+      "description": "Upload required documentation"
+    },
+    {
+      "id": "review",
+      "number": 5,
+      "title": "Review & Submit",
+      "description": "Confirm and submit for review"
+    }
+  ],
+  "reviewTimeline": {
+    "submitted": "2024-11-29T14:30:00Z",
+    "estimatedCompletion": "2024-12-02T17:00:00Z",
+    "stages": [
+      {
+        "name": "Document Review",
+        "status": "completed",
+        "completedAt": "2024-11-29T16:00:00Z"
+      },
+      {
+        "name": "LEI Validation",
+        "status": "completed",
+        "completedAt": "2024-11-29T16:05:00Z"
+      },
+      {
+        "name": "UBO Verification",
+        "status": "in_progress",
+        "completedAt": null
+      },
+      {
+        "name": "Compliance Review",
+        "status": "pending",
+        "completedAt": null
+      },
+      {
+        "name": "Final Approval",
+        "status": "pending",
+        "completedAt": null
+      }
+    ]
+  }
+}
+

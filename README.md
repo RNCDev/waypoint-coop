@@ -24,6 +24,7 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 - **Admin Console**: Entity registry and global audit log
 - **Mock Authentication**: Persona switcher for demo purposes
 - **Cryptographic Signing**: SHA-256 hash generation for data integrity
+- **Onboarding Demo**: Interactive KYC/verification flow walkthrough for presentations
 
 ## Tech Stack
 
@@ -107,6 +108,60 @@ Switch between demo personas using the dropdown in the navigation:
 | **Charlie LP** | State of Ohio Pension | Limited Partner | Feeds, Ledger, grants |
 | **Dana Delegate** | Deloitte | Auditor | Delegated view access |
 
+## Onboarding Demo
+
+A standalone interactive demo showing the KYC/verification onboarding flow for new organizations.
+
+### Launching the Demo
+
+- **Click the ✨ Demo button** next to the persona picker in the navigation
+- **Or navigate directly** to `/demo/onboarding`
+
+### Demo Features
+
+- **Two Personas**: Limited Partner (LP) and Fund Administrator flows
+- **12-Screen Flow**: Registration → Email → Dashboard → Verification → Approval
+- **Customizable Data**: Edit `public/demo-data.json` before presentations to personalize for your audience
+
+### Customizing for Presentations
+
+Edit `public/demo-data.json` to customize:
+
+```json
+{
+  "demoConfig": {
+    "recipientCompany": "Your Client Name",  // Shows on welcome screen
+    "presenterName": "Your Name"
+  },
+  "personas": {
+    "lp": {
+      "organization": {
+        "name": "Client's Organization Name",
+        "lei": "THEIR_LEI_NUMBER"
+      },
+      "contact": {
+        "name": "Contact Name",
+        "email": "contact@example.com"
+      }
+    }
+  }
+}
+```
+
+### Demo Flow
+
+1. **Welcome** - Select organization type (LP or Fund Admin)
+2. **Registration** - Pre-filled organization form
+3. **Email Verification** - Simulated with skip button
+4. **Tier 0 Dashboard** - Shows locked features
+5. **LEI Verification** - GLEIF validation simulation
+6. **Organization Details** - Entity information
+7. **Beneficial Owners** - UBO disclosure with verification badges
+8. **Document Upload** - Required documentation
+9. **Review & Submit** - Attestations
+10. **Pending Review** - Status timeline
+11. **Approved** - Success with confetti! 🎉
+
 ## Project Structure
 
 ```
@@ -120,6 +175,7 @@ waypoint-coop/
 │   │   ├── envelopes/      # Envelope publishing + corrections
 │   │   ├── users/          # User management
 │   │   └── audit/          # Audit log retrieval
+│   ├── demo/onboarding/    # Interactive onboarding demo
 │   ├── composer/           # Compose and publish data
 │   ├── history/            # Published data history
 │   ├── ledger/             # LP ledger page
