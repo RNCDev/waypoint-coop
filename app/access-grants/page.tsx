@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Check, X, Shield, Eye, Send, Users, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, Check, X, Shield, Eye, Send, Users, CheckCircle, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AccessGrant, DataType, Organization } from '@/types'
 import { mockAssets, mockOrganizations } from '@/lib/mock-data'
@@ -49,8 +49,22 @@ export default function AccessGrantsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingGrant, setEditingGrant] = useState<AccessGrant | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'gp' | 'lp'>('all')
   
+  // Form state for editing grants
+  const [editForm, setEditForm] = useState({
+    assetScope: 'ALL' as 'ALL' | 'SELECTED',
+    selectedAssets: [] as number[],
+    dataTypeScope: 'ALL' as 'ALL' | 'SELECTED',
+    selectedTypes: [] as DataType[],
+    canViewData: true,
+    canManageSubscriptions: false,
+    canApproveSubscriptions: false,
+    canApproveDelegations: false,
+  })
+
   // Form state for creating new grants
   const [newGrant, setNewGrant] = useState({
     granteeId: '',
@@ -175,6 +189,65 @@ export default function AccessGrantsPage() {
     }
   }
 
+  const openEditDialog = (grant: AccessGrant) => {
+    setEditingGrant(grant)
+    setEditForm({
+      assetScope: grant.assetScope === 'ALL' ? 'ALL' : 'SELECTED',
+      selectedAssets: grant.assetScope === 'ALL' ? [] : [...grant.assetScope],
+      dataTypeScope: grant.dataTypeScope === 'ALL' ? 'ALL' : 'SELECTED',
+      selectedTypes: grant.dataTypeScope === 'ALL' ? [] : [...grant.dataTypeScope],
+      canViewData: grant.canViewData,
+      canManageSubscriptions: grant.canManageSubscriptions,
+      canApproveSubscriptions: grant.canApproveSubscriptions,
+      canApproveDelegations: grant.canApproveDelegations,
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleUpdateGrant = async () => {
+    if (!currentUser || !editingGrant) return
+
+    try {
+      const response = await fetch(`/api/access-grants/${editingGrant.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id.toString(),
+        },
+        body: JSON.stringify({
+          assetScope: editForm.assetScope === 'ALL' ? 'ALL' : editForm.selectedAssets,
+          dataTypeScope: editForm.dataTypeScope === 'ALL' ? 'ALL' : editForm.selectedTypes,
+          canViewData: editForm.canViewData,
+          canManageSubscriptions: editForm.canManageSubscriptions,
+          canApproveSubscriptions: editForm.canApproveSubscriptions,
+          canApproveDelegations: editForm.canApproveDelegations,
+        }),
+      })
+
+      if (response.ok) {
+        setEditDialogOpen(false)
+        setEditingGrant(null)
+        fetchAccessGrants()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to update access grant')
+      }
+    } catch (error) {
+      console.error('Error updating access grant:', error)
+    }
+  }
+
+  // Get available assets for editing based on grantor
+  const getAssetsForGrant = (grant: AccessGrant) => {
+    const grantorOrg = mockOrganizations.find(o => o.id === grant.grantorId)
+    if (!grantorOrg) return mockAssets
+    if (grantorOrg.role === 'Asset Manager') {
+      return mockAssets.filter(a => a.ownerId === grantorOrg.id)
+    }
+    // For LP grants, show all assets (in real app, filter by subscriptions)
+    return mockAssets
+  }
+
   const getAssetNames = (assetScope: number[] | 'ALL') => {
     if (assetScope === 'ALL') return 'All Assets'
     return assetScope.map(id => {
@@ -231,6 +304,14 @@ export default function AccessGrantsPage() {
   // Determine if user can revoke a specific grant
   const canRevokeGrant = (grant: AccessGrant) => {
     if (!currentOrg) return false
+    if (currentOrg.role === 'Platform Admin') return true
+    return grant.grantorId === currentOrg.id
+  }
+
+  // Determine if user can edit a specific grant
+  const canEditGrant = (grant: AccessGrant) => {
+    if (!currentOrg) return false
+    if (grant.status !== 'Active') return false
     if (currentOrg.role === 'Platform Admin') return true
     return grant.grantorId === currentOrg.id
   }
@@ -609,15 +690,28 @@ export default function AccessGrantsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {grant.status === 'Active' && canRevokeGrant(grant) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRevokeGrant(grant.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
+                      <div className="flex gap-1">
+                        {canEditGrant(grant) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(grant)}
+                            title="Edit grant"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {grant.status === 'Active' && canRevokeGrant(grant) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRevokeGrant(grant.id)}
+                            title="Revoke grant"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -626,6 +720,216 @@ export default function AccessGrantsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Access Grant Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Access Grant</DialogTitle>
+            <DialogDescription>
+              {editingGrant && (
+                <>
+                  Modify capabilities for {getOrgName(editingGrant.granteeId)}
+                  <Badge variant="outline" className="ml-2">
+                    {editingGrant.canPublish ? 'GP Grant' : 'LP Grant'}
+                  </Badge>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingGrant && (
+            <div className="space-y-6 py-4">
+              {/* Asset Scope */}
+              <div className="space-y-2">
+                <Label>Asset Scope</Label>
+                <Select
+                  value={editForm.assetScope}
+                  onValueChange={(value) => setEditForm(prev => ({
+                    ...prev,
+                    assetScope: value as 'ALL' | 'SELECTED',
+                    selectedAssets: value === 'ALL' ? [] : prev.selectedAssets,
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Assets</SelectItem>
+                    <SelectItem value="SELECTED">Specific Assets</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editForm.assetScope === 'SELECTED' && (
+                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                    {getAssetsForGrant(editingGrant).map(asset => (
+                      <div key={asset.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-asset-${asset.id}`}
+                          checked={editForm.selectedAssets.includes(asset.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditForm(prev => ({
+                                ...prev,
+                                selectedAssets: [...prev.selectedAssets, asset.id],
+                              }))
+                            } else {
+                              setEditForm(prev => ({
+                                ...prev,
+                                selectedAssets: prev.selectedAssets.filter(id => id !== asset.id),
+                              }))
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`edit-asset-${asset.id}`} className="font-normal cursor-pointer">
+                          {asset.name} ({asset.type})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Data Type Scope */}
+              <div className="space-y-2">
+                <Label>Data Type Scope</Label>
+                <Select
+                  value={editForm.dataTypeScope}
+                  onValueChange={(value) => setEditForm(prev => ({
+                    ...prev,
+                    dataTypeScope: value as 'ALL' | 'SELECTED',
+                    selectedTypes: value === 'ALL' ? [] : prev.selectedTypes,
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Data Types</SelectItem>
+                    <SelectItem value="SELECTED">Specific Types</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editForm.dataTypeScope === 'SELECTED' && (
+                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                    {DATA_TYPES.map(type => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-type-${type}`}
+                          checked={editForm.selectedTypes.includes(type)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditForm(prev => ({
+                                ...prev,
+                                selectedTypes: [...prev.selectedTypes, type],
+                              }))
+                            } else {
+                              setEditForm(prev => ({
+                                ...prev,
+                                selectedTypes: prev.selectedTypes.filter(t => t !== type),
+                              }))
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`edit-type-${type}`} className="font-normal cursor-pointer">
+                          {type.replace(/_/g, ' ')}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Capabilities */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Capabilities</Label>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-canViewData"
+                    checked={editForm.canViewData}
+                    onCheckedChange={(checked) => setEditForm(prev => ({
+                      ...prev,
+                      canViewData: checked as boolean,
+                    }))}
+                  />
+                  <Label htmlFor="edit-canViewData" className="font-normal cursor-pointer flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    Can View Data
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-canManageSubscriptions"
+                    checked={editForm.canManageSubscriptions}
+                    onCheckedChange={(checked) => setEditForm(prev => ({
+                      ...prev,
+                      canManageSubscriptions: checked as boolean,
+                    }))}
+                  />
+                  <Label htmlFor="edit-canManageSubscriptions" className="font-normal cursor-pointer flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Can Manage Subscriptions
+                  </Label>
+                </div>
+
+                {/* GP-specific capabilities (only show for GP grants) */}
+                {editingGrant.canPublish && (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="edit-canApproveSubscriptions"
+                        checked={editForm.canApproveSubscriptions}
+                        onCheckedChange={(checked) => setEditForm(prev => ({
+                          ...prev,
+                          canApproveSubscriptions: checked as boolean,
+                        }))}
+                      />
+                      <Label htmlFor="edit-canApproveSubscriptions" className="font-normal cursor-pointer flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Can Approve Subscription Requests
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="edit-canApproveDelegations"
+                        checked={editForm.canApproveDelegations}
+                        onCheckedChange={(checked) => setEditForm(prev => ({
+                          ...prev,
+                          canApproveDelegations: checked as boolean,
+                        }))}
+                      />
+                      <Label htmlFor="edit-canApproveDelegations" className="font-normal cursor-pointer flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        Can Approve LP Data Delegations
+                      </Label>
+                    </div>
+                  </>
+                )}
+
+                {/* Display note about canPublish being fixed */}
+                <div className="text-sm text-muted-foreground mt-4 p-3 bg-muted rounded-md">
+                  <strong>Note:</strong> The "Can Publish" capability ({editingGrant.canPublish ? 'enabled' : 'disabled'}) 
+                  cannot be changed after grant creation as it defines the grant type 
+                  ({editingGrant.canPublish ? 'GP Grant' : 'LP Grant'}).
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingGrant(null); }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateGrant}
+              disabled={editForm.assetScope === 'SELECTED' && editForm.selectedAssets.length === 0}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
