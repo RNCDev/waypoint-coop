@@ -1,10 +1,10 @@
-# Waypoint Coop
+# Waypoint Cooperative
 
 Developing private markets data rails - A secure, immutable message bus for private market data.
 
 ## Overview
 
-Waypoint is a digital clearinghouse for private market data, enabling secure data transactions between General Partners (GPs) and Limited Partners (LPs) with perfect audit trails.
+Waypoint is a digital clearinghouse for private market data, enabling secure data transactions between General Partners (GPs) and Limited Partners (LPs) with perfect audit trails. Built by the industry, for the industry.
 
 ## Features
 
@@ -17,7 +17,7 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 - **Unified Access Grants**: Single model for delegated capabilities:
   - **GP Grants**: Asset Managers delegate publishing and management to Fund Admins
   - **LP Grants**: Limited Partners delegate data access to service providers (auditors, analytics)
-  - **Capability flags**: `canPublish`, `canViewData`, `canManageSubscriptions`, `canApproveSubscriptions`, `canApproveDelegations`
+  - **Capability flags**: `canPublish`, `canViewData`, `canManageSubscriptions`, `canApproveDelegations`
 - **Correction Workflow**: Append-only correction mechanism maintaining full audit history (v1 -> v2)
 - **Identity Registry**: Platform Admin interface for managing Organizations and Users
 - **IAM System**: Role-based access control (RBAC) with organization-level user management
@@ -27,14 +27,15 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 ## Tech Stack
 
-- **Framework**: Next.js 14+ (App Router) with TypeScript
+- **Framework**: Next.js 16 (App Router) with TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui components
-- **Database**: Prisma ORM with SQLite (local) / In-memory (Vercel)
+- **Database**: Neon Serverless PostgreSQL with Prisma ORM
 - **State Management**: Zustand
 - **Forms**: React Hook Form + Zod validation
 - **Data Parsing**: Papa Parse for CSV/TSV
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
+- **Deployment**: Vercel
 
 ## Getting Started
 
@@ -42,16 +43,20 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 - Node.js 18+ (Apple Silicon compatible)
 - npm
+- Vercel CLI (for environment variables)
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone <repo-url>
+cd waypoint-coop
+
 # Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env and set DATABASE_URL="file:./dev.db"
+# Pull environment variables from Vercel
+vercel env pull .env.local
 
 # Generate Prisma client
 npm run db:generate
@@ -59,7 +64,7 @@ npm run db:generate
 # Run database migrations
 npm run db:migrate
 
-# Seed the database with mock data
+# Seed the database with demo data
 npm run db:seed
 
 # Start development server
@@ -68,15 +73,39 @@ npm run dev
 
 The application will be available at `http://localhost:3000`.
 
+### Environment Variables
+
+The following environment variables are required (auto-injected by Vercel/Neon integration):
+
+```env
+# Database connection (Neon PostgreSQL)
+DATABASE_URL="postgresql://...@...-pooler.../neondb?sslmode=require"
+DATABASE_URL_UNPOOLED="postgresql://...@.../neondb?sslmode=require"
+
+# Individual connection parameters
+PGHOST="..."
+PGUSER="..."
+PGPASSWORD="..."
+PGDATABASE="..."
+```
+
+To get these variables locally:
+```bash
+vercel link
+vercel env pull .env.local
+```
+
 ## Demo Personas
 
 Switch between demo personas using the dropdown in the navigation:
 
-- **Alice Admin** (Platform Admin: Waypoint Coop) - Manages platform registry, audit logs, and IAM
-- **Bob GP** (Asset Manager: Kleiner Perkins) - Manages subscriptions, access grants, publishes data, and views history
-- **Genii Publisher** (Delegate: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
-- **Charlie LP** (Limited Partner: State of Ohio Pension) - Views feeds, ledger, manages access grants, and IAM
-- **Dana Delegate** (Auditor: Deloitte) - Views delegated data and manages IAM
+| Persona | Organization | Type | Access |
+|---------|--------------|------|--------|
+| **Alice Admin** | Waypoint Cooperative | Platform Admin | Registry, Audit logs, IAM |
+| **Bob GP** | Kleiner Perkins | Asset Manager | Full management, publishing |
+| **Genii Publisher** | Genii Admin Services | Fund Admin | Publishing, subscriptions |
+| **Charlie LP** | State of Ohio Pension | Limited Partner | Feeds, Ledger, grants |
+| **Dana Delegate** | Deloitte | Auditor | Delegated view access |
 
 ## Project Structure
 
@@ -84,78 +113,112 @@ Switch between demo personas using the dropdown in the navigation:
 waypoint-coop/
 ├── app/                    # Next.js App Router
 │   ├── api/                # API routes
-│   │   ├── subscriptions/      # Subscription CRUD
-│   │   ├── access-grants/      # Unified Access Grant CRUD
-│   │   └── envelopes/          # Envelope CRUD & Corrections
-│   ├── composer/           # Composer page (publish data)
+│   │   ├── organizations/  # Organization CRUD
+│   │   ├── assets/         # Asset CRUD
+│   │   ├── subscriptions/  # Subscription management
+│   │   ├── access-grants/  # Access Grant CRUD + approval
+│   │   ├── envelopes/      # Envelope publishing + corrections
+│   │   ├── users/          # User management
+│   │   └── audit/          # Audit log retrieval
+│   ├── composer/           # Compose and publish data
 │   ├── history/            # Published data history
 │   ├── ledger/             # LP ledger page
 │   ├── feeds/              # LP subscription feeds
 │   ├── subscriptions/      # Subscription management
-│   ├── access-grants/      # Unified Access Grant management
+│   ├── access-grants/      # Access Grant management
 │   ├── settings/iam/       # IAM settings page
-│   ├── registry/           # Admin entity registry (Organizations & Users)
+│   ├── registry/           # Admin entity registry
 │   └── audit/              # Admin audit log
 ├── components/             # React components
 │   ├── ui/                 # shadcn/ui components
 │   └── shared/             # Shared components
 ├── lib/                    # Utilities
 │   ├── prisma.ts           # Prisma client
-│   ├── permissions.ts      # Permission system & RBAC
-│   ├── api-guard.ts        # API route guards
-│   ├── mock-data.ts        # Mock data (Organizations, Users, Assets, AccessGrants)
-│   ├── in-memory-db.ts     # In-memory DB for Vercel
-│   └── crypto.ts           # Cryptographic utilities
+│   ├── permissions.ts      # ReBAC permission system
+│   ├── crypto.ts           # Cryptographic utilities
+│   └── utils.ts            # Helper functions
 ├── prisma/                 # Prisma schema and migrations
-└── store/                  # Zustand stores
+│   ├── schema.prisma       # Database schema
+│   └── seed.ts             # Demo data seeding
+├── store/                  # Zustand stores
+│   └── auth-store.ts       # Persona switching
+└── reference/              # Documentation
 ```
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed database with mock data
-- `npm run db:studio` - Open Prisma Studio
-- `npm run db:reset` - Reset database and reseed
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run type-check` | Run TypeScript type checking |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:migrate` | Run database migrations |
+| `npm run db:seed` | Seed database with demo data |
+| `npm run db:studio` | Open Prisma Studio |
+| `npm run db:reset` | Reset database and reseed |
 
 ## Vercel Deployment
 
 The application is configured for automatic deployment to Vercel:
 
-1. Connect your GitHub repository to Vercel
-2. Vercel will auto-detect Next.js settings
-3. The application uses in-memory storage on Vercel (no database required)
-4. Mock data is loaded on each API route invocation
+1. **Connect your GitHub repository to Vercel**
+2. **Create a Neon database via Vercel Dashboard**
+   - Go to Storage → Create Database → Select Neon
+3. **Vercel will auto-detect Next.js and inject environment variables**
+4. **Push to main branch to trigger deployment**
 
-### Environment Variables
+### Build Configuration
 
-For Vercel deployment, no environment variables are required as the app uses in-memory storage.
-
-For local development, create a `.env` file:
-```
-DATABASE_URL="file:./dev.db"
-NODE_ENV="development"
+The `vercel.json` file is pre-configured:
+```json
+{
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "regions": ["iad1"]
+}
 ```
 
 ## Database
 
-- **Local Development**: SQLite database (`prisma/dev.db`)
-- **Vercel Production**: In-memory storage (resets on each serverless function invocation)
+- **Provider**: Neon Serverless PostgreSQL
+- **ORM**: Prisma
+- **Region**: US East (iad1)
+- **Connection**: Pooled via pgbouncer, direct for migrations
+
+### Database Management
+
+```bash
+# View data in browser
+npm run db:studio
+
+# Reset and reseed
+npm run db:reset
+
+# Create a new migration
+npx prisma migrate dev --name <migration-name>
+```
 
 ## Documentation
 
-See the `support-docs/` folder for detailed documentation:
-- `0_Phase_1_Overview.md` - Feature requirements and user stories
-- `1_Permission_Delegation_Schema.md` - Permission model
-- `2_Architecture_Overview.md` - System architecture
-- `3_Mock_Data.md` - Mock data definitions
-- `8_infra-build.md` - Infrastructure setup
-- `9_design_guide.md` - Design system and UI patterns
+See the `reference/` folder for detailed documentation:
+
+- `architecture_and_deployment.md` - System architecture and deployment guide
+- `0_design_guide.md` - Design system and UI patterns
+- `2_permission_schema.md` - ReBAC permission model
+- `Waypoint_Narrative.md` - Stakeholder dynamics and data flows
+
+## Phase 1 Scope
+
+This demonstration covers:
+
+| Area | Features |
+|------|----------|
+| **Access & Permissions** | Identity Verification, Permission Rules, Audit Logging, Access Changes |
+| **Security** | SHA-256 hashing, Audit trails, Role-based access |
+| **Data Artifacts** | Capital Calls, Distributions, Financial Statements, Tax Documents |
 
 ## License
 

@@ -1,196 +1,289 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Waypoint Cooperative - Prisma Schema
+// ReBAC (Relationship-Based Access Control) Data Model
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  // directUrl is optional - used for migrations with Neon's connection pooler
+  // If DATABASE_URL_UNPOOLED is not set, migrations will use DATABASE_URL
 }
+
+// =============================================================================
+// ORGANIZATIONS
+// =============================================================================
+// Organizations are the primary actors in the system: GPs, LPs, Fund Admins, etc.
+// The same organization can have different roles in different contexts.
 
 model Organization {
-  id        Int     @id @default(autoincrement())
+  id        String   @id @default(cuid())
   name      String
-  role      String  // Platform Admin, Asset Manager, Limited Partner, Delegate
-  type      String  // Fund Administrator, General Partner (GP), Limited Partner (LP), etc.
-  status    String  // Verified, Pending, Suspended
-  imageUrl  String?
-  users     User[]
-  assets            Asset[] @relation("AssetOwner")
-  defaultPublished  Asset[] @relation("DefaultPublisher")
-  subscriptionsAsSubscriber Subscription[] @relation("Subscriber")
-  subscriptionsAsGranter Subscription[] @relation("Granter")
-  // Unified AccessGrant relations
-  accessGrantsAsGrantor AccessGrant[] @relation("AccessGrantGrantor")
-  accessGrantsAsGrantee AccessGrant[] @relation("AccessGrantGrantee")
-  // Legacy relations (deprecated - kept for migration)
-  delegationsAsSubscriber Delegation[] @relation("DelegationSubscriber")
-  delegationsAsDelegate Delegation[] @relation("DelegationDelegate")
-  publishingRightsAsOwner PublishingRight[] @relation("PublishingRightOwner")
-  publishingRightsAsPublisher PublishingRight[] @relation("PublishingRightPublisher")
-  envelopesAsPublisher Envelope[] @relation("EnvelopePublisher")
-  envelopesAsOwner Envelope[] @relation("EnvelopeOwner")
-  envelopesAsRecipient Envelope[] @relation("EnvelopeRecipient")
+  type      OrgType
+  lei       String?  // Legal Entity Identifier for identity verification
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users              User[]
+  managedAssets      Asset[]        @relation("AssetManager")
+  subscriptions      Subscription[]
+  grantsGiven        AccessGrant[]  @relation("Grantor")
+  grantsReceived     AccessGrant[]  @relation("Grantee")
+  publishedEnvelopes Envelope[]
+  auditLogs          AuditLog[]
+
+  @@index([type])
+  @@index([lei])
 }
 
-model User {
-  id         Int     @id @default(autoincrement())
-  name       String
-  email      String  @unique
-  orgId      Int
-  role       String  // Admin, Viewer, Publisher, etc.
-  isOrgAdmin Boolean @default(false) // Can manage users within their org
-  org        Organization @relation(fields: [orgId], references: [id])
-  envelopes  Envelope[]
-  receipts   ReadReceipt[]
-  permissions Permission[]
-}
+// =============================================================================
+// ASSETS
+// =============================================================================
+// Assets represent funds, feeders, SPVs, and portfolio companies.
+// They form a hierarchy (Fund -> Feeder -> SPV -> PortCo).
 
 model Asset {
-  id                 Int        @id @default(autoincrement())
-  name               String
-  ownerId            Int
-  defaultPublisherId Int        // Primary publisher for display; actual rights managed via PublishingRight
-  type               String     // Fund, Co-Investment, SPV
-  requireGPApprovalForDelegations Boolean @default(false) // Whether LP delegations require GP approval
-  owner              Organization @relation("AssetOwner", fields: [ownerId], references: [id])
-  defaultPublisher   Organization @relation("DefaultPublisher", fields: [defaultPublisherId], references: [id])
-  envelopes          Envelope[]
-  subscriptions      Subscription[]
+  id                            String    @id @default(cuid())
+  name                          String
+  type                          AssetType
+  managerId                     String
+  requireGPApprovalForDelegations Boolean   @default(false)
+  parentId                      String?
+  vintage                       Int?      // Fund vintage year
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+
+  // Relations
+  manager       Organization   @relation("AssetManager", fields: [managerId], references: [id], onDelete: Cascade)
+  parent        Asset?         @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Asset[]        @relation("AssetHierarchy")
+  subscriptions Subscription[]
+  envelopes     Envelope[]
+  accessGrants  AccessGrant[]
+
+  @@index([managerId])
+  @@index([parentId])
+  @@index([type])
 }
+
+// =============================================================================
+// ACCESS GRANTS
+// =============================================================================
+// The atomic unit of delegation in the ReBAC model.
+// Represents a directed edge from Grantor to Grantee with specific capabilities.
+
+model AccessGrant {
+  id        String      @id @default(cuid())
+  grantorId String
+  granteeId String
+  assetId   String?     // null means all assets the grantor controls
+  status    GrantStatus @default(PENDING_APPROVAL)
+
+  // Capabilities - what the grantee can do
+  canPublish             Boolean @default(false)
+  canViewData            Boolean @default(false)
+  canManageSubscriptions Boolean @default(false)
+  canApproveDelegations  Boolean @default(false)
+
+  // Lifecycle
+  validFrom  DateTime  @default(now())
+  expiresAt  DateTime?
+  approvedBy String?
+  approvedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  grantor Organization @relation("Grantor", fields: [grantorId], references: [id], onDelete: Cascade)
+  grantee Organization @relation("Grantee", fields: [granteeId], references: [id], onDelete: Cascade)
+  asset   Asset?       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([grantorId])
+  @@index([granteeId])
+  @@index([assetId])
+  @@index([status])
+}
+
+// =============================================================================
+// SUBSCRIPTIONS
+// =============================================================================
+// Represents an LP's investment relationship to an Asset.
+// Creates implicit view rights for the subscriber.
+
+model Subscription {
+  id           String             @id @default(cuid())
+  assetId      String
+  subscriberId String
+  status       SubscriptionStatus @default(ACTIVE)
+  accessLevel  AccessLevel        @default(FULL)
+  commitment   Float?             // Commitment amount in USD
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  // Relations
+  asset      Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  subscriber Organization @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, subscriberId])
+  @@index([assetId])
+  @@index([subscriberId])
+  @@index([status])
+}
+
+// =============================================================================
+// ENVELOPES
+// =============================================================================
+// Data packets published to the network (Capital Calls, Distributions, etc.)
+// Supports versioning for corrections via parentId chain.
 
 model Envelope {
-  id             Int       @id @default(autoincrement())
-  publisherId    Int
-  userId         Int
-  assetOwnerId   Int
-  assetId        Int
-  recipientId    Int       // Single recipient (LP) ID
-  timestamp      String    // ISO 8601 UTC string
-  version        Int       @default(1)
-  status         String    // Delivered, Revoked, Pending
-  hash           String
-  dataType       String?   // CAPITAL_CALL, DISTRIBUTION, etc.
-  period         String?
-  user           User      @relation(fields: [userId], references: [id])
-  asset          Asset      @relation(fields: [assetId], references: [id])
-  publisher      Organization @relation("EnvelopePublisher", fields: [publisherId], references: [id])
-  assetOwner     Organization @relation("EnvelopeOwner", fields: [assetOwnerId], references: [id])
-  recipient      Organization @relation("EnvelopeRecipient", fields: [recipientId], references: [id])
-  payload        Payload?
-  receipts       ReadReceipt[]
+  id          String       @id @default(cuid())
+  type        DataArtifact
+  payload     Json
+  hash        String       // SHA-256 hash for integrity verification
+  version     Int          @default(1)
+  parentId    String?      // Points to previous version if this is a correction
+  publisherId String
+  assetId     String
+  createdAt   DateTime     @default(now())
+
+  // Relations
+  publisher    Organization  @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  asset        Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  parent       Envelope?     @relation("Corrections", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Envelope[]    @relation("Corrections")
+  readReceipts ReadReceipt[]
+
+  @@index([publisherId])
+  @@index([assetId])
+  @@index([type])
+  @@index([parentId])
+  @@index([createdAt])
 }
 
-model Payload {
-  id         Int      @id @default(autoincrement())
-  envelopeId Int      @unique
-  data       String   // JSON string
-  envelope   Envelope @relation(fields: [envelopeId], references: [id])
-}
-
-model Delegation {
-  id                     String   @id @default(uuid())
-  subscriberId           Int
-  delegateId             Int
-  assetScope             String   // JSON array or "ALL"
-  typeScope              String   // JSON array or "ALL"
-  status                 String   // Active, Pending GP Approval, Rejected
-  gpApprovalRequired     Boolean  @default(false) // Whether GP must approve this delegation
-  gpApprovalStatus       String?  // Pending, Approved, Rejected
-  gpApprovedAt           String?  // ISO 8601 timestamp of approval
-  gpApprovedById         Int?     // User ID who approved
-  canManageSubscriptions Boolean  @default(false) // Can accept/request subscriptions on behalf of subscriber
-  createdAt              String   // ISO 8601 timestamp
-  subscriber             Organization @relation("DelegationSubscriber", fields: [subscriberId], references: [id])
-  delegate               Organization @relation("DelegationDelegate", fields: [delegateId], references: [id])
-}
+// =============================================================================
+// READ RECEIPTS
+// =============================================================================
+// Tracks when users have viewed envelopes for audit purposes.
 
 model ReadReceipt {
-  id         Int      @id @default(autoincrement())
-  envelopeId Int
-  userId     Int
-  viewedAt   String   // ISO 8601 UTC string
-  envelope   Envelope @relation(fields: [envelopeId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
-}
+  id         String   @id @default(cuid())
+  envelopeId String
+  userId     String
+  readAt     DateTime @default(now())
 
-// Subscription - Which LPs can access which assets
-model Subscription {
-  id            String  @id @default(uuid())
-  assetId       Int     // The asset (fund)
-  subscriberId  Int     // The LP organization
-  grantedById   Int     // GP or Publisher org who granted access
-  grantedAt     String  // ISO 8601 timestamp (when invitation sent)
-  acceptedAt    String? // ISO 8601 timestamp (when LP accepted)
-  expiresAt     String? // Optional expiration timestamp
-  status        String  // Pending LP Acceptance, Pending Asset Manager Approval, Active, Expired, Revoked, Declined
-  inviteMessage String? // Optional message from GP to LP
-  requestMessage String? // Optional message from LP to GP when requesting subscription
-  asset         Asset   @relation(fields: [assetId], references: [id])
-  subscriber    Organization @relation("Subscriber", fields: [subscriberId], references: [id])
-  granter       Organization @relation("Granter", fields: [grantedById], references: [id])
-}
-
-// PublishingRight - GP delegates publishing rights to Fund Admin
-model PublishingRight {
-  id                     String  @id @default(uuid())
-  assetOwnerId           Int     // The GP organization
-  publisherId            Int     // The Fund Admin organization
-  assetScope             String  // JSON array of asset IDs or "ALL"
-  canManageSubscriptions Boolean @default(false) // Can also manage subscriptions
-  canApproveSubscriptions Boolean @default(false) // Can approve subscription requests (if asset requires approval)
-  canApproveDelegations Boolean @default(false) // Can approve LP delegations (if asset requires approval)
-  canViewData            Boolean @default(true) // Can view data envelopes (default true for backward compatibility)
-  grantedAt              String  // ISO 8601 timestamp
-  status                 String  // Active, Revoked
-  assetOwner             Organization @relation("PublishingRightOwner", fields: [assetOwnerId], references: [id])
-  publisher              Organization @relation("PublishingRightPublisher", fields: [publisherId], references: [id])
-}
-
-// Permission - Fine-grained permissions per user
-model Permission {
-  id       String @id @default(uuid())
-  userId   Int
-  resource String // "assets", "subscriptions", "access-grants", "envelopes", "users", "audit", "registry", "feeds"
-  action   String // "view", "create", "update", "delete", "publish", "approve"
-  scope    String // JSON: { orgId?, assetIds?, all? }
-  user     User   @relation(fields: [userId], references: [id])
-}
-
-// AccessGrant - Unified model for delegated capabilities
-// Replaces both PublishingRight and Delegation with a single, consistent model
-model AccessGrant {
-  id                     String   @id @default(uuid())
-  
-  // THE EDGE: Grantor (Asset Manager or LP) → Grantee (Delegate)
-  grantorId              Int      // Asset Manager OR Limited Partner org
-  granteeId              Int      // Always a Delegate org
-  
-  // SCOPE
-  assetScope             String   // JSON array of asset IDs or "ALL"
-  dataTypeScope          String   // JSON array of data types or "ALL"
-  
-  // CAPABILITIES
-  canPublish             Boolean  @default(false) // Send envelopes (GP grants only)
-  canViewData            Boolean  @default(true)  // View envelopes
-  canManageSubscriptions Boolean  @default(false) // GP: invite/revoke LPs | LP: accept/request for LP
-  canApproveSubscriptions Boolean @default(false) // Approve LP subscription requests (GP only)
-  canApproveDelegations  Boolean  @default(false) // Approve LP→Delegate grants (GP only)
-  
-  // APPROVAL WORKFLOW (for LP grants requiring GP approval)
-  requiresApproval       Boolean  @default(false) // Whether GP must approve this grant
-  approvalStatus         String?  // Pending, Approved, Rejected
-  approvedById           Int?     // User ID who approved
-  approvedAt             String?  // ISO 8601 timestamp of approval
-  
-  // METADATA
-  status                 String   // Active, Revoked, Pending Approval
-  grantedAt              String   // ISO 8601 timestamp
-  
   // Relations
-  grantor                Organization @relation("AccessGrantGrantor", fields: [grantorId], references: [id])
-  grantee                Organization @relation("AccessGrantGrantee", fields: [granteeId], references: [id])
+  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([envelopeId, userId])
+  @@index([envelopeId])
+  @@index([userId])
+}
+
+// =============================================================================
+// USERS
+// =============================================================================
+// Individual users belonging to organizations.
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  organizationId String
+  role           UserRole @default(MEMBER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  readReceipts ReadReceipt[]
+  auditLogs    AuditLog[]    @relation("AuditActor")
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+// Immutable log of all significant actions in the system.
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  action         String   // e.g., "CREATE", "UPDATE", "DELETE", "APPROVE", "REVOKE"
+  entityType     String   // e.g., "AccessGrant", "Subscription", "Envelope"
+  entityId       String
+  actorId        String?
+  organizationId String?
+  details        Json?    // Additional context about the action
+  createdAt      DateTime @default(now())
+
+  // Relations
+  actor        User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum OrgType {
+  GP             // General Partner / Asset Manager
+  LP             // Limited Partner / Investor
+  FUND_ADMIN     // Fund Administrator
+  AUDITOR        // Audit firm
+  CONSULTANT     // Investment Consultant
+  TAX_ADVISOR    // Tax Advisor
+  PLATFORM_ADMIN // Waypoint Platform Admin
+}
+
+enum AssetType {
+  FIRM              // Asset Management Firm
+  FUND              // Main Fund vehicle
+  FEEDER            // Feeder Fund
+  SPV               // Special Purpose Vehicle
+  PORTFOLIO_COMPANY // Portfolio Company
+}
+
+enum GrantStatus {
+  ACTIVE           // Grant is currently in effect
+  PENDING_APPROVAL // Awaiting GP approval
+  REVOKED          // Grant has been revoked
+  EXPIRED          // Grant has passed its expiration date
+}
+
+enum SubscriptionStatus {
+  ACTIVE  // Active investment
+  PENDING // Pending subscription
+  CLOSED  // Closed/redeemed position
+}
+
+enum AccessLevel {
+  FULL       // Full access to all data
+  RESTRICTED // Restricted/sanitized access
+}
+
+enum DataArtifact {
+  CAPITAL_CALL        // Capital call notice
+  DISTRIBUTION        // Distribution notice
+  FINANCIAL_STATEMENT // Quarterly/annual financial statements
+  TAX_DOCUMENT        // K-1, PFIC statements
+  LEGAL_DOCUMENT      // Side letters, amendments
+}
+
+enum UserRole {
+  ADMIN  // Organization admin - full access
+  MEMBER // Standard member
+  VIEWER // Read-only access
 }
 

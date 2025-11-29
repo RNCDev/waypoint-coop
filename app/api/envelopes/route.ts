@@ -1,159 +1,154 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInMemoryDB } from '@/lib/in-memory-db'
+import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
-import { z } from 'zod'
-import { getCurrentUser, checkPermission } from '@/lib/api-guard'
-import { filterEnvelopesByAccess, canAccess, hasSubscriptionForPublishing } from '@/lib/permissions'
+import { canPerformAction } from '@/lib/permissions'
 
-export const dynamic = 'force-dynamic'
-
-const envelopeSchema = z.object({
-  publisherId: z.number(),
-  userId: z.number(),
-  assetOwnerId: z.number(),
-  assetId: z.number(),
-  timestamp: z.string(),
-  recipientId: z.number(), // Single recipient per envelope
-  dataType: z.string().optional(),
-  period: z.string().optional(),
-  payload: z.any(), // LP-specific payload data
-})
-
+// GET /api/envelopes - List envelopes
 export async function GET(request: NextRequest) {
   try {
-    // Check permission
-    const permissionResult = checkPermission(request, 'envelopes', 'view')
-    if (!permissionResult.allowed || !permissionResult.user) {
-      return NextResponse.json(
-        { error: permissionResult.error || 'Access denied' },
-        { status: permissionResult.user ? 403 : 401 }
-      )
+    const { searchParams } = new URL(request.url)
+    const assetId = searchParams.get('assetId')
+    const publisherId = searchParams.get('publisherId')
+    const type = searchParams.get('type')
+    const subscriberId = searchParams.get('subscriberId') // For LP ledger view
+
+    let assetIds: string[] = []
+
+    // If subscriberId is provided, get assets they have access to
+    if (subscriberId) {
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          subscriberId,
+          status: 'ACTIVE',
+        },
+        select: { assetId: true },
+      })
+
+      const grants = await prisma.accessGrant.findMany({
+        where: {
+          granteeId: subscriberId,
+          status: 'ACTIVE',
+          canViewData: true,
+        },
+        select: { assetId: true },
+      })
+
+      assetIds = [
+        ...subscriptions.map((s) => s.assetId),
+        ...grants.filter((g) => g.assetId).map((g) => g.assetId as string),
+      ]
     }
 
-    const user = permissionResult.user
-    const searchParams = request.nextUrl.searchParams
-    const publisherId = searchParams.get('publisherId')
-    const subscriberId = searchParams.get('subscriberId')
-    const assetId = searchParams.get('assetId')
-    const assetOwnerId = searchParams.get('assetOwnerId')
+    const envelopes = await prisma.envelope.findMany({
+      where: {
+        ...(assetId && { assetId }),
+        ...(publisherId && { publisherId }),
+        ...(type && { type: type as any }),
+        ...(subscriberId && assetIds.length > 0 && { assetId: { in: assetIds } }),
+      },
+      include: {
+        publisher: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            version: true,
+          },
+        },
+        _count: {
+          select: {
+            readReceipts: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50, // Limit for performance
+    })
 
-    // Use in-memory DB for consistency (works on Vercel and local dev)
-    // Prisma can be used if database is properly seeded, but in-memory is simpler
-      const db = getInMemoryDB()
-      let envelopes = db.envelopes
-
-      // Apply query filters first
-      if (publisherId) {
-        envelopes = envelopes.filter(e => e.publisherId === parseInt(publisherId))
-      }
-      if (subscriberId) {
-        envelopes = envelopes.filter(e => e.recipientId === parseInt(subscriberId))
-      }
-      if (assetId) {
-        envelopes = envelopes.filter(e => e.assetId === parseInt(assetId))
-      }
-      if (assetOwnerId) {
-        envelopes = envelopes.filter(e => e.assetOwnerId === parseInt(assetOwnerId))
-      }
-
-      // Then apply permission-based filtering
-      envelopes = filterEnvelopesByAccess(user, envelopes as any) as typeof envelopes
-
-      return NextResponse.json(envelopes)
+    return NextResponse.json(envelopes)
   } catch (error) {
     console.error('Error fetching envelopes:', error)
-    return NextResponse.json({ error: 'Failed to fetch envelopes' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch envelopes' },
+      { status: 500 }
+    )
   }
 }
 
+// POST /api/envelopes - Publish a new envelope
 export async function POST(request: NextRequest) {
   try {
-    // Check permission to publish envelopes
-    const permissionResult = checkPermission(request, 'envelopes', 'publish')
-    if (!permissionResult.allowed || !permissionResult.user) {
-      return NextResponse.json(
-        { error: permissionResult.error || 'Access denied' },
-        { status: permissionResult.user ? 403 : 401 }
-      )
-    }
-
-    const user = permissionResult.user
     const body = await request.json()
-    
-    // Support both single envelope and batch creation
-    const isBatch = Array.isArray(body)
-    const envelopesToCreate = isBatch ? body : [body]
+    const { type, payload, publisherId, assetId } = body
 
-    const createdEnvelopes = []
-
-    for (const envelopeData of envelopesToCreate) {
-      const validated = envelopeSchema.parse(envelopeData)
-      
-      // Verify user has access to publish for this asset
-      if (!canAccess(user, 'assets', 'view', { assetId: validated.assetId })) {
-        return NextResponse.json(
-          { error: `Access denied: Cannot publish for asset ${validated.assetId}` },
-          { status: 403 }
-        )
-      }
-
-      // Verify recipient has a subscription (Active or Pending LP Acceptance) to the asset
-      // Publishers can send data to LPs with pending subscriptions - data will be visible after acceptance
-      const recipientHasSubscription = await hasSubscriptionForPublishing(
-        validated.assetId,
-        validated.recipientId
+    if (!type || !payload || !publisherId || !assetId) {
+      return NextResponse.json(
+        { error: 'type, payload, publisherId, and assetId are required' },
+        { status: 400 }
       )
-      
-      if (!recipientHasSubscription) {
-        return NextResponse.json(
-          { 
-            error: `Recipient ${validated.recipientId} does not have a subscription to asset ${validated.assetId}. Please create a subscription invitation first before sending data.` 
-          },
-          { status: 403 }
-        )
-      }
-
-      // Use in-memory DB for consistency
-        const db = getInMemoryDB()
-        const envelopeId = db.nextEnvelopeId++
-        
-        const envelope = {
-          id: envelopeId,
-          publisherId: validated.publisherId,
-          userId: validated.userId,
-          assetOwnerId: validated.assetOwnerId,
-          assetId: validated.assetId,
-          recipientId: validated.recipientId,
-          timestamp: validated.timestamp,
-          version: 1,
-          status: 'Delivered' as const,
-          dataType: validated.dataType as any,
-          period: validated.period,
-        }
-        
-        const hash = generateHash(envelope, validated.payload)
-
-        const envelopeWithHash = {
-          ...envelope,
-          hash,
-        }
-
-        db.envelopes.push(envelopeWithHash)
-        db.payloads.push({
-          id: db.nextPayloadId++,
-          envelopeId,
-          data: validated.payload,
-        })
-
-        createdEnvelopes.push(envelopeWithHash)
     }
 
-    return NextResponse.json(isBatch ? createdEnvelopes : createdEnvelopes[0], { status: 201 })
+    // Check if publisher has permission to publish
+    const permission = await canPerformAction(publisherId, 'publish', assetId)
+    if (!permission.allowed) {
+      return NextResponse.json(
+        { error: `Permission denied: ${permission.reason}` },
+        { status: 403 }
+      )
+    }
+
+    // Generate hash
+    const hash = generateHash(payload)
+
+    const envelope = await prisma.envelope.create({
+      data: {
+        type,
+        payload,
+        hash,
+        publisherId,
+        assetId,
+        version: 1,
+      },
+      include: {
+        publisher: true,
+        asset: true,
+      },
+    })
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'PUBLISH',
+        entityType: 'Envelope',
+        entityId: envelope.id,
+        organizationId: publisherId,
+        details: {
+          type,
+          asset: envelope.asset.name,
+          hash: hash.slice(0, 8),
+        },
+      },
+    })
+
+    return NextResponse.json(envelope, { status: 201 })
   } catch (error) {
-    console.error('Error creating envelope:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Failed to create envelope' }, { status: 500 })
+    console.error('Error publishing envelope:', error)
+    return NextResponse.json(
+      { error: 'Failed to publish envelope' },
+      { status: 500 }
+    )
   }
 }
+

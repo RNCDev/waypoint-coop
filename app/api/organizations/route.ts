@@ -1,50 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
+import { OrgType } from '@prisma/client'
 
-export const dynamic = 'force-dynamic'
-
+// GET /api/organizations - List all organizations
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
-    const id = searchParams.get('id')
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type') as OrgType | null
 
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      if (id) {
-        const org = db.organizations.find(o => o.id === parseInt(id))
-        if (!org) {
-          return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
-        }
-        return NextResponse.json(org)
-      }
-      return NextResponse.json(db.organizations)
-    } else {
-      if (id) {
-        const org = await prisma.organization.findUnique({
-          where: { id: parseInt(id) },
-          include: {
+    const organizations = await prisma.organization.findMany({
+      where: type ? { type } : undefined,
+      include: {
+        _count: {
+          select: {
             users: true,
-            assets: true,
+            managedAssets: true,
+            subscriptions: true,
           },
-        })
-        if (!org) {
-          return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
-        }
-        return NextResponse.json(org)
-      }
-
-      const orgs = await prisma.organization.findMany({
-        include: {
-          users: true,
-          assets: true,
         },
-      })
-      return NextResponse.json(orgs)
-    }
+      },
+      orderBy: { name: 'asc' },
+    })
+
+    return NextResponse.json(organizations)
   } catch (error) {
     console.error('Error fetching organizations:', error)
-    return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch organizations' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/organizations - Create a new organization
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { name, type, lei } = body
+
+    if (!name || !type) {
+      return NextResponse.json(
+        { error: 'Name and type are required' },
+        { status: 400 }
+      )
+    }
+
+    const organization = await prisma.organization.create({
+      data: {
+        name,
+        type,
+        lei,
+      },
+    })
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'CREATE',
+        entityType: 'Organization',
+        entityId: organization.id,
+        organizationId: organization.id,
+        details: { name, type },
+      },
+    })
+
+    return NextResponse.json(organization, { status: 201 })
+  } catch (error) {
+    console.error('Error creating organization:', error)
+    return NextResponse.json(
+      { error: 'Failed to create organization' },
+      { status: 500 }
+    )
   }
 }
 

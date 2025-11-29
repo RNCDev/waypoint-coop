@@ -1,21 +1,25 @@
-import { Envelope, Payload } from '@/types'
+import { createHash } from 'crypto'
 
 /**
- * Generate a SHA-256 hash of the envelope + payload combination
- * This simulates cryptographic signing for Phase 1
+ * Generate a SHA-256 hash of the given data
+ * Used for data integrity verification in envelopes
  */
-export function generateHash(envelope: Omit<Envelope, 'hash'> | Partial<Envelope>, payload: Payload['data']): string {
-  const crypto = require('crypto')
-  const combined = JSON.stringify({ envelope, payload })
-  return crypto.createHash('sha256').update(combined).digest('hex')
+export function generateHash(data: object | string): string {
+  const content = typeof data === 'string' ? data : JSON.stringify(data)
+  return createHash('sha256').update(content).digest('hex')
 }
 
 /**
- * Verify that a hash matches the envelope + payload combination
+ * Verify that the given hash matches the data
  */
-export function verifyHash(envelope: Envelope, payload: Payload['data'], hash: string): boolean {
-  const { hash: _, ...envelopeWithoutHash } = envelope
-  const computedHash = generateHash(envelopeWithoutHash, payload)
-  return computedHash === hash
+export function verifyHash(data: object | string, hash: string): boolean {
+  return generateHash(data) === hash
+}
+
+/**
+ * Generate a short hash for display purposes (first 8 characters)
+ */
+export function shortHash(hash: string): string {
+  return hash.slice(0, 8)
 }
 

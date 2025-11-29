@@ -1,167 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
-import { z } from 'zod'
-import { checkPermission, getCurrentUser } from '@/lib/api-guard'
-import { canAccess, hasSubscriptionForPublishing } from '@/lib/permissions'
+import { canPerformAction } from '@/lib/permissions'
 
-export const dynamic = 'force-dynamic'
-
-const correctionSchema = z.object({
-  timestamp: z.string(),
-  dataType: z.string().optional(),
-  period: z.string().optional(),
-  payload: z.any(), // Updated payload data
-})
-
-// Create a correction (new version) of an existing envelope
+// POST /api/envelopes/[id]/correct - Create a correction to an envelope
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: idParam } = await params
-    const originalEnvelopeId = parseInt(idParam)
-    
-    // Check permission to publish envelopes
-    const permissionResult = checkPermission(request, 'envelopes', 'publish')
-    if (!permissionResult.allowed || !permissionResult.user) {
-      return NextResponse.json(
-        { error: permissionResult.error || 'Access denied' },
-        { status: permissionResult.user ? 403 : 401 }
-      )
-    }
-
-    const user = permissionResult.user
+    const { id } = await params
     const body = await request.json()
-    const validated = correctionSchema.parse(body)
+    const { payload, publisherId } = body
 
-    // Fetch the original envelope
-    let originalEnvelope
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      originalEnvelope = db.envelopes.find(e => e.id === originalEnvelopeId)
-    } else {
-      originalEnvelope = await prisma.envelope.findUnique({
-        where: { id: originalEnvelopeId },
-      })
-    }
-
-    if (!originalEnvelope) {
-      return NextResponse.json({ error: 'Original envelope not found' }, { status: 404 })
-    }
-
-    // Verify user has access to publish for this asset
-    if (!canAccess(user, 'assets', 'view', { assetId: originalEnvelope.assetId })) {
+    if (!payload || !publisherId) {
       return NextResponse.json(
-        { error: `Access denied: Cannot publish corrections for asset ${originalEnvelope.assetId}` },
+        { error: 'payload and publisherId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Get the original envelope
+    const original = await prisma.envelope.findUnique({
+      where: { id },
+      include: {
+        asset: true,
+      },
+    })
+
+    if (!original) {
+      return NextResponse.json(
+        { error: 'Original envelope not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if publisher has permission to publish
+    const permission = await canPerformAction(publisherId, 'publish', original.assetId)
+    if (!permission.allowed) {
+      return NextResponse.json(
+        { error: `Permission denied: ${permission.reason}` },
         { status: 403 }
       )
     }
 
-    // Verify recipient still has a subscription (for publishing)
-    const recipientHasSubscription = await hasSubscriptionForPublishing(
-      originalEnvelope.assetId,
-      originalEnvelope.recipientId
-    )
-    
-    if (!recipientHasSubscription) {
-      return NextResponse.json(
-        { 
-          error: `Recipient ${originalEnvelope.recipientId} does not have a subscription to asset ${originalEnvelope.assetId}. Cannot create correction.` 
-        },
-        { status: 403 }
-      )
-    }
+    // Find the latest version in this correction chain
+    const latestVersion = await prisma.envelope.findFirst({
+      where: {
+        OR: [
+          { id: original.id },
+          { parentId: original.id },
+        ],
+      },
+      orderBy: { version: 'desc' },
+    })
 
-    // Validate correction is for same asset and recipient
-    // (This is implicit since we're using the original envelope's values)
+    const newVersion = (latestVersion?.version || 1) + 1
+    const hash = generateHash(payload)
 
-    // Create new envelope with incremented version
-    const newVersion = originalEnvelope.version + 1
-    const timestamp = validated.timestamp
-
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      const envelopeId = db.nextEnvelopeId++
-      
-      const envelope = {
-        id: envelopeId,
-        publisherId: originalEnvelope.publisherId,
-        userId: user.id,
-        assetOwnerId: originalEnvelope.assetOwnerId,
-        assetId: originalEnvelope.assetId,
-        recipientId: originalEnvelope.recipientId,
-        timestamp,
-        version: newVersion,
-        status: 'Delivered' as const,
-        dataType: (validated.dataType || originalEnvelope.dataType) as any,
-        period: validated.period || originalEnvelope.period || undefined,
-      }
-      
-      const hash = generateHash(envelope as any, validated.payload)
-
-      const envelopeWithHash = {
-        ...envelope,
+    const correction = await prisma.envelope.create({
+      data: {
+        type: original.type,
+        payload,
         hash,
-      }
-
-      db.envelopes.push(envelopeWithHash)
-      db.payloads.push({
-        id: db.nextPayloadId++,
-        envelopeId,
-        data: validated.payload,
-      })
-
-      return NextResponse.json(envelopeWithHash, { status: 201 })
-    } else {
-      const envelopeForHash = {
-        id: 0, // Temporary
-        publisherId: originalEnvelope.publisherId,
-        userId: user.id,
-        assetOwnerId: originalEnvelope.assetOwnerId,
-        assetId: originalEnvelope.assetId,
-        recipientId: originalEnvelope.recipientId,
-        timestamp,
         version: newVersion,
-        status: 'Delivered' as const,
-        dataType: (validated.dataType || originalEnvelope.dataType) as any,
-        period: validated.period || originalEnvelope.period,
-      }
-      const hash = generateHash(envelopeForHash as any, validated.payload)
+        parentId: original.id,
+        publisherId,
+        assetId: original.assetId,
+      },
+      include: {
+        publisher: true,
+        asset: true,
+        parent: true,
+      },
+    })
 
-      const created = await prisma.envelope.create({
-        data: {
-          publisherId: originalEnvelope.publisherId,
-          userId: user.id,
-          assetOwnerId: originalEnvelope.assetOwnerId,
-          assetId: originalEnvelope.assetId,
-          recipientId: originalEnvelope.recipientId,
-          timestamp,
-          version: newVersion,
-          status: 'Delivered',
-          hash,
-          dataType: validated.dataType || originalEnvelope.dataType || null,
-          period: validated.period || originalEnvelope.period || null,
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'CORRECT',
+        entityType: 'Envelope',
+        entityId: correction.id,
+        organizationId: publisherId,
+        details: {
+          originalEnvelopeId: original.id,
+          originalVersion: original.version,
+          newVersion,
+          hash: hash.slice(0, 8),
         },
-      })
+      },
+    })
 
-      await prisma.payload.create({
-        data: {
-          envelopeId: created.id,
-          data: JSON.stringify(validated.payload),
-        },
-      })
-
-      return NextResponse.json(created, { status: 201 })
-    }
+    return NextResponse.json(correction, { status: 201 })
   } catch (error) {
-    console.error('Error creating envelope correction:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Failed to create envelope correction' }, { status: 500 })
+    console.error('Error creating correction:', error)
+    return NextResponse.json(
+      { error: 'Failed to create correction' },
+      { status: 500 }
+    )
   }
 }
 

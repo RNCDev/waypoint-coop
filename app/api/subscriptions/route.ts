@@ -1,162 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
-import { Subscription } from '@/types'
-import { getCurrentUser, checkPermission } from '@/lib/api-guard'
-import { getManageableSubscriptions, getViewableSubscriptions, getUserOrganization } from '@/lib/permissions'
 
-export const dynamic = 'force-dynamic'
-
-const subscriptionSchema = z.object({
-  assetId: z.number(),
-  subscriberId: z.number(),
-  expiresAt: z.string().optional(),
-  inviteMessage: z.string().optional(),
-})
-
+// GET /api/subscriptions - List subscriptions
 export async function GET(request: NextRequest) {
   try {
-    // Check permission
-    const permissionResult = checkPermission(request, 'subscriptions', 'view')
-    if (!permissionResult.allowed || !permissionResult.user) {
-      return NextResponse.json(
-        { error: permissionResult.error || 'Access denied' },
-        { status: permissionResult.user ? 403 : 401 }
-      )
-    }
-
-    const user = permissionResult.user
-    const org = getUserOrganization(user)
-    const searchParams = request.nextUrl.searchParams
+    const { searchParams } = new URL(request.url)
     const assetId = searchParams.get('assetId')
     const subscriberId = searchParams.get('subscriberId')
 
-    // For Delegates with publishing rights, use viewable subscriptions
-    // For Asset Managers, use manageable subscriptions
-    const isDelegate = org?.role === 'Delegate'
-    const baseSubscriptions = isDelegate ? getViewableSubscriptions(user) : getManageableSubscriptions(user)
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        ...(assetId && { assetId }),
+        ...(subscriberId && { subscriberId }),
+      },
+      include: {
+        asset: {
+          include: {
+            manager: true,
+          },
+        },
+        subscriber: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
-    if (isVercel()) {
-      // Apply additional filters
-      let subscriptions = baseSubscriptions
-      
-      if (assetId) {
-        subscriptions = subscriptions.filter(s => s.assetId === parseInt(assetId))
-      }
-      if (subscriberId) {
-        subscriptions = subscriptions.filter(s => s.subscriberId === parseInt(subscriberId))
-      }
-
-      return NextResponse.json(subscriptions)
-    } else {
-      // Note: Prisma Subscription model requires migration
-      // For now, use in-memory data for non-Vercel environments as well
-      let subscriptions = baseSubscriptions
-      
-      if (assetId) {
-        subscriptions = subscriptions.filter(s => s.assetId === parseInt(assetId))
-      }
-      if (subscriberId) {
-        subscriptions = subscriptions.filter(s => s.subscriberId === parseInt(subscriberId))
-      }
-
-      return NextResponse.json(subscriptions)
-    }
+    return NextResponse.json(subscriptions)
   } catch (error) {
     console.error('Error fetching subscriptions:', error)
-    return NextResponse.json({ error: 'Failed to fetch subscriptions' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch subscriptions' },
+      { status: 500 }
+    )
   }
 }
 
+// POST /api/subscriptions - Create a new subscription
 export async function POST(request: NextRequest) {
   try {
-    // Check permission to create subscriptions
-    const permissionResult = checkPermission(request, 'subscriptions', 'create')
-    if (!permissionResult.allowed || !permissionResult.user) {
-      return NextResponse.json(
-        { error: permissionResult.error || 'Access denied' },
-        { status: permissionResult.user ? 403 : 401 }
-      )
-    }
-
-    const user = permissionResult.user
-    const org = getUserOrganization(user)
-    
-    if (!org) {
-      return NextResponse.json({ error: 'User organization not found' }, { status: 400 })
-    }
-
     const body = await request.json()
-    const validated = subscriptionSchema.parse(body)
+    const { assetId, subscriberId, status, accessLevel, commitment } = body
 
-    const timestamp = new Date().toISOString()
-
-    if (isVercel()) {
-      const db = getInMemoryDB()
-      
-      // Check if subscription already exists (Active or Pending)
-      const existing = db.subscriptions.find(
-        s => s.assetId === validated.assetId && 
-             s.subscriberId === validated.subscriberId &&
-             (s.status === 'Active' || s.status === 'Pending LP Acceptance')
+    if (!assetId || !subscriberId) {
+      return NextResponse.json(
+        { error: 'assetId and subscriberId are required' },
+        { status: 400 }
       )
-      
-      if (existing) {
-        return NextResponse.json({ error: 'Active or pending subscription already exists' }, { status: 409 })
-      }
-
-      const subscriptionId = `S-${Date.now()}`
-      const subscription: Subscription = {
-        id: subscriptionId,
-        assetId: validated.assetId,
-        subscriberId: validated.subscriberId,
-        grantedById: org.id,
-        grantedAt: timestamp,
-        expiresAt: validated.expiresAt,
-        status: 'Pending LP Acceptance',
-        inviteMessage: validated.inviteMessage,
-      }
-
-      db.subscriptions.push(subscription)
-      return NextResponse.json(subscription, { status: 201 })
-    } else {
-      // Note: Prisma Subscription model requires migration
-      // For now, use in-memory data for non-Vercel environments as well
-      const db = getInMemoryDB()
-      
-      // Check if subscription already exists (Active or Pending)
-      const existing = db.subscriptions.find(
-        s => s.assetId === validated.assetId && 
-             s.subscriberId === validated.subscriberId &&
-             (s.status === 'Active' || s.status === 'Pending LP Acceptance')
-      )
-      
-      if (existing) {
-        return NextResponse.json({ error: 'Active or pending subscription already exists' }, { status: 409 })
-      }
-
-      const subscriptionId = `S-${Date.now()}`
-      const subscription: Subscription = {
-        id: subscriptionId,
-        assetId: validated.assetId,
-        subscriberId: validated.subscriberId,
-        grantedById: org.id,
-        grantedAt: timestamp,
-        expiresAt: validated.expiresAt,
-        status: 'Pending LP Acceptance',
-        inviteMessage: validated.inviteMessage,
-      }
-
-      db.subscriptions.push(subscription)
-      return NextResponse.json(subscription, { status: 201 })
     }
+
+    // Check if subscription already exists
+    const existing = await prisma.subscription.findUnique({
+      where: {
+        assetId_subscriberId: {
+          assetId,
+          subscriberId,
+        },
+      },
+    })
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Subscription already exists' },
+        { status: 400 }
+      )
+    }
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        assetId,
+        subscriberId,
+        status: status || 'ACTIVE',
+        accessLevel: accessLevel || 'FULL',
+        commitment,
+      },
+      include: {
+        asset: true,
+        subscriber: true,
+      },
+    })
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'CREATE',
+        entityType: 'Subscription',
+        entityId: subscription.id,
+        organizationId: subscriberId,
+        details: { assetId, commitment },
+      },
+    })
+
+    return NextResponse.json(subscription, { status: 201 })
   } catch (error) {
     console.error('Error creating subscription:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to create subscription' },
+      { status: 500 }
+    )
   }
 }
-
