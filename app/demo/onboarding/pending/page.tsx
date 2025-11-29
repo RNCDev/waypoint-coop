@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -33,7 +33,7 @@ interface DemoData {
   personas: Record<string, PersonaData>
 }
 
-export default function DemoPendingPage() {
+function PendingContent() {
   const searchParams = useSearchParams()
   const persona = searchParams.get('persona') || 'lp'
   const [demoData, setDemoData] = useState<DemoData | null>(null)
@@ -211,3 +211,10 @@ export default function DemoPendingPage() {
   )
 }
 
+export default function DemoPendingPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-16 text-center"><div className="animate-pulse">Loading...</div></div>}>
+      <PendingContent />
+    </Suspense>
+  )
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,7 +26,7 @@ interface PersonaData {
   }
 }
 
-export default function DemoVerifyUBOPage() {
+function VerifyUBOContent() {
   const searchParams = useSearchParams()
   const persona = searchParams.get('persona') || 'lp'
   const [personaData, setPersonaData] = useState<PersonaData | null>(null)
@@ -215,3 +215,10 @@ export default function DemoVerifyUBOPage() {
   )
 }
 
+export default function DemoVerifyUBOPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-16 text-center"><div className="animate-pulse">Loading...</div></div>}>
+      <VerifyUBOContent />
+    </Suspense>
+  )
+}

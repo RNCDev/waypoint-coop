@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +22,7 @@ interface PersonaData {
   gpClients?: Array<{ gpName: string; fundsManaged: number }>
 }
 
-export default function DemoApprovedPage() {
+function ApprovedContent() {
   const searchParams = useSearchParams()
   const persona = searchParams.get('persona') || 'lp'
   const [personaData, setPersonaData] = useState<PersonaData | null>(null)
@@ -39,7 +39,7 @@ export default function DemoApprovedPage() {
   }, [persona])
 
   useEffect(() => {
-    if (!showConfetti) {
+    if (!showConfetti && personaData) {
       setShowConfetti(true)
       // Fire confetti
       const duration = 2000
@@ -67,7 +67,7 @@ export default function DemoApprovedPage() {
       }
       frame()
     }
-  }, [showConfetti])
+  }, [showConfetti, personaData])
 
   if (!personaData) {
     return (
@@ -310,3 +310,10 @@ export default function DemoApprovedPage() {
   )
 }
 
+export default function DemoApprovedPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-16 text-center"><div className="animate-pulse">Loading...</div></div>}>
+      <ApprovedContent />
+    </Suspense>
+  )
+}
