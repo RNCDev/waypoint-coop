@@ -4,9 +4,10 @@ import { prisma } from '@/lib/prisma'
 // PATCH /api/subscriptions/[id] - Update subscription status
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { status } = await request.json()
 
     if (!status || !['ACTIVE', 'PENDING', 'CLOSED'].includes(status)) {
@@ -17,7 +18,7 @@ export async function PATCH(
     }
 
     const subscription = await prisma.subscription.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         asset: {
           include: {
@@ -36,7 +37,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.subscription.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: status as 'ACTIVE' | 'PENDING' | 'CLOSED' },
       include: {
         asset: {
@@ -77,11 +78,12 @@ export async function PATCH(
 // DELETE /api/subscriptions/[id] - Delete subscription
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const subscription = await prisma.subscription.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!subscription) {
@@ -92,7 +94,7 @@ export async function DELETE(
     }
 
     await prisma.subscription.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Create audit log
@@ -100,7 +102,7 @@ export async function DELETE(
       data: {
         action: 'DELETE',
         entityType: 'Subscription',
-        entityId: params.id,
+        entityId: id,
         organizationId: subscription.subscriberId,
         details: {
           assetId: subscription.assetId,
