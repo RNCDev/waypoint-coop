@@ -51,7 +51,7 @@ export function PersonaSwitcher() {
         title="Launch Onboarding Demo"
       >
         <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-300" />
-        <span className="text-xs font-medium text-amber-400 group-hover:text-amber-300 hidden sm:inline">Demo</span>
+        <span className="text-xs font-medium text-amber-400 group-hover:text-amber-300 hidden sm:inline">Onboarding Demo</span>
       </Link>
 
       <DropdownMenu>
