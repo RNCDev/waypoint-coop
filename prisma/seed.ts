@@ -22,7 +22,7 @@ async function main() {
       data: {
         id: org.id,
         name: org.name,
-        role: org.role,
+        role: org.role || 'Delegate', // Default to 'Delegate' if role is undefined (contextual roles)
         type: org.type,
         status: org.status,
         imageUrl: org.imageUrl,
