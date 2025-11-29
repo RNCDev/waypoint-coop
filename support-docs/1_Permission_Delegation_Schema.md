@@ -2,13 +2,20 @@
 
 ## Overview
 
-Waypoint uses a hierarchical permission model where Asset Owners control access to their assets and can delegate various capabilities through Publishing Rights. Subscribers can delegate view-only access to service providers, and can also delegate subscription management (accept/request subscriptions) to entitities like advisors or discretionary portfolio managers.
+Waypoint uses a **unified Access Grant model** where both Asset Managers and Limited Partners can delegate capabilities to Delegate organizations through a single, consistent structure.
+
+**Key Concept: The Access Grant**
+
+An Access Grant represents an "edge" in the permission graph where a grantor (Asset Manager or Limited Partner) grants capabilities to a grantee (always a Delegate organization). The capabilities are determined by flags on the grant:
+
+- **GP Grants** (`canPublish: true`): Asset Manager → Delegate, enabling publishing and management capabilities
+- **LP Grants** (`canPublish: false`): Limited Partner → Delegate, enabling data viewing and subscription management
 
 ---
 
 ## Permission Flow Summary
 
-### Asset Owner (GP) Flow
+### Asset Manager (GP) Flow
 *   **Root Authority:** GPs have full control over their assets.
 *   **Granting Rights:** GPs grant **Publishing Rights** to other organizations (e.g., Fund Admins).
 *   **Delegated Capabilities:**
@@ -23,7 +30,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 *   **Data Access:** LP can view data only when subscription is Active.
 *   **Expiration:** Subscriptions can expire or be revoked.
 
-### Subscriber (LP) Flow
+### Limited Partner (LP) Flow
 *   **Delegation:** LPs delegate access to service providers (e.g., Auditors, Analytics).
 *   **Types of Access:**
     *   **View-Only:** Read data for specific assets/types.
@@ -34,12 +41,12 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 
 ## Detailed Permission Model
 
-### Asset Owner (GP) Capabilities
+### Asset Manager (GP) Capabilities
 
 | Capability | Implementation | Status |
 |------------|----------------|--------|
 | **Create Assets** | `POST /api/assets` | ✅ Implemented |
-| **Define Subscriber Universe** | `Subscription` management | ✅ Implemented |
+| **Define Limited Partner Universe** | `Subscription` management | ✅ Implemented |
 | **Publish Data** | `Envelope` creation | ✅ Implemented |
 | **Delegate Subscription Management** | `PublishingRight.canManageSubscriptions = true` | ✅ Implemented |
 | **Delegate Publishing Rights** | `PublishingRight` (without canManageSubscriptions) | ✅ Implemented |
@@ -48,7 +55,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 | **Delegate Subscription Approval** | `PublishingRight.canApproveSubscriptions = true` | ✅ Implemented |
 | **Delegate View-Only Access** | ✅ `PublishingRight` with `canViewData = true` (no other flags needed) | ✅ Implemented |
 
-### Organization with Publishing Rights (Delegate from Asset Owner)
+### Organization with Publishing Rights (Delegate from Asset Manager)
 
 | Action | Right Required | Status |
 |--------|----------------|--------|
@@ -56,14 +63,14 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 | **View Data** | `canViewData = true` in PublishingRight | ✅ Implemented |
 | **Manage Subscriptions** | `canManageSubscriptions = true` | ✅ Implemented |
 | **Approve LP Delegations** | `canApproveDelegations = true` AND asset requires approval | ✅ Implemented |
-| **Approve Subscriptions** | `canApproveSubscriptions = true` | ✅ Implemented (future use) |
+| **Approve Subscriptions** | `canApproveSubscriptions = true` | ✅ Implemented |
 
 **Note**: `canViewData` flag allows granular control:
 - Organization managing subscriptions: `canManageSubscriptions = true, canViewData = false`
 - Organization with view-only access: `canViewData = true` (no other flags)
 - Organization publishing data: `canViewData = true` (default)
 
-### Subscriber (LP) Actions
+### Limited Partner (LP) Actions
 
 | Action | Implementation | Status |
 |--------|----------------|--------|
@@ -75,13 +82,13 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 | **Delegate Subscription Management** | `Delegation.canManageSubscriptions = true` | ✅ Implemented |
 | **Request Secondary Approval** | `Asset.requireGPApprovalForDelegations` | ✅ Implemented |
 
-### Delegate from Subscriber - View Access
+### Delegate from Limited Partner - View Access
 
 | Action | Right/Scope | Status |
 |--------|-------------|--------|
 | **View Data Only** | Scoped by `Delegation.assetScope` and `Delegation.typeScope` | ✅ Implemented |
 
-### Delegate from Subscriber - Subscription Management
+### Delegate from Limited Partner - Subscription Management
 
 | Action | Right/Scope | Status |
 |--------|-------------|--------|
@@ -90,7 +97,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 | **Request Subscriptions** | Delegate with `canManageSubscriptions = true` | ✅ Implemented |
 | **Manage Subscription Lifecycle** | Delegate with `canManageSubscriptions = true` | ✅ Implemented (accept/decline) |
 
-**Note**: Subscribers can delegate subscription management (accept/decline subscriptions) to portfolio managers via `Delegation.canManageSubscriptions = true`. This allows portfolio managers to handle subscription workflows on behalf of the LP. The delegate must have an active delegation with `canManageSubscriptions = true` for the specific subscriber.
+**Note**: Limited Partners can delegate subscription management (accept/decline subscriptions) to portfolio managers via `Delegation.canManageSubscriptions = true`. This allows portfolio managers to handle subscription workflows on behalf of the LP. The delegate must have an active delegation with `canManageSubscriptions = true` for the specific subscriber.
 
 ---
 
@@ -183,7 +190,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
   - LP cannot view data yet
   - Transitions: → `Active` (via accept) or → `Declined` (via decline)
 
-- **Pending Asset Owner Approval**: LP has requested subscription, Asset Owner hasn't responded yet
+- **Pending Asset Manager Approval**: LP has requested subscription, Asset Manager hasn't responded yet
   - GP can publish data (data will be visible after approval)
   - LP cannot view data yet
   - Transitions: → `Active` (via approve) or → `Declined` (via reject)
@@ -241,7 +248,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
                     │                               │
                     ▼                               ▼
         ┌───────────────────────┐       ┌───────────────────────┐
-        │ Asset Owner           │       │ Publisher (if granted)│
+        │ Asset Manager           │       │ Delegate (if granted)│
         │ (Always can approve)  │       │ canApproveDelegations │
         └───────────┬───────────┘       └───────────┬───────────┘
                     │                               │
@@ -264,7 +271,7 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 ### Delegation Approval Logic
 
 **Who Can Approve:**
-1. **Asset Owner** - Always can approve delegations for their assets
+1. **Asset Manager** - Always can approve delegations for their assets
 2. **Organization with Publishing Rights** - Can approve if:
    - Has `PublishingRight` with `canApproveDelegations = true`
    - Delegation involves assets in their `assetScope`
@@ -278,30 +285,130 @@ Waypoint uses a hierarchical permission model where Asset Owners control access 
 
 ---
 
-## Publishing Rights Model
+## Scope Definitions
 
-### PublishingRight Flags
+### Understanding `assetScope: 'ALL'`
+
+When a Delegation or PublishingRight uses `assetScope: 'ALL'`, this is evaluated **dynamically** at access-check time:
+
+| Context | `'ALL'` Means |
+|---------|---------------|
+| **PublishingRight** | All assets owned by the Asset Manager who granted the right |
+| **Delegation** | All assets the Limited Partner currently has active subscriptions to |
+
+**Important Behavior for Delegations:**
+
+The `'ALL'` scope is not a snapshot—it expands automatically as the subscriber gains new subscriptions:
 
 ```
-PublishingRight {
-  canManageSubscriptions: boolean    // Can create/manage subscriptions
-  canApproveSubscriptions: boolean  // Can approve subscription requests (future)
-  canApproveDelegations: boolean    // Can approve LP delegations
-  canViewData: boolean              // Can view data envelopes (default: true)
+Example:
+1. LP delegates to Auditor with assetScope: 'ALL'
+2. LP currently subscribed to: Fund A, Fund B
+3. Auditor can view: Fund A, Fund B data
+
+Later:
+4. LP accepts subscription to Fund C
+5. Auditor can now view: Fund A, Fund B, Fund C data (automatic)
+```
+
+**GP Approval Consideration:**
+
+If a subscriber has an `'ALL'` scope delegation and later subscribes to a new asset that has `requireGPApprovalForDelegations: true`, the existing delegation **will still grant access** to the new asset without requiring re-approval. 
+
+GPs who want strict control should:
+- Use specific asset IDs in delegation scopes rather than `'ALL'`
+- Or require new delegations to be created for sensitive assets
+
+### Delegation Chaining (Not Supported)
+
+Delegations **cannot be chained**. A delegate with `canManageSubscriptions: true` can manage subscriptions on behalf of the subscriber, but **cannot create new delegations** for that subscriber.
+
+```
+Allowed:
+  LP → Delegate (canManageSubscriptions: true)
+  Delegate can: accept/decline subscriptions for LP
+
+NOT Allowed:
+  LP → Delegate A (canManageSubscriptions: true)
+  Delegate A → Delegate B (BLOCKED)
+```
+
+This prevents unauthorized expansion of data access through delegation chains.
+
+---
+
+## Unified Access Grant Model
+
+### AccessGrant Structure
+
+```typescript
+AccessGrant {
+  id: string
+  
+  // THE EDGE
+  grantorId: number      // Asset Manager OR Limited Partner org
+  granteeId: number      // Always a Delegate org
+  
+  // SCOPE
+  assetScope: number[] | 'ALL'
+  dataTypeScope: DataType[] | 'ALL'
+  
+  // CAPABILITIES
+  canPublish: boolean              // Send envelopes (GP grants only)
+  canViewData: boolean             // View envelopes
+  canManageSubscriptions: boolean  // GP: invite/revoke | LP: accept/request for LP
+  canApproveSubscriptions: boolean // Approve LP subscription requests (GP only)
+  canApproveDelegations: boolean   // Approve LP→Delegate grants (GP only)
+  
+  // APPROVAL WORKFLOW (for LP grants requiring GP approval)
+  requiresApproval: boolean
+  approvalStatus: 'Pending' | 'Approved' | 'Rejected' | null
+  approvedById: number | null
+  approvedAt: string | null
+  
+  // METADATA
+  status: 'Active' | 'Revoked' | 'Pending Approval'
+  grantedAt: string
 }
 ```
 
-### Publishing Rights Capabilities Matrix
+### Grant Types
 
-| Flag Combination | Actions Available | Use Case |
-|------------------|-------------------|----------|
-| None (just PublishingRight) | Publish data, View data | Standard publishing organization |
-| `canManageSubscriptions = true` | + Manage subscriptions | Organization with subscription management |
-| `canManageSubscriptions = true`<br/>`canViewData = false` | Manage subscriptions only | Organization managing access without viewing data |
-| `canViewData = true`<br/>(no other flags) | View data only | Organization with view-only access (audit/compliance) |
-| `canApproveDelegations = true` | + Approve LP delegations | Organization with delegation approval rights |
-| `canApproveSubscriptions = true` | + Approve subscription requests | Organization with subscription approval rights |
-| All flags | Full delegation | Complete operational control |
+| Grant Type | `canPublish` | Grantor | Use Case |
+|------------|--------------|---------|----------|
+| **GP Grant** | `true` | Asset Manager | Delegate publishing and management to Fund Admin |
+| **LP Grant** | `false` | Limited Partner | Delegate data access to service providers |
+
+### Flag Definitions: `canManageSubscriptions` vs `canApproveSubscriptions`
+
+These two flags serve distinct purposes in the subscription workflow:
+
+| Flag | Purpose | Actions Enabled |
+|------|---------|-----------------|
+| `canManageSubscriptions` | **Proactive subscription management** | Create new subscriptions (invite LPs), revoke existing subscriptions, update subscription details |
+| `canApproveSubscriptions` | **Reactive subscription approval** | Approve or reject LP-initiated subscription requests (status: "Pending Asset Manager Approval") |
+
+**Why Separate Flags?**
+- A Fund Admin may need to invite LPs (`canManageSubscriptions`) but the GP wants to personally approve inbound requests (`canApproveSubscriptions: false`)
+- An operations team may only handle approvals (`canApproveSubscriptions`) without the ability to proactively grant access
+- Full delegation grants both flags
+
+**Example Configurations:**
+1. **Full subscription control**: `canManageSubscriptions: true, canApproveSubscriptions: true`
+2. **Invite-only (GP approves requests)**: `canManageSubscriptions: true, canApproveSubscriptions: false`
+3. **Approval-only (GP initiates)**: `canManageSubscriptions: false, canApproveSubscriptions: true`
+
+### Access Grant Capabilities Matrix
+
+| Grant Configuration | Actions Available | Use Case |
+|---------------------|-------------------|----------|
+| GP Grant (default) | Publish data, View data | Standard publishing organization |
+| GP Grant + `canManageSubscriptions = true` | + Manage subscriptions | Organization with subscription management |
+| GP Grant + `canViewData = false` | Publish without viewing | Ops role |
+| LP Grant (view only) | View data only | Audit/compliance access |
+| LP Grant + `canManageSubscriptions = true` | + Accept/request subscriptions | Portfolio manager |
+| GP Grant + `canApproveDelegations = true` | + Approve LP grants | Full delegation control |
+| GP Grant + `canApproveSubscriptions = true` | + Approve subscription requests | Subscription approval rights |
 
 ---
 
@@ -309,13 +416,13 @@ PublishingRight {
 
 ### Who Can View Envelopes?
 
-1. **Asset Owner**: Can view all envelopes for assets they own
+1. **Asset Manager**: Can view all envelopes for assets they own
 2. **Organization with Publishing Rights**: Can view envelopes for assets where:
    - They have `PublishingRight` with `canViewData = true`
    - Asset is in their `PublishingRight.assetScope`
-3. **Subscriber**: Can view envelopes where:
+3. **Limited Partner**: Can view envelopes where:
    - `envelope.recipientId === subscriber.orgId`
-   - Subscriber has `Active` subscription to `envelope.assetId`
+   - Limited Partner has `Active` subscription to `envelope.assetId`
    - Subscription is not expired (`expiresAt` check)
 4. **Delegate (View Access)**: Can view envelopes where:
    - Delegation is `Active`
@@ -355,10 +462,10 @@ PublishingRight {
 **How It Works**:
 - `canViewData` defaults to `true` for backward compatibility
 - Organizations with Publishing Rights can only view envelopes for assets where they have `PublishingRight` with `canViewData=true`
-- Asset Owners can grant granular permissions by setting appropriate flags
+- Asset Managers can grant granular permissions by setting appropriate flags
 
-**Subscriber Delegation for Subscription Management**:
-- Subscribers can delegate subscription management rights to portfolio managers
+**Limited Partner Delegation for Subscription Management**:
+- Limited Partners can delegate subscription management rights to portfolio managers
 - Portfolio managers can accept/request subscriptions on behalf of the subscriber
 - Delegation requires subscriber approval (similar to view-access delegations)
 - This allows portfolio managers to handle subscription workflows without the subscriber being directly involved
@@ -370,7 +477,7 @@ PublishingRight {
 **What's Working Well**:
 - ✅ Core permission model is clean and matches requirements
 - ✅ Publishing rights delegation works correctly
-- ✅ Subscription management delegation (from Asset Owner) works correctly
+- ✅ Subscription management delegation (from Asset Manager) works correctly
 - ✅ LP delegation with approval works correctly
 - ✅ Asset creation with approval requirements
 - ✅ Organization approval of delegations (via Publishing Rights)
@@ -393,4 +500,6 @@ PublishingRight {
 - Delegation approval can be delegated via Publishing Rights (granular control)
 - All data is immutable (revoked subscriptions hide data but don't delete it)
 - Rights-based model: Permissions described in terms of rights and actions, not specific organizational roles
-- Subscribers can delegate subscription management to portfolio managers (to be implemented)
+- Limited Partners can delegate subscription management to portfolio managers via `Delegation.canManageSubscriptions`
+- Subscription management (`canManageSubscriptions`) and subscription approval (`canApproveSubscriptions`) are separate concerns
+- Delegation chaining is not supported (delegates cannot create delegations for their managed subscribers)

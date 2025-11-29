@@ -35,7 +35,7 @@ export default function LedgerPage() {
   useEffect(() => {
     if (_hasHydrated && currentUser) {
       const hasAccess = 
-        currentUser.role === 'Subscriber' || 
+        currentUser.role === 'Limited Partner' || 
         currentUser.role === 'Analytics' || 
         currentUser.role === 'Auditor' ||
         currentOrg?.role === 'Delegate'
@@ -50,7 +50,7 @@ export default function LedgerPage() {
       // For subscribers, filter by subscriberId
       // For delegates, fetch all and let the API filter based on delegations
       let url = '/api/envelopes'
-      if (currentOrg?.role === 'Subscriber' && currentUser?.orgId) {
+      if (currentOrg?.role === 'Limited Partner' && currentUser?.orgId) {
         url = `/api/envelopes?subscriberId=${currentUser.orgId}`
       }
       // For delegates, don't add subscriberId - the API will filter based on delegations

@@ -8,11 +8,13 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 ## Features
 
-- **Publisher Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
-- **Subscriber Ledger (LP)**: View chronological feed of data events with read receipt tracking
-- **Subscription Management**: Asset Owners and Publishers manage which LPs can access which assets
-- **Delegations Management**: Asset Owners delegate access permissions with granular controls (publish, manage subscriptions, approve delegations, view data)
-- **Delegation Management**: LPs grant access to third-party service providers (auditors, analytics) with optional GP approval
+- **Composer Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
+- **LP Ledger**: View chronological feed of data events with read receipt tracking
+- **Subscription Management**: Asset Managers and Delegates manage which LPs can access which assets
+- **Unified Access Grants**: Single model for delegated capabilities:
+  - **GP Grants**: Asset Managers delegate publishing and management to Fund Admins
+  - **LP Grants**: Limited Partners delegate data access to service providers (auditors, analytics)
+  - **Capability flags**: `canPublish`, `canViewData`, `canManageSubscriptions`, `canApproveSubscriptions`, `canApproveDelegations`
 - **Correction Workflow**: Append-only correction mechanism maintaining full audit history (v1 -> v2)
 - **Identity Registry**: Platform Admin interface for managing Organizations and Users
 - **IAM System**: Role-based access control (RBAC) with organization-level user management
@@ -68,9 +70,9 @@ The application will be available at `http://localhost:3000`.
 Switch between demo personas using the dropdown in the navigation:
 
 - **Alice Admin** (Platform Admin: Waypoint) - Manages platform registry, audit logs, and IAM
-- **Bob GP** (Asset Owner: Kleiner Perkins) - Manages subscriptions, delegations, publishes data, and views history
-- **Genii Publisher** (Publisher: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
-- **Charlie LP** (Subscriber: State of Ohio Pension) - Views feeds, ledger, manages delegations, and IAM
+- **Bob GP** (Asset Manager: Kleiner Perkins) - Manages subscriptions, delegations, publishes data, and views history
+- **Genii Publisher** (Delegate: Genii Admin Services) - Views subscriptions, publishes data, views history, and manages IAM
+- **Charlie LP** (Limited Partner: State of Ohio Pension) - Views feeds, ledger, manages delegations, and IAM
 - **Dana Delegate** (Auditor: Deloitte) - Views delegated data and manages IAM
 
 ## Project Structure
@@ -80,16 +82,14 @@ waypoint-coop/
 ├── app/                    # Next.js App Router
 │   ├── api/                # API routes
 │   │   ├── subscriptions/      # Subscription CRUD
-│   │   ├── publishing-rights/  # Publishing rights CRUD
-│   │   ├── delegations/        # Delegation management
+│   │   ├── access-grants/      # Unified Access Grant CRUD
 │   │   └── envelopes/          # Envelope CRUD & Corrections
-│   ├── composer/           # Publisher composer page
+│   ├── composer/           # Composer page (publish data)
 │   ├── history/            # Published data history
-│   ├── ledger/             # Subscriber ledger page
+│   ├── ledger/             # LP ledger page
 │   ├── feeds/              # LP subscription feeds
 │   ├── subscriptions/      # Subscription management
-│   ├── data-rights/        # Delegations management (Asset Owners)
-│   ├── delegations/        # Delegation management
+│   ├── access-grants/      # Unified Access Grant management
 │   ├── settings/iam/       # IAM settings page
 │   ├── registry/           # Admin entity registry (Organizations & Users)
 │   └── audit/              # Admin audit log
@@ -100,7 +100,7 @@ waypoint-coop/
 │   ├── prisma.ts           # Prisma client
 │   ├── permissions.ts      # Permission system & RBAC
 │   ├── api-guard.ts        # API route guards
-│   ├── mock-data.ts        # Mock data definitions
+│   ├── mock-data.ts        # Mock data (Organizations, Users, Assets, AccessGrants)
 │   ├── in-memory-db.ts     # In-memory DB for Vercel
 │   └── crypto.ts           # Cryptographic utilities
 ├── prisma/                 # Prisma schema and migrations

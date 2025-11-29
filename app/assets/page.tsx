@@ -55,7 +55,7 @@ export default function AssetsPage() {
   // Redirect if user doesn't have access
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentOrg.role === 'Asset Owner' || currentOrg.role === 'Platform Admin'
+      const hasAccess = currentOrg.role === 'Asset Manager' || currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
@@ -132,7 +132,7 @@ export default function AssetsPage() {
     setEditAsset({
       name: asset.name,
       type: asset.type as 'Fund' | 'Co-Investment' | 'SPV',
-      publisherId: asset.publisherId.toString(),
+      publisherId: asset.defaultPublisherId.toString(),
       requireGPApprovalForDelegations: asset.requireGPApprovalForDelegations || false,
     })
     setEditDialogOpen(true)
@@ -165,7 +165,7 @@ export default function AssetsPage() {
   const getAvailablePublishers = () => {
     // Asset Owners can publish themselves or delegate to Publishers
     const publishers = mockOrganizations.filter(o => 
-      o.role === 'Publisher' || (o.role === 'Asset Owner' && o.id === currentOrg?.id)
+      o.role === 'Delegate' || (o.role === 'Asset Manager' && o.id === currentOrg?.id)
     )
     return publishers
   }
@@ -173,7 +173,7 @@ export default function AssetsPage() {
   const filteredAssets = assets.filter((asset) =>
     asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getOrgName(asset.publisherId).toLowerCase().includes(searchTerm.toLowerCase())
+    getOrgName(asset.defaultPublisherId).toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {

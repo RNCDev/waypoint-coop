@@ -14,7 +14,7 @@ const requestSchema = z.object({
   requestMessage: z.string().optional(),
 })
 
-// Subscriber (or delegate) requests a subscription from Asset Owner
+// Limited Partner (or delegate) requests a subscription from Asset Manager
 export async function POST(request: NextRequest) {
   try {
     // Check permission - subscribers can request subscriptions
@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
         id: subscriptionId,
         assetId: validated.assetId,
         subscriberId: validated.subscriberId,
-        grantedById: asset.ownerId, // Asset Owner who needs to approve
+        grantedById: asset.ownerId, // Asset Manager who needs to approve
         grantedAt: timestamp,
-        status: 'Pending Asset Owner Approval',
+        status: 'Pending Asset Manager Approval',
         requestMessage: validated.requestMessage,
       }
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         subscriberId: validated.subscriberId,
         grantedById: asset.ownerId,
         grantedAt: timestamp,
-        status: 'Pending Asset Owner Approval',
+        status: 'Pending Asset Manager Approval',
         requestMessage: validated.requestMessage,
       }
 

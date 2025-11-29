@@ -62,7 +62,7 @@ export default function DataRightsPage() {
   // Redirect if user doesn't have access
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentOrg.role === 'Asset Owner' || currentOrg.role === 'Platform Admin'
+      const hasAccess = currentOrg.role === 'Asset Manager' || currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
@@ -274,7 +274,7 @@ export default function DataRightsPage() {
   const getAvailableOrgs = () => {
     // Can delegate to Publishers, Delegates, or potentially other Asset Owners
     return mockOrganizations.filter(o => 
-      o.role === 'Publisher' || o.role === 'Delegate' || o.role === 'Asset Owner'
+      o.role === 'Delegate' || o.role === 'Asset Manager'
     )
   }
 

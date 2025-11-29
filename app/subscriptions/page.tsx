@@ -50,8 +50,8 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = 
-        currentOrg.role === 'Asset Owner' || 
-        currentOrg.role === 'Publisher' ||
+        currentOrg.role === 'Asset Manager' || 
+        currentOrg.role === 'Delegate' ||
         currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
@@ -145,11 +145,11 @@ export default function SubscriptionsPage() {
   const getAvailableAssets = () => {
     if (!currentUser || !currentOrg) return []
     if (currentOrg.role === 'Platform Admin') return mockAssets
-    if (currentOrg.role === 'Asset Owner') {
+    if (currentOrg.role === 'Asset Manager') {
       return mockAssets.filter(a => a.ownerId === currentOrg.id)
     }
     // For publishers, show assets they have publishing rights for
-    if (currentOrg.role === 'Publisher') {
+    if (currentOrg.role === 'Delegate') {
       return getAccessibleAssets(currentUser)
     }
     return []
@@ -157,7 +157,7 @@ export default function SubscriptionsPage() {
 
   // Get available subscribers (LPs)
   const getAvailableLPs = () => {
-    return mockOrganizations.filter(o => o.role === 'Subscriber')
+    return mockOrganizations.filter(o => o.role === 'Limited Partner')
   }
 
   const filteredSubscriptions = subscriptions.filter((sub) => {

@@ -27,7 +27,7 @@ function ComposerContent() {
   // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
+      const hasAccess = (currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager') && currentOrg.role !== 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
@@ -70,7 +70,7 @@ function ComposerContent() {
           // We also need envelope metadata to set asset/owner
           // Since we don't have a direct "get envelope by id" hook handy in the mock setup easily without iterating,
           // let's fetch envelopes for this user and find it.
-          const queryParam = currentOrg?.role === 'Asset Owner' 
+          const queryParam = currentOrg?.role === 'Asset Manager' 
             ? `assetOwnerId=${currentOrg?.id}`
             : `publisherId=${currentOrg?.id}`
           
@@ -294,7 +294,7 @@ function ComposerContent() {
   }
 
   const availableAssets = mockAssets.filter(a => 
-    a.publisherId === currentOrg?.id || a.ownerId === currentOrg?.id
+    a.defaultPublisherId === currentOrg?.id || a.ownerId === currentOrg?.id
   )
 
   const assetOwners = Array.from(new Set(availableAssets.map(a => a.ownerId)))

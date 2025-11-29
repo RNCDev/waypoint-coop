@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 const assetSchema = z.object({
   name: z.string().min(1),
   ownerId: z.number(),
-  publisherId: z.number(),
+  defaultPublisherId: z.number(),
   type: z.enum(['Fund', 'Co-Investment', 'SPV']),
   requireGPApprovalForDelegations: z.boolean().default(false),
 })
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check permission to create assets (only Asset Owners)
+    // Check permission to create assets (only Asset Managers)
     const permissionResult = checkPermission(request, 'assets', 'create')
     if (!permissionResult.allowed || !permissionResult.user) {
       return NextResponse.json(
@@ -55,10 +55,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User organization not found' }, { status: 400 })
     }
 
-    // Only Asset Owners can create assets
-    if (org.role !== 'Asset Owner' && org.role !== 'Platform Admin') {
+    // Only Asset Managers can create assets
+    if (org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
       return NextResponse.json(
-        { error: 'Only Asset Owners can create assets' },
+        { error: 'Only Asset Managers can create assets' },
         { status: 403 }
       )
     }
@@ -74,23 +74,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify publisherId is a valid organization
+    // Verify defaultPublisherId is a valid organization
     if (isVercel()) {
       const db = getInMemoryDB()
-      const publisher = db.organizations.find(o => o.id === validated.publisherId)
+      const publisher = db.organizations.find(o => o.id === validated.defaultPublisherId)
       if (!publisher) {
         return NextResponse.json(
-          { error: `Publisher organization ${validated.publisherId} not found` },
+          { error: `Default publisher organization ${validated.defaultPublisherId} not found` },
           { status: 400 }
         )
       }
     } else {
       const publisher = await prisma.organization.findUnique({
-        where: { id: validated.publisherId },
+        where: { id: validated.defaultPublisherId },
       })
       if (!publisher) {
         return NextResponse.json(
-          { error: `Publisher organization ${validated.publisherId} not found` },
+          { error: `Default publisher organization ${validated.defaultPublisherId} not found` },
           { status: 400 }
         )
       }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         id: assetId,
         name: validated.name,
         ownerId: validated.ownerId,
-        publisherId: validated.publisherId,
+        defaultPublisherId: validated.defaultPublisherId,
         type: validated.type,
         requireGPApprovalForDelegations: validated.requireGPApprovalForDelegations,
       }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: validated.name,
           ownerId: validated.ownerId,
-          publisherId: validated.publisherId,
+          defaultPublisherId: validated.defaultPublisherId,
           type: validated.type,
           requireGPApprovalForDelegations: validated.requireGPApprovalForDelegations,
         },

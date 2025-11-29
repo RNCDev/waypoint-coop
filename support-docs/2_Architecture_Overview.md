@@ -27,7 +27,7 @@ The "Header" of the transaction. Must pass strict validation for the packet to b
   "envelope_id": 1001001, // BigInt (Snowflake or Auto-Inc)
   "publisher_id": 5050, // Numeric ID for the entity publishing
   "user_id": 8812, // Numeric ID for the specific user
-  "asset_owner_id": 2020, // Numeric ID for the Asset Owner (GP)
+  "asset_owner_id": 2020, // Numeric ID for the Asset Manager (GP)
   "asset_id": 3001, // Numeric ID for the Asset (Fund/Co-Invest)
   "timestamp": "2025-11-27T10:00:00.000Z", // ISO 8601 UTC String (Strict)
   "version": 1,
@@ -71,13 +71,13 @@ The "Body" of the transaction. Flexible to accommodate various GP internal forma
 Waypoint implements an append-only correction model to ensure auditability.
 
 1.  **Immutability:** Original envelopes (v1) are never deleted or modified.
-2.  **Correction Mode:** Publishers can enter "Correction Mode" for a specific envelope.
+2.  **Correction Mode:** Delegates can enter "Correction Mode" for a specific envelope.
 3.  **New Version:** The system creates a new envelope with:
     *   Same `envelope_id` logic (or linked reference)
     *   Incremented `version` (e.g., v2)
     *   New `timestamp`
     *   Updated `payload`
-4.  **Audit Trail:** Both v1 and v2 remain in the ledger. Subscribers see the latest version by default but can inspect the history.
+4.  **Audit Trail:** Both v1 and v2 remain in the ledger. Limited Partners see the latest version by default but can inspect the history.
 
 ---
 
@@ -86,9 +86,9 @@ Waypoint implements an append-only correction model to ensure auditability.
 ### 1. Frontend (The Terminal)
 *   **Stack:** React / Next.js (App Router)
 *   **Role:**
-    *   **Asset Owner (GP):** Subscription management, delegations management, data entry, envelope configuration, signing, history view.
-    *   **Publisher (Fund Admin):** Subscription viewing, data entry, envelope configuration, signing, history view.
-    *   **Subscriber (LP):** Feed view, subscription acceptance, search, delegation management, ledger view.
+    *   **Asset Manager (GP):** Subscription management, delegations management, data entry, envelope configuration, signing, history view.
+    *   **Delegate (Fund Admin):** Subscription viewing, data entry, envelope configuration, signing, history view.
+    *   **Limited Partner (LP):** Feed view, subscription acceptance, search, delegation management, ledger view.
     *   **Delegate (Service Provider):** Delegated data view, ledger view.
     *   **Platform Admin:** Identity Registry (manage Orgs & Users), system monitoring, audit log, IAM management.
 
@@ -112,8 +112,9 @@ Waypoint implements an append-only correction model to ensure auditability.
     *   **Envelopes:** Metadata header for data packets.
     *   **Payloads:** The actual data content.
     *   **Subscriptions:** Mapping of LPs to Assets.
-    *   **PublishingRights:** Mapping of Publishers to Asset Owners.
-    *   **Delegations:** Mapping of LPs to Delegates.
+    *   **AccessGrants:** Unified model for delegated capabilities (replaces PublishingRights and Delegations).
+        - **GP Grants** (`canPublish: true`): Asset Manager → Delegate (publishing + management capabilities)
+        - **LP Grants** (`canPublish: false`): Limited Partner → Delegate (data access + subscription management)
     *   **Permissions:** Fine-grained user capabilities.
 
 ---
@@ -121,7 +122,7 @@ Waypoint implements an append-only correction model to ensure auditability.
 ## Security Model
 
 1.  **Identity:** All actions are tied to a verified Organization Identity.
-2.  **Role-Based Access Control (RBAC):** Permissions are determined by user role (Platform Admin, Asset Owner, Publisher, Subscriber, Delegate) and organization-level admin status.
+2.  **Role-Based Access Control (RBAC):** Permissions are determined by user role (Platform Admin, Asset Manager, Delegate, Limited Partner, Delegate) and organization-level admin status.
 3.  **Permission System:** Centralized permission checking at the API level ensures users can only access resources they're authorized to view or modify.
 4.  **Immutability:** Once a `version` is committed, it cannot be changed. Updates are strictly `version + 1`.
 5.  **Transport:** TLS 1.3 for all data in transit.
@@ -143,7 +144,13 @@ Waypoint implements an append-only correction model to ensure auditability.
 5. Frontend navigation is dynamically generated based on user permissions
 
 ### Key Concepts
-*   **Subscriptions:** Asset Owners (GPs) control which LPs can access which assets. Publishers can view subscriptions for assets they have publishing rights to, and may manage them if granted that right.
-*   **Publishing Rights:** Asset Owners grant Publishers the right to publish data on their behalf, with optional subscription management rights.
-*   **Delegations:** LPs can delegate access to their data to service providers. Asset Owners can optionally require approval for delegations at the asset level.
-*   **Delegations:** Asset Owners delegate access permissions to organizations, including publishing rights and other access types for their assets.
+*   **Subscriptions:** Asset Managers (GPs) control which LPs can access which assets. Delegates can view subscriptions for assets they have access grants to, and may manage them if granted that capability.
+*   **Access Grants:** The unified model for delegated capabilities:
+    - **GP Grants** (`canPublish: true`): Asset Manager grants publishing and management capabilities to Delegates (Fund Admins)
+    - **LP Grants** (`canPublish: false`): Limited Partners grant data access to service providers (Auditors, Analytics)
+*   **Capabilities:** Each Access Grant can include various capability flags:
+    - `canPublish`: Send envelopes (GP grants only)
+    - `canViewData`: View envelope data
+    - `canManageSubscriptions`: Create/manage LP subscriptions
+    - `canApproveSubscriptions`: Approve LP subscription requests
+    - `canApproveDelegations`: Approve LP access grants

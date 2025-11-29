@@ -1,6 +1,6 @@
-import { mockOrganizations, mockUsers, mockAssets, mockEnvelopes, mockPayloads, mockDelegations, mockSubscriptions, mockPublishingRights } from './mock-data'
+import { mockOrganizations, mockUsers, mockAssets, mockEnvelopes, mockPayloads, mockDelegations, mockSubscriptions, mockPublishingRights, mockAccessGrants } from './mock-data'
 import { generateHash } from './crypto'
-import { Organization, User, Asset, Envelope, Payload, Delegation, ReadReceipt, Subscription, PublishingRight } from '@/types'
+import { Organization, User, Asset, Envelope, Payload, Delegation, ReadReceipt, Subscription, PublishingRight, AccessGrant } from '@/types'
 
 // In-memory storage for Vercel serverless functions
 class InMemoryDB {
@@ -9,8 +9,11 @@ class InMemoryDB {
   assets: Asset[]
   envelopes: Envelope[]
   payloads: Payload[]
-  delegations: Delegation[]
+  // Unified AccessGrant model (replaces delegations and publishingRights)
+  accessGrants: AccessGrant[]
   subscriptions: Subscription[]
+  // Legacy fields (deprecated - kept for migration)
+  delegations: Delegation[]
   publishingRights: PublishingRight[]
   readReceipts: ReadReceipt[]
   nextEnvelopeId: number
@@ -27,8 +30,10 @@ class InMemoryDB {
       hash: generateHash(env, mockPayloads.find(p => p.envelopeId === env.id)?.data || {}),
     }))
     this.payloads = [...mockPayloads]
-    this.delegations = [...mockDelegations]
+    this.accessGrants = [...mockAccessGrants]
     this.subscriptions = [...mockSubscriptions]
+    // Legacy (deprecated)
+    this.delegations = [...mockDelegations]
     this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
     this.nextEnvelopeId = 10023 // Updated to match new mock data structure
@@ -45,8 +50,10 @@ class InMemoryDB {
       hash: generateHash(env, mockPayloads.find(p => p.envelopeId === env.id)?.data || {}),
     }))
     this.payloads = [...mockPayloads]
-    this.delegations = [...mockDelegations]
+    this.accessGrants = [...mockAccessGrants]
     this.subscriptions = [...mockSubscriptions]
+    // Legacy (deprecated)
+    this.delegations = [...mockDelegations]
     this.publishingRights = [...mockPublishingRights]
     this.readReceipts = []
     this.nextEnvelopeId = 10023

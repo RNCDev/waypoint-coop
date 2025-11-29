@@ -25,7 +25,7 @@ export default function FeedsPage() {
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = 
-        currentOrg.role === 'Subscriber' || 
+        currentOrg.role === 'Limited Partner' || 
         currentOrg.role === 'Platform Admin' ||
         (currentOrg.role === 'Delegate' && getManageableSubscriptionsForUser(currentUser).length > 0)
       if (!hasAccess) {
@@ -40,7 +40,7 @@ export default function FeedsPage() {
     // For Subscribers, get their own subscriptions
     // For Delegates, get subscriptions they can manage
     let subscriptions: Subscription[] = []
-    if (currentOrg.role === 'Subscriber') {
+    if (currentOrg.role === 'Limited Partner') {
       subscriptions = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
     } else if (currentOrg.role === 'Delegate') {
       subscriptions = getManageableSubscriptionsForUser(currentUser)

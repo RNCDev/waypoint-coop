@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check permission to create publishing rights (only Asset Owners)
+    // Check permission to create publishing rights (only Asset Managers)
     const permissionResult = checkPermission(request, 'publishing-rights', 'create')
     if (!permissionResult.allowed || !permissionResult.user) {
       return NextResponse.json(
@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User organization not found' }, { status: 400 })
     }
 
-    // Only Asset Owners can create publishing rights
-    if (org.role !== 'Asset Owner' && org.role !== 'Platform Admin') {
-      return NextResponse.json({ error: 'Only Asset Owners can grant publishing rights' }, { status: 403 })
+    // Only Asset Managers can create publishing rights
+    if (org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
+      return NextResponse.json({ error: 'Only Asset Managers can grant publishing rights' }, { status: 403 })
     }
 
     const body = await request.json()

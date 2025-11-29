@@ -52,8 +52,9 @@ async function main() {
         id: asset.id,
         name: asset.name,
         ownerId: asset.ownerId,
-        publisherId: asset.publisherId,
+        defaultPublisherId: asset.defaultPublisherId,
         type: asset.type,
+        requireGPApprovalForDelegations: asset.requireGPApprovalForDelegations || false,
       },
     })
   }

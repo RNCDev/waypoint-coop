@@ -24,7 +24,7 @@ export default function DelegationApprovalsPage() {
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = 
-        currentOrg.role === 'Asset Owner' || 
+        currentOrg.role === 'Asset Manager' || 
         currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')

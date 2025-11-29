@@ -1,15 +1,29 @@
-export type OrganizationType = 'Publisher' | 'Asset Owner' | 'Subscriber' | 'Delegate' | 'Platform Admin'
+/**
+ * Core Organization Roles:
+ * - Platform Admin: Waypoint platform operators
+ * - Asset Manager: General Partners (GPs) who own and manage funds
+ * - Limited Partner: LPs who subscribe to fund data
+ * - Delegate: All other organizations (Fund Admins, Auditors, Analytics, Legal, Tax, etc.)
+ * 
+ * Note: "Delegate" is the universal role for any organization receiving delegated capabilities.
+ * What they can do (publish, view, manage subscriptions, etc.) is determined by AccessGrant.
+ */
+export type OrganizationType = 'Platform Admin' | 'Asset Manager' | 'Limited Partner' | 'Delegate'
 export type OrganizationStatus = 'Verified' | 'Pending' | 'Suspended'
-export type UserRole = 'Admin' | 'Viewer' | 'Publisher' | 'Asset Owner' | 'Subscriber' | 'Auditor' | 'Restricted' | 'Analytics' | 'Tax' | 'Integration' | 'Ops' | 'Signer' | 'IR' | 'Risk' | 'Platform Admin'
+/**
+ * User roles are functional descriptions within an organization.
+ * The organization's role (Asset Manager, Limited Partner, Delegate) determines base capabilities.
+ */
+export type UserRole = 'Admin' | 'Viewer' | 'Auditor' | 'Restricted' | 'Analytics' | 'Tax' | 'Integration' | 'Ops' | 'Signer' | 'IR' | 'Risk' | 'Platform Admin' | 'Legal' | 'Delegate' | 'Asset Manager' | 'Limited Partner'
 export type EnvelopeStatus = 'Delivered' | 'Revoked' | 'Pending'
-export type DelegationStatus = 'Active' | 'Pending GP Approval' | 'Rejected'
 export type DataType = 'CAPITAL_CALL' | 'DISTRIBUTION' | 'NAV_UPDATE' | 'QUARTERLY_REPORT' | 'K-1_TAX_FORM' | 'SOI_UPDATE' | 'LEGAL_NOTICE'
-export type SubscriptionStatus = 'Pending LP Acceptance' | 'Pending Asset Owner Approval' | 'Active' | 'Expired' | 'Revoked' | 'Declined'
-export type PublishingRightStatus = 'Active' | 'Revoked'
-export type GPApprovalStatus = 'Pending' | 'Approved' | 'Rejected'
+export type SubscriptionStatus = 'Pending LP Acceptance' | 'Pending Asset Manager Approval' | 'Active' | 'Expired' | 'Revoked' | 'Declined'
+export type AccessGrantStatus = 'Active' | 'Revoked' | 'Pending Approval'
+export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected'
 
 // IAM Permission types
-export type Resource = 'assets' | 'subscriptions' | 'delegations' | 'envelopes' | 'users' | 'audit' | 'registry' | 'publishing-rights' | 'feeds'
+// Note: 'delegations' and 'publishing-rights' are deprecated aliases for 'access-grants'
+export type Resource = 'assets' | 'subscriptions' | 'access-grants' | 'delegations' | 'publishing-rights' | 'envelopes' | 'users' | 'audit' | 'registry' | 'feeds'
 export type Action = 'view' | 'create' | 'update' | 'delete' | 'publish' | 'approve'
 
 export interface Organization {
@@ -34,9 +48,11 @@ export interface Asset {
   id: number
   name: string
   ownerId: number
-  publisherId: number
+  /** Primary publisher for display purposes. Actual publishing rights are managed via PublishingRight. */
+  defaultPublisherId: number
   type: string
-  requireGPApprovalForDelegations?: boolean // Whether LP delegations require GP approval
+  /** Whether LP delegations require GP approval for this asset */
+  requireGPApprovalForDelegations?: boolean
 }
 
 export interface Envelope {
@@ -60,19 +76,74 @@ export interface Payload {
   data: any // JSON blob
 }
 
+/**
+ * AccessGrant - Unified model for delegated capabilities
+ * 
+ * This represents an "edge" in the permission graph where a grantor
+ * (Asset Manager or Limited Partner) grants capabilities to a grantee (Delegate).
+ * 
+ * GP grants (canPublish=true): Enable publishing and management capabilities
+ * LP grants (canPublish=false): Enable data viewing and subscription management
+ */
+export interface AccessGrant {
+  id: string
+  
+  // THE EDGE
+  /** Asset Manager OR Limited Partner org granting capabilities */
+  grantorId: number
+  /** Always a Delegate org receiving capabilities */
+  granteeId: number
+  
+  // SCOPE
+  /** Asset IDs this grant applies to, or 'ALL' for all assets */
+  assetScope: number[] | 'ALL'
+  /** Data types this grant applies to, or 'ALL' for all types */
+  dataTypeScope: DataType[] | 'ALL'
+  
+  // CAPABILITIES
+  /** Can send/publish envelopes (GP grants only) */
+  canPublish: boolean
+  /** Can view data envelopes */
+  canViewData: boolean
+  /** GP: create/revoke subscriptions | LP: accept/request for LP */
+  canManageSubscriptions: boolean
+  /** Can approve LP-initiated subscription requests (GP grants only) */
+  canApproveSubscriptions: boolean
+  /** Can approve LP→Delegate grants (GP grants only) */
+  canApproveDelegations: boolean
+  
+  // APPROVAL WORKFLOW (for LP grants requiring GP approval)
+  /** Whether this grant requires GP approval to become active */
+  requiresApproval: boolean
+  /** Approval status when requiresApproval is true */
+  approvalStatus: ApprovalStatus | null
+  /** User ID who approved this grant */
+  approvedById: number | null
+  /** ISO 8601 timestamp of approval */
+  approvedAt: string | null
+  
+  // METADATA
+  status: AccessGrantStatus
+  /** ISO 8601 timestamp when grant was created */
+  grantedAt: string
+}
+
+/**
+ * @deprecated Use AccessGrant instead. Delegation is now a subset of AccessGrant where canPublish=false.
+ */
 export interface Delegation {
   id: string
   subscriberId: number
   delegateId: number
   assetScope: number[] | 'ALL'
   typeScope: DataType[] | 'ALL'
-  status: DelegationStatus
-  gpApprovalRequired?: boolean // Whether GP must approve this delegation
-  gpApprovalStatus?: GPApprovalStatus
-  gpApprovedAt?: string // ISO 8601 timestamp of approval
-  gpApprovedById?: number // User ID who approved
-  canManageSubscriptions?: boolean // Can accept/request subscriptions on behalf of subscriber
-  createdAt?: string // ISO 8601 timestamp
+  status: 'Active' | 'Pending GP Approval' | 'Rejected'
+  gpApprovalRequired?: boolean
+  gpApprovalStatus?: ApprovalStatus
+  gpApprovedAt?: string
+  gpApprovedById?: number
+  canManageSubscriptions?: boolean
+  createdAt?: string
 }
 
 export interface ReadReceipt {
@@ -82,12 +153,12 @@ export interface ReadReceipt {
   viewedAt: string
 }
 
-// Subscription - Which LPs can access which assets
+// Subscription - Which Limited Partners can access which assets
 export interface Subscription {
   id: string
   assetId: number // The asset (fund)
-  subscriberId: number // The LP organization
-  grantedById: number // GP or Publisher org who granted access
+  subscriberId: number // The Limited Partner organization
+  grantedById: number // Asset Manager or Delegate org who granted access
   grantedAt: string // ISO 8601 timestamp (when invitation sent)
   acceptedAt?: string // ISO 8601 timestamp (when LP accepted)
   expiresAt?: string // Optional expiration timestamp
@@ -96,18 +167,20 @@ export interface Subscription {
   requestMessage?: string // Optional message from LP to GP when requesting subscription
 }
 
-// PublishingRight - GP delegates publishing rights to Fund Admin
+/**
+ * @deprecated Use AccessGrant instead. PublishingRight is now a subset of AccessGrant where canPublish=true.
+ */
 export interface PublishingRight {
   id: string
-  assetOwnerId: number // The GP organization
-  publisherId: number // The Fund Admin organization
-  assetScope: number[] | 'ALL' // Asset IDs or ALL
-  canManageSubscriptions: boolean // Can also manage subscriptions
-  canApproveSubscriptions: boolean // Can approve subscription requests (if asset requires approval)
-  canApproveDelegations: boolean // Can approve LP delegations (if asset requires approval)
-  canViewData: boolean // Can view data envelopes (default true for backward compatibility)
-  grantedAt: string // ISO 8601 timestamp
-  status: PublishingRightStatus
+  assetOwnerId: number
+  publisherId: number
+  assetScope: number[] | 'ALL'
+  canManageSubscriptions: boolean
+  canApproveSubscriptions: boolean
+  canApproveDelegations: boolean
+  canViewData: boolean
+  grantedAt: string
+  status: 'Active' | 'Revoked'
 }
 
 // Permission - Fine-grained permissions per user

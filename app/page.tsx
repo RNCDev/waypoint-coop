@@ -97,7 +97,7 @@ export default function Home() {
           animate="visible"
         >
           {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, IAM */}
-          {currentUser?.role === 'Publisher' && (
+          {currentUser?.role === 'Delegate' && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
@@ -169,7 +169,7 @@ export default function Home() {
           )}
 
           {/* Asset Owner (GP) - Assets, Subscriptions, Delegations, IAM, Publish Data */}
-          {currentUser?.role === 'Asset Owner' && (
+          {currentUser?.role === 'Asset Manager' && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
@@ -272,7 +272,7 @@ export default function Home() {
             </>
           )}
 
-          {(currentUser?.role === 'Subscriber' || ((currentUser?.role === 'Analytics' || currentUser?.role === 'Auditor') && currentOrg?.role !== 'Delegate')) && (
+          {(currentUser?.role === 'Limited Partner' || ((currentUser?.role === 'Analytics' || currentUser?.role === 'Auditor') && currentOrg?.role !== 'Delegate')) && (
             <>
               <motion.div variants={itemVariants}>
                 <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">

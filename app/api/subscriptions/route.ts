@@ -12,6 +12,7 @@ const subscriptionSchema = z.object({
   assetId: z.number(),
   subscriberId: z.number(),
   expiresAt: z.string().optional(),
+  inviteMessage: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -31,10 +32,10 @@ export async function GET(request: NextRequest) {
     const assetId = searchParams.get('assetId')
     const subscriberId = searchParams.get('subscriberId')
 
-    // For Publishers, use viewable subscriptions (all assets with publishing rights)
-    // For others, use manageable subscriptions
-    const isPublisher = org?.role === 'Publisher'
-    const baseSubscriptions = isPublisher ? getViewableSubscriptions(user) : getManageableSubscriptions(user)
+    // For Delegates with publishing rights, use viewable subscriptions
+    // For Asset Managers, use manageable subscriptions
+    const isDelegate = org?.role === 'Delegate'
+    const baseSubscriptions = isDelegate ? getViewableSubscriptions(user) : getManageableSubscriptions(user)
 
     if (isVercel()) {
       // Apply additional filters
@@ -94,15 +95,15 @@ export async function POST(request: NextRequest) {
     if (isVercel()) {
       const db = getInMemoryDB()
       
-      // Check if subscription already exists
+      // Check if subscription already exists (Active or Pending)
       const existing = db.subscriptions.find(
         s => s.assetId === validated.assetId && 
              s.subscriberId === validated.subscriberId &&
-             s.status === 'Active'
+             (s.status === 'Active' || s.status === 'Pending LP Acceptance')
       )
       
       if (existing) {
-        return NextResponse.json({ error: 'Active subscription already exists' }, { status: 409 })
+        return NextResponse.json({ error: 'Active or pending subscription already exists' }, { status: 409 })
       }
 
       const subscriptionId = `S-${Date.now()}`
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
         grantedById: org.id,
         grantedAt: timestamp,
         expiresAt: validated.expiresAt,
-        status: 'Active',
+        status: 'Pending LP Acceptance',
+        inviteMessage: validated.inviteMessage,
       }
 
       db.subscriptions.push(subscription)
@@ -123,14 +125,15 @@ export async function POST(request: NextRequest) {
       // For now, use in-memory data for non-Vercel environments as well
       const db = getInMemoryDB()
       
+      // Check if subscription already exists (Active or Pending)
       const existing = db.subscriptions.find(
         s => s.assetId === validated.assetId && 
              s.subscriberId === validated.subscriberId &&
-             s.status === 'Active'
+             (s.status === 'Active' || s.status === 'Pending LP Acceptance')
       )
       
       if (existing) {
-        return NextResponse.json({ error: 'Active subscription already exists' }, { status: 409 })
+        return NextResponse.json({ error: 'Active or pending subscription already exists' }, { status: 409 })
       }
 
       const subscriptionId = `S-${Date.now()}`
@@ -141,7 +144,8 @@ export async function POST(request: NextRequest) {
         grantedById: org.id,
         grantedAt: timestamp,
         expiresAt: validated.expiresAt,
-        status: 'Active',
+        status: 'Pending LP Acceptance',
+        inviteMessage: validated.inviteMessage,
       }
 
       db.subscriptions.push(subscription)

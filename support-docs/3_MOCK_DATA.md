@@ -2,31 +2,31 @@
 
 ## 1. Organizations (Orgs)
 **Types:**
-*   **Publisher:** Fund Admins, GPs (Self-Admin).
-*   **Asset Owner:** GPs, VCs, PE Firms.
-*   **Subscriber:** LPs (Pensions, Endowments, Family Offices).
+*   **Delegate:** Fund Admins, GPs (Self-Admin).
+*   **Asset Manager:** GPs, VCs, PE Firms.
+*   **Limited Partner:** LPs (Pensions, Endowments, Family Offices).
 *   **Delegate:** Auditors, Tax, Analytics/BI (LP Servicers).
 
 | ID | Name | Role | Type | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `1001` | **Genii Admin Services** | Publisher | Fund Administrator | Verified |
-| `1002` | **Alter Domus** | Publisher | Fund Administrator | Verified |
-| `1003` | **Carta (Fund Admin)** | Publisher | Fund Administrator | Verified |
-| `2001` | **Kleiner Perkins** | Asset Owner | General Partner (GP) | Verified |
-| `2002` | **Sequoia Capital** | Asset Owner | General Partner (GP) | Verified |
-| `2003` | **Andreessen Horowitz** | Asset Owner | General Partner (GP) | Verified |
-| `2004` | **Benchmark** | Asset Owner | General Partner (GP) | Verified |
-| `2005` | **Insight Partners** | Asset Owner | General Partner (GP) | Verified |
-| `2006` | **Thoma Bravo** | Asset Owner | General Partner (GP) | Verified |
-| `2007` | **Vista Equity** | Asset Owner | General Partner (GP) | Verified |
-| `3001` | **State of Ohio Pension** | Subscriber | Limited Partner (LP) | Verified |
-| `3002` | **Harvard Management Co.** | Subscriber | Limited Partner (LP) | Verified |
-| `3003` | **Yale Endowment** | Subscriber | Limited Partner (LP) | Verified |
-| `3004` | **CPPIB (Canada Pension)** | Subscriber | Limited Partner (LP) | Verified |
-| `3005` | **BlackRock Solutions** | Subscriber | Limited Partner (LP) | Verified |
-| `3006` | **GIC (Singapore)** | Subscriber | Limited Partner (LP) | Verified |
-| `3007` | **CalPERS** | Subscriber | Limited Partner (LP) | Verified |
-| `3008` | **Teacher's Retirement System of Texas** | Subscriber | Limited Partner (LP) | Verified |
+| `1001` | **Genii Admin Services** | Delegate | Fund Administrator | Verified |
+| `1002` | **Alter Domus** | Delegate | Fund Administrator | Verified |
+| `1003` | **Carta (Fund Admin)** | Delegate | Fund Administrator | Verified |
+| `2001` | **Kleiner Perkins** | Asset Manager | General Partner (GP) | Verified |
+| `2002` | **Sequoia Capital** | Asset Manager | General Partner (GP) | Verified |
+| `2003` | **Andreessen Horowitz** | Asset Manager | General Partner (GP) | Verified |
+| `2004` | **Benchmark** | Asset Manager | General Partner (GP) | Verified |
+| `2005` | **Insight Partners** | Asset Manager | General Partner (GP) | Verified |
+| `2006` | **Thoma Bravo** | Asset Manager | General Partner (GP) | Verified |
+| `2007` | **Vista Equity** | Asset Manager | General Partner (GP) | Verified |
+| `3001` | **State of Ohio Pension** | Limited Partner | Limited Partner (LP) | Verified |
+| `3002` | **Harvard Management Co.** | Limited Partner | Limited Partner (LP) | Verified |
+| `3003` | **Yale Endowment** | Limited Partner | Limited Partner (LP) | Verified |
+| `3004` | **CPPIB (Canada Pension)** | Limited Partner | Limited Partner (LP) | Verified |
+| `3005` | **BlackRock Solutions** | Limited Partner | Limited Partner (LP) | Verified |
+| `3006` | **GIC (Singapore)** | Limited Partner | Limited Partner (LP) | Verified |
+| `3007` | **CalPERS** | Limited Partner | Limited Partner (LP) | Verified |
+| `3008` | **Teacher's Retirement System of Texas** | Limited Partner | Limited Partner (LP) | Verified |
 | `4001` | **Deloitte Audit** | Delegate | Auditor | Verified |
 | `4002` | **PwC Tax** | Delegate | Tax Advisor | Verified |
 | `4003` | **Chronograph** | Delegate | LP Data/BI Servicer | Verified |
@@ -37,29 +37,31 @@
 ## 2. Users
 | ID | Name | Email | Org ID | Role | Is Org Admin? |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `501` | **Alice Admin** | alice@genii.com | `1001` | Publisher | Yes |
-| `502` | **Bob GP** | bob@kleinerperkins.com | `2001` | Asset Owner | Yes |
-| `503` | **Charlie LP** | charlie@ohio.gov | `3001` | Subscriber | No |
+| `501` | **Alice Admin** | alice@genii.com | `1001` | Delegate | Yes |
+| `502` | **Bob GP** | bob@kleinerperkins.com | `2001` | Asset Manager | Yes |
+| `503` | **Charlie LP** | charlie@ohio.gov | `3001` | Limited Partner | No |
 | `504` | **Dana Delegate** | dana@deloitte.com | `4001` | Auditor | No |
 | `505` | **Eve Analyst** | eve@chronograph.pe | `4003` | Delegate | No |
 | `506` | **Frank Founder** | frank@mantle.co | `4004` | Delegate | Yes |
-| `507` | **Grace GP** | grace@sequoia.com | `2002` | Asset Owner | Yes |
-| `508` | **Harry Harvard** | harry@hmc.harvard.edu | `3002` | Subscriber | Yes |
-| `509` | **Ian Insight** | ian@insightpartners.com | `2005` | Asset Owner | Yes |
-| `510` | **Jack Yale** | jack@yale.edu | `3003` | Subscriber | No |
-| `511` | **Karen CPPIB** | karen@cppib.com | `3004` | Subscriber | Yes |
-| `512` | **Leo Thoma** | leo@thomabravo.com | `2006` | Asset Owner | Yes |
+| `507` | **Grace GP** | grace@sequoia.com | `2002` | Asset Manager | Yes |
+| `508` | **Harry Harvard** | harry@hmc.harvard.edu | `3002` | Limited Partner | Yes |
+| `509` | **Ian Insight** | ian@insightpartners.com | `2005` | Asset Manager | Yes |
+| `510` | **Jack Yale** | jack@yale.edu | `3003` | Limited Partner | No |
+| `511` | **Karen CPPIB** | karen@cppib.com | `3004` | Limited Partner | Yes |
+| `512` | **Leo Thoma** | leo@thomabravo.com | `2006` | Asset Manager | Yes |
 | `513` | **Mike Mantle** | mike@mantle.co | `4004` | Delegate | No |
 | `514` | **Nancy Nexla** | nancy@nexla.com | `4003` | Delegate | No |
-| `515` | **Oscar Ops** | oscar@alterdomus.com | `1002` | Publisher | No |
-| `516` | **Pat Partner** | pat@benchmark.com | `2004` | Asset Owner | No |
+| `515` | **Oscar Ops** | oscar@alterdomus.com | `1002` | Delegate | No |
+| `516` | **Pat Partner** | pat@benchmark.com | `2004` | Asset Manager | No |
 | `517` | **Quinn Quant** | quinn@msci.com | `4006` | Delegate | No |
-| `518` | **Rachel Risk** | rachel@calpers.ca.gov | `3007` | Subscriber | No |
-| `519` | **Steve Sequoia** | steve@sequoia.com | `2002` | Asset Owner | No |
+| `518` | **Rachel Risk** | rachel@calpers.ca.gov | `3007` | Limited Partner | No |
+| `519` | **Steve Sequoia** | steve@sequoia.com | `2002` | Asset Manager | No |
 | `520` | **Tina Tax** | tina@pwc.com | `4002` | Tax Delegate | No |
 
 ## 3. Assets
-| ID | Name | Owner ID | Publisher ID | Type | Require GP Approval |
+*Note: `Default Delegate ID` indicates the primary publisher for display purposes. Actual publishing rights are managed via Publishing Rights (Section 6).*
+
+| ID | Name | Owner ID | Default Delegate ID | Type | Require GP Approval |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `9001` | **KP Fund XVIII** | `2001` | `1001` (Genii) | Fund | Yes |
 | `9002` | **KP Growth III** | `2001` | `1001` (Genii) | Fund | No |
@@ -77,7 +79,7 @@
 
 ## 4. Transaction Envelopes (The Ledger)
 
-| Env ID | Publisher | On Behalf Of | Asset | Date | Type | Version | Recipients |
+| Env ID | Delegate | On Behalf Of | Asset | Date | Type | Version | Recipients |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `10001` | `1001` (Genii) | `2001` (KP) | `9001` | 2025-10-15 | `CAPITAL_CALL` | v1 | `3001`, `3002`, `3007` |
 | `10002` | `2002` (Seq) | `2002` (Seq) | `9003` | 2025-10-16 | `DISTRIBUTION` | v1 | `3002`, `3003`, `3004` |
@@ -94,7 +96,7 @@
 ## 5. Subscriptions
 *Note: This defines which LPs can access which assets.*
 
-| Subscription ID | Asset ID | Subscriber ID | Granted By | Status | Granted At |
+| Subscription ID | Asset ID | Limited Partner ID | Granted By | Status | Granted At |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `S-1001` | `9001` (KP Fund XVIII) | `3001` (Ohio) | `2001` (KP) | Active | 2025-10-01 |
 | `S-1002` | `9001` (KP Fund XVIII) | `3002` (Harvard) | `2001` (KP) | Active | 2025-10-01 |
@@ -107,33 +109,35 @@
 | `S-1009` | `9009` (Thoma Bravo) | `3004` (CPPIB) | `2006` (Thoma) | Active | 2025-10-05 |
 | `S-1010` | `9009` (Thoma Bravo) | `3007` (CalPERS) | `2006` (Thoma) | Active | 2025-10-05 |
 
-## 6. Publishing Rights
-*Note: This defines which Publishers can publish on behalf of which Asset Owners.*
+## 6. Access Grants (Unified Model)
+*Note: This unified model replaces separate Publishing Rights and Delegations.*
 
-| Right ID | Asset Owner ID | Publisher ID | Asset Scope | Can Manage Subscriptions | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `PR-1001` | `2001` (KP) | `1001` (Genii) | ALL | Yes | Active |
-| `PR-1002` | `2002` (Sequoia) | `2002` (Self) | ALL | Yes | Active |
-| `PR-1003` | `2003` (a16z) | `1003` (Carta) | `9005`, `9006` | No | Active |
-| `PR-1004` | `2004` (Benchmark) | `1002` (Alter Domus) | `9007` | Yes | Active |
-| `PR-1005` | `2005` (Insight) | `1002` (Alter Domus) | `9008` | No | Active |
-| `PR-1006` | `2006` (Thoma) | `1001` (Genii) | `9009` | Yes | Active |
-| `PR-1007` | `2007` (Vista) | `1002` (Alter Domus) | `9010` | No | Active |
+### GP Grants (`canPublish: true`)
+*Asset Managers delegate publishing and management capabilities to Delegates (Fund Admins).*
 
-## 7. Delegation Relationships (The "Access Graph")
-*Note: This defines who can see what on behalf of the Subscriber.*
+| Grant ID | Grantor (GP) | Grantee (Delegate) | Asset Scope | Publish | View | Manage Subs | Approve Subs | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `AG-001` | `2001` (KP) | `1001` (Genii) | ALL | ✓ | ✓ | ✓ | ✓ | Active |
+| `AG-002` | `2003` (a16z) | `1003` (Carta) | `9005`, `9006` | ✓ | ✓ | ✗ | ✗ | Active |
+| `AG-003` | `2004` (Benchmark) | `1002` (Aduro) | `9007` | ✓ | ✓ | ✓ | ✗ | Active |
+| `AG-004` | `2005` (Insight) | `1002` (Aduro) | `9008` | ✓ | ✓ | ✗ | ✓ | Active |
+| `AG-005` | `2006` (Thoma) | `1001` (Genii) | `9009` | ✓ | ✓ | ✓ | ✓ | Active |
+| `AG-006` | `2007` (Vista) | `1002` (Aduro) | `9010` | ✓ | ✓ | ✗ | ✗ | Active |
 
-| Delegation ID | Subscriber (Grantor) | Delegate (Grantee) | Scope (Assets) | Scope (Type) | Status | GP Approved |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `D-101` | `3001` (Ohio) | `4003` (Chronograph) | ALL | ALL | **Active** | N/A |
-| `D-102` | `3002` (Harvard) | `4004` (Mantle) | `9001`, `9002` | `CAPITAL_CALL`, `DIST` | **Active** | Yes |
-| `D-103` | `3003` (Yale) | `4006` (Burgiss) | ALL | `NAV_UPDATE`, `SOI` | **Active** | N/A |
-| `D-104` | `3007` (CalPERS) | `4003` (Chronograph) | ALL | ALL | **Active** | N/A |
-| `D-105` | `3005` (BlackRock) | `4005` (Carta LP) | `9005`, `9006` | ALL | **Active** | N/A |
-| `D-106` | `3008` (TRS Texas) | `4001` (Deloitte) | ALL | `K-1_TAX_FORM` | **Active** | N/A |
-| `D-107` | `3004` (CPPIB) | `4002` (PwC) | `9009` | `K-1_TAX_FORM` | **Pending GP Approval** | Pending |
+### LP Grants (`canPublish: false`)
+*Limited Partners delegate data access to service providers.*
 
-## 8. Permissions
+| Grant ID | Grantor (LP) | Grantee (Delegate) | Asset Scope | Type Scope | View | Manage Subs | Status | GP Approval |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `AG-101` | `3001` (Ohio) | `4003` (Chronograph) | ALL | ALL | ✓ | ✓ | Active | N/A |
+| `AG-114` | `3002` (Harvard) | `4004` (Mantle) | `9001`, `9002` | CAPITAL_CALL, DIST | ✓ | ✗ | Active | Approved |
+| `AG-115` | `3003` (Yale) | `4006` (Burgiss) | ALL | NAV_UPDATE, SOI | ✓ | ✗ | Active | N/A |
+| `AG-103` | `3007` (CalPERS) | `4003` (Chronograph) | ALL | ALL | ✓ | ✗ | Active | N/A |
+| `AG-128` | `3005` (BlackRock) | `4005` (Carta LP) | `9005`, `9006` | ALL | ✓ | ✗ | Active | N/A |
+| `AG-108` | `3008` (TRS Texas) | `4001` (Deloitte) | ALL | K-1_TAX_FORM | ✓ | ✗ | Active | Approved |
+| `AG-121` | `3004` (CPPIB) | `4002` (PwC) | `9009` | K-1_TAX_FORM | ✓ | ✗ | Pending Approval | Pending |
+
+## 7. Permissions
 *Note: Fine-grained permissions per user (beyond role-based defaults).*
 
 | Permission ID | User ID | Resource | Action | Scope |
@@ -141,10 +145,10 @@
 | `P-1001` | `501` (Alice) | `registry` | `view`, `update` | All |
 | `P-1002` | `501` (Alice) | `audit` | `view` | All |
 | `P-1003` | `502` (Bob) | `subscriptions` | `view`, `create`, `update`, `delete` | Assets: `9001`, `9002` |
-| `P-1004` | `502` (Bob) | `publishing-rights` | `view`, `create`, `update` | All owned assets |
-| `P-1005` | `521` (Genii Publisher) | `subscriptions` | `view` | Assets: `9001`, `9002`, `9009` |
+| `P-1004` | `502` (Bob) | `access-grants` | `view`, `create`, `update` | All owned assets |
+| `P-1005` | `521` (Genii Delegate) | `subscriptions` | `view` | Assets: `9001`, `9002`, `9009` |
 
-## 9. Sample Payloads
+## 8. Sample Payloads
 
 ### A. Capital Call (Envelope `10001`)
 ```json

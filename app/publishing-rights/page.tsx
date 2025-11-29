@@ -48,8 +48,8 @@ export default function PublishingRightsPage() {
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
       const hasAccess = 
-        currentOrg.role === 'Asset Owner' || 
-        currentOrg.role === 'Publisher' ||
+        currentOrg.role === 'Asset Manager' || 
+        currentOrg.role === 'Delegate' ||
         currentOrg.role === 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
@@ -153,7 +153,7 @@ export default function PublishingRightsPage() {
 
   // Get available publishers (Fund Admins)
   const getAvailablePublishers = () => {
-    return mockOrganizations.filter(o => o.role === 'Publisher')
+    return mockOrganizations.filter(o => o.role === 'Delegate')
   }
 
   // Get available assets for current GP
@@ -171,7 +171,7 @@ export default function PublishingRightsPage() {
   })
 
   // Only Asset Owners can create publishing rights
-  const canCreateRights = currentOrg?.role === 'Asset Owner' || currentOrg?.role === 'Platform Admin'
+  const canCreateRights = currentOrg?.role === 'Asset Manager' || currentOrg?.role === 'Platform Admin'
 
   if (loading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>

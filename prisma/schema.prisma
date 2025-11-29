@@ -13,15 +13,19 @@ datasource db {
 model Organization {
   id        Int     @id @default(autoincrement())
   name      String
-  role      String  // Publisher, Asset Owner, Subscriber, Delegate
+  role      String  // Platform Admin, Asset Manager, Limited Partner, Delegate
   type      String  // Fund Administrator, General Partner (GP), Limited Partner (LP), etc.
   status    String  // Verified, Pending, Suspended
   imageUrl  String?
   users     User[]
-  assets    Asset[] @relation("AssetOwner")
-  published Asset[] @relation("Publisher")
+  assets            Asset[] @relation("AssetOwner")
+  defaultPublished  Asset[] @relation("DefaultPublisher")
   subscriptionsAsSubscriber Subscription[] @relation("Subscriber")
   subscriptionsAsGranter Subscription[] @relation("Granter")
+  // Unified AccessGrant relations
+  accessGrantsAsGrantor AccessGrant[] @relation("AccessGrantGrantor")
+  accessGrantsAsGrantee AccessGrant[] @relation("AccessGrantGrantee")
+  // Legacy relations (deprecated - kept for migration)
   delegationsAsSubscriber Delegation[] @relation("DelegationSubscriber")
   delegationsAsDelegate Delegation[] @relation("DelegationDelegate")
   publishingRightsAsOwner PublishingRight[] @relation("PublishingRightOwner")
@@ -45,16 +49,16 @@ model User {
 }
 
 model Asset {
-  id          Int        @id @default(autoincrement())
-  name        String
-  ownerId     Int
-  publisherId Int
-  type        String     // Fund, Co-Investment, SPV
+  id                 Int        @id @default(autoincrement())
+  name               String
+  ownerId            Int
+  defaultPublisherId Int        // Primary publisher for display; actual rights managed via PublishingRight
+  type               String     // Fund, Co-Investment, SPV
   requireGPApprovalForDelegations Boolean @default(false) // Whether LP delegations require GP approval
-  owner       Organization @relation("AssetOwner", fields: [ownerId], references: [id])
-  publisher   Organization @relation("Publisher", fields: [publisherId], references: [id])
-  envelopes   Envelope[]
-  subscriptions Subscription[]
+  owner              Organization @relation("AssetOwner", fields: [ownerId], references: [id])
+  defaultPublisher   Organization @relation("DefaultPublisher", fields: [defaultPublisherId], references: [id])
+  envelopes          Envelope[]
+  subscriptions      Subscription[]
 }
 
 model Envelope {
@@ -121,7 +125,7 @@ model Subscription {
   grantedAt     String  // ISO 8601 timestamp (when invitation sent)
   acceptedAt    String? // ISO 8601 timestamp (when LP accepted)
   expiresAt     String? // Optional expiration timestamp
-  status        String  // Pending LP Acceptance, Pending Asset Owner Approval, Active, Expired, Revoked, Declined
+  status        String  // Pending LP Acceptance, Pending Asset Manager Approval, Active, Expired, Revoked, Declined
   inviteMessage String? // Optional message from GP to LP
   requestMessage String? // Optional message from LP to GP when requesting subscription
   asset         Asset   @relation(fields: [assetId], references: [id])
@@ -149,9 +153,44 @@ model PublishingRight {
 model Permission {
   id       String @id @default(uuid())
   userId   Int
-  resource String // "assets", "subscriptions", "delegations", "envelopes", "users", "audit", "registry"
+  resource String // "assets", "subscriptions", "access-grants", "envelopes", "users", "audit", "registry", "feeds"
   action   String // "view", "create", "update", "delete", "publish", "approve"
   scope    String // JSON: { orgId?, assetIds?, all? }
   user     User   @relation(fields: [userId], references: [id])
+}
+
+// AccessGrant - Unified model for delegated capabilities
+// Replaces both PublishingRight and Delegation with a single, consistent model
+model AccessGrant {
+  id                     String   @id @default(uuid())
+  
+  // THE EDGE: Grantor (Asset Manager or LP) → Grantee (Delegate)
+  grantorId              Int      // Asset Manager OR Limited Partner org
+  granteeId              Int      // Always a Delegate org
+  
+  // SCOPE
+  assetScope             String   // JSON array of asset IDs or "ALL"
+  dataTypeScope          String   // JSON array of data types or "ALL"
+  
+  // CAPABILITIES
+  canPublish             Boolean  @default(false) // Send envelopes (GP grants only)
+  canViewData            Boolean  @default(true)  // View envelopes
+  canManageSubscriptions Boolean  @default(false) // GP: invite/revoke LPs | LP: accept/request for LP
+  canApproveSubscriptions Boolean @default(false) // Approve LP subscription requests (GP only)
+  canApproveDelegations  Boolean  @default(false) // Approve LP→Delegate grants (GP only)
+  
+  // APPROVAL WORKFLOW (for LP grants requiring GP approval)
+  requiresApproval       Boolean  @default(false) // Whether GP must approve this grant
+  approvalStatus         String?  // Pending, Approved, Rejected
+  approvedById           Int?     // User ID who approved
+  approvedAt             String?  // ISO 8601 timestamp of approval
+  
+  // METADATA
+  status                 String   // Active, Revoked, Pending Approval
+  grantedAt              String   // ISO 8601 timestamp
+  
+  // Relations
+  grantor                Organization @relation("AccessGrantGrantor", fields: [grantorId], references: [id])
+  grantee                Organization @relation("AccessGrantGrantee", fields: [granteeId], references: [id])
 }
 

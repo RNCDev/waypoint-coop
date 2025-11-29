@@ -46,8 +46,8 @@ export function Navbar() {
     if (!currentUser) return false
     const org = getUserOrganization(currentUser)
     if (!org) return false
-    if (org.role === 'Asset Owner' || org.role === 'Platform Admin') return true
-    if (org.role === 'Publisher') {
+    if (org.role === 'Asset Manager' || org.role === 'Platform Admin') return true
+    if (org.role === 'Delegate') {
       const manageable = getManageableSubscriptions(currentUser)
       return manageable.length > 0
     }

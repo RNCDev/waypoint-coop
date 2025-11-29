@@ -68,7 +68,7 @@ export default function DelegationsPage() {
     if (_hasHydrated && currentUser) {
       const { currentOrg } = useAuthStore.getState()
       const hasAccess = 
-        currentUser.role === 'Subscriber' || 
+        currentUser.role === 'Limited Partner' || 
         currentUser.role === 'Analytics' || 
         currentUser.role === 'Auditor' ||
         currentOrg?.role === 'Delegate'

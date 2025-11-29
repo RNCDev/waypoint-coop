@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 const updateSchema = z.object({
   expiresAt: z.string().optional(),
-  status: z.enum(['Active', 'Expired', 'Revoked', 'Pending Asset Owner Approval']).optional(),
+  status: z.enum(['Active', 'Expired', 'Revoked', 'Pending Asset Manager Approval']).optional(),
 })
 
 // Validate subscription status transitions
@@ -17,8 +17,8 @@ function isValidStatusTransition(currentStatus: string, newStatus: string): { va
   // Valid transitions:
   // Pending LP Acceptance → Active (via accept endpoint)
   // Pending LP Acceptance → Declined (via decline endpoint)
-  // Pending Asset Owner Approval → Active (via approve endpoint)
-  // Pending Asset Owner Approval → Declined (via reject endpoint)
+  // Pending Asset Manager Approval → Active (via approve endpoint)
+  // Pending Asset Manager Approval → Declined (via reject endpoint)
   // Active → Revoked (via revoke/delete)
   // Active → Expired (via expiration check or manual update)
   // Revoked → (no transitions, final state)
@@ -31,7 +31,7 @@ function isValidStatusTransition(currentStatus: string, newStatus: string): { va
 
   const validTransitions: Record<string, string[]> = {
     'Pending LP Acceptance': ['Active', 'Declined'], // Only via accept/decline endpoints
-    'Pending Asset Owner Approval': ['Active', 'Declined'], // Only via approve/reject endpoints
+    'Pending Asset Manager Approval': ['Active', 'Declined'], // Only via approve/reject endpoints
     'Active': ['Revoked', 'Expired'],
     'Expired': [], // Final state
     'Revoked': [], // Final state

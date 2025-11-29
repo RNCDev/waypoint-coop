@@ -91,9 +91,9 @@ export async function PATCH(
     const user = permissionResult.user
     const org = getUserOrganization(user)
     
-    // Only Asset Owners can update publishing rights
-    if (org?.role !== 'Asset Owner' && org?.role !== 'Platform Admin') {
-      return NextResponse.json({ error: 'Only Asset Owners can update publishing rights' }, { status: 403 })
+    // Only Asset Managers can update publishing rights
+    if (org?.role !== 'Asset Manager' && org?.role !== 'Platform Admin') {
+      return NextResponse.json({ error: 'Only Asset Managers can update publishing rights' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -170,9 +170,9 @@ export async function DELETE(
     const user = permissionResult.user
     const org = getUserOrganization(user)
 
-    // Only Asset Owners can revoke publishing rights
-    if (org?.role !== 'Asset Owner' && org?.role !== 'Platform Admin') {
-      return NextResponse.json({ error: 'Only Asset Owners can revoke publishing rights' }, { status: 403 })
+    // Only Asset Managers can revoke publishing rights
+    if (org?.role !== 'Asset Manager' && org?.role !== 'Platform Admin') {
+      return NextResponse.json({ error: 'Only Asset Managers can revoke publishing rights' }, { status: 403 })
     }
 
     if (isVercel()) {

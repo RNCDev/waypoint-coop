@@ -88,9 +88,9 @@ export default function IAMSettingsPage() {
       case 'Platform Admin':
         return 'destructive'
       case 'Admin':
-      case 'Asset Owner':
+      case 'Asset Manager':
         return 'default'
-      case 'Publisher':
+      case 'Delegate':
         return 'secondary'
       default:
         return 'outline'
@@ -103,14 +103,12 @@ export default function IAMSettingsPage() {
     switch (currentOrg.role) {
       case 'Platform Admin':
         return ['Platform Admin', 'Admin', 'Viewer']
-      case 'Asset Owner':
-        return ['Asset Owner', 'Admin', 'Viewer', 'Signer', 'IR']
-      case 'Publisher':
-        return ['Publisher', 'Admin', 'Viewer', 'Ops']
-      case 'Subscriber':
-        return ['Subscriber', 'Admin', 'Viewer', 'Risk']
+      case 'Asset Manager':
+        return ['Asset Manager', 'Admin', 'Viewer', 'Signer', 'IR']
+      case 'Limited Partner':
+        return ['Limited Partner', 'Admin', 'Viewer', 'Risk']
       case 'Delegate':
-        return ['Analytics', 'Auditor', 'Tax', 'Integration', 'Viewer']
+        return ['Delegate', 'Admin', 'Viewer', 'Ops', 'Analytics', 'Auditor', 'Tax', 'Integration']
       default:
         return ['Viewer']
     }

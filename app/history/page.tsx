@@ -35,7 +35,7 @@ export default function HistoryPage() {
   // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = (currentUser.role === 'Publisher' || currentUser.role === 'Asset Owner') && currentOrg.role !== 'Platform Admin'
+      const hasAccess = (currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager') && currentOrg.role !== 'Platform Admin'
       if (!hasAccess) {
         router.push('/')
       }
@@ -45,7 +45,7 @@ export default function HistoryPage() {
   const fetchEnvelopes = useCallback(async () => {
     try {
       // For Asset Owners, fetch by assetOwnerId; for Publishers, fetch by publisherId
-      const queryParam = currentOrg?.role === 'Asset Owner' 
+      const queryParam = currentOrg?.role === 'Asset Manager' 
         ? `assetOwnerId=${currentOrg?.id}`
         : `publisherId=${currentOrg?.id}`
       const response = await fetch(`/api/envelopes?${queryParam}`, {
