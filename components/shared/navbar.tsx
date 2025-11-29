@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { PersonaSwitcher } from './persona-switcher'
@@ -11,13 +12,24 @@ export function Navbar() {
   const { navItems } = useAuthStore()
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/40 bg-card/50 backdrop-blur-sm">
+    <nav className="sticky top-0 z-50 border-b border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 items-center justify-between">
           {/* Navigation Links */}
           <div className="flex items-center gap-6">
-            <Link href="/" className="text-lg font-light text-foreground hover:text-primary transition-colors">
-              Waypoint
+            <Link href="/" className="flex items-center">
+              <div className="h-30 w-28 overflow-hidden relative flex items-center justify-center">
+                <div className="scale-[1.9] origin-center -translate-x-0 translate-y-11">
+                  <Image 
+                    src="/waypoint-logo.svg" 
+                    alt="Waypoint" 
+                    width={81}
+                    height={100}
+                    className="h-[100px] w-auto"
+                    priority
+                  />
+                </div>
+              </div>
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {navItems.slice(1).map((item) => (
