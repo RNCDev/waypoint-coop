@@ -32,7 +32,7 @@ model Organization {
   subscriptions      Subscription[]
   grantsGiven        AccessGrant[]  @relation("Grantor")
   grantsReceived     AccessGrant[]  @relation("Grantee")
-  publishedEnvelopes Envelope[]
+  publishedDataPackets DataPacket[]
   auditLogs          AuditLog[]
 
   @@index([type])
@@ -61,7 +61,7 @@ model Asset {
   parent        Asset?         @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children      Asset[]        @relation("AssetHierarchy")
   subscriptions Subscription[]
-  envelopes     Envelope[]
+  dataPackets   DataPacket[]
   accessGrants  AccessGrant[]
 
   @@index([managerId])
@@ -135,12 +135,12 @@ model Subscription {
 }
 
 // =============================================================================
-// ENVELOPES
+// DATA PACKETS
 // =============================================================================
 // Data packets published to the network (Capital Calls, Distributions, etc.)
 // Supports versioning for corrections via parentId chain.
 
-model Envelope {
+model DataPacket {
   id          String       @id @default(cuid())
   type        DataArtifact
   payload     Json
@@ -153,10 +153,10 @@ model Envelope {
 
   // Relations
   publisher    Organization  @relation(fields: [publisherId], references: [id], onDelete: Cascade)
-  asset        Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  parent       Envelope?     @relation("Corrections", fields: [parentId], references: [id], onDelete: SetNull)
-  children     Envelope[]    @relation("Corrections")
-  readReceipts ReadReceipt[]
+  asset         Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  parent        DataPacket?   @relation("Corrections", fields: [parentId], references: [id], onDelete: SetNull)
+  children      DataPacket[]  @relation("Corrections")
+  readReceipts  ReadReceipt[]
 
   @@index([publisherId])
   @@index([assetId])
@@ -168,20 +168,20 @@ model Envelope {
 // =============================================================================
 // READ RECEIPTS
 // =============================================================================
-// Tracks when users have viewed envelopes for audit purposes.
+// Tracks when users have viewed data packets for audit purposes.
 
 model ReadReceipt {
-  id         String   @id @default(cuid())
-  envelopeId String
-  userId     String
-  readAt     DateTime @default(now())
+  id            String   @id @default(cuid())
+  dataPacketId  String
+  userId        String
+  readAt        DateTime @default(now())
 
   // Relations
-  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataPacket DataPacket @relation(fields: [dataPacketId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([envelopeId, userId])
-  @@index([envelopeId])
+  @@unique([dataPacketId, userId])
+  @@index([dataPacketId])
   @@index([userId])
 }
 
@@ -216,7 +216,7 @@ model User {
 model AuditLog {
   id             String   @id @default(cuid())
   action         String   // e.g., "CREATE", "UPDATE", "DELETE", "APPROVE", "REVOKE"
-  entityType     String   // e.g., "AccessGrant", "Subscription", "Envelope"
+  entityType     String   // e.g., "AccessGrant", "Subscription", "DataPacket"
   entityId       String
   actorId        String?
   organizationId String?

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import { Pagination } from '@/components/ui/pagination'
 import { useAuthStore } from '@/store/auth-store'
-import { History, Filter, Eye } from 'lucide-react'
+import { History, Filter, Eye, Download, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
-interface EnvelopeData {
+interface DataPacketData {
   id: string
   type: string
   hash: string
@@ -33,7 +33,9 @@ interface EnvelopeData {
   parentId: string | null
   publisherName: string
   assetName: string
+  subscribers: string[] // Array of subscriber names
   createdAt: string
+  payload?: any // Full payload loaded on demand
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -44,19 +46,23 @@ const TYPE_COLORS: Record<string, string> = {
   LEGAL_DOCUMENT: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 10
 
 export default function HistoryPage() {
   const { currentPersona } = useAuthStore()
-  const [envelopes, setEnvelopes] = useState<EnvelopeData[]>([])
+  const [dataPackets, setDataPackets] = useState<DataPacketData[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [loadingPayloads, setLoadingPayloads] = useState<Set<string>>(new Set())
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<string>('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
-    async function fetchEnvelopes() {
+    async function fetchDataPackets() {
       setLoading(true)
       try {
         const isGP = currentPersona.organizationType === 'GP'
@@ -67,17 +73,17 @@ export default function HistoryPage() {
 
         if (isGP) {
           // GPs see envelopes for assets they manage
-          url = `/api/envelopes?managerId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}`
+          url = `/api/data-packets?managerId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`
         } else if (isLP) {
-          // LPs see envelopes for assets they're subscribed to
-          url = `/api/envelopes?subscriberId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}`
+          // LPs see data packets for assets they're subscribed to
+          url = `/api/data-packets?subscriberId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`
         } else if (isAuditor) {
-          // Auditors/Consultants see envelopes they have access to through grants
+          // Auditors/Consultants see data packets they have access to through grants
           // The API will handle this via subscriberId which checks both subscriptions and grants
-          url = `/api/envelopes?subscriberId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}`
+          url = `/api/data-packets?subscriberId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`
         } else {
-          // Others (Fund Admin, etc.) see envelopes they published
-          url = `/api/envelopes?publisherId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}`
+          // Others (Fund Admin, etc.) see data packets they published
+          url = `/api/data-packets?publisherId=${currentPersona.organizationId}&limit=${PAGE_SIZE}&offset=${offset}&sortBy=${sortBy}&sortOrder=${sortOrder}`
         }
         
         if (filter !== 'all') {
@@ -91,35 +97,45 @@ export default function HistoryPage() {
         const response = await fetch(url)
         const data = await response.json()
 
-        const transformed: EnvelopeData[] = data.envelopes.map((env: any) => ({
-          id: env.id,
-          type: env.type,
-          hash: env.hash,
-          version: env.version,
-          parentId: env.parentId,
-          publisherName: env.publisher?.name || 'Unknown',
-          assetName: env.asset?.name || 'Unknown',
-          createdAt: env.createdAt,
-        }))
+        const transformed: DataPacketData[] = data.dataPackets.map((env: any) => {
+          const subscriptions = env.asset?.subscriptions || []
+          const subscribers = Array.isArray(subscriptions)
+            ? subscriptions.map((sub: any) => sub.subscriber?.name).filter(Boolean)
+            : []
+          
+          return {
+            id: env.id,
+            type: env.type,
+            hash: env.hash,
+            version: env.version,
+            parentId: env.parentId,
+            publisherName: env.publisher?.name || 'Unknown',
+            assetName: env.asset?.name || 'Unknown',
+            subscribers: subscribers,
+            createdAt: env.createdAt,
+          }
+        })
 
         // Filter corrections if needed
         const filtered = filter === 'corrections' 
           ? transformed.filter((env) => env.version > 1)
           : transformed
 
-        setEnvelopes(filtered)
+        setDataPackets(filtered)
         setTotal(data.total)
       } catch (error) {
-        console.error('Error fetching envelopes:', error)
+        console.error('Error fetching data packets:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchEnvelopes()
-  }, [currentPersona.organizationId, currentPersona.organizationType, currentPage, filter])
+    fetchDataPackets()
+  }, [currentPersona.organizationId, currentPersona.organizationType, currentPage, filter, sortBy, sortOrder])
 
-  const toggleRow = (id: string) => {
+  const toggleRow = async (id: string) => {
+    const isExpanding = !expandedRows.has(id)
+    
     setExpandedRows((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -129,6 +145,55 @@ export default function HistoryPage() {
       }
       return next
     })
+
+    // Fetch payload if expanding and not already loaded
+    if (isExpanding) {
+      const dataPacket = dataPackets.find(e => e.id === id)
+      if (dataPacket && !dataPacket.payload) {
+        setLoadingPayloads((prev) => new Set([...prev, id]))
+        try {
+          const response = await fetch(`/api/data-packets/${id}`)
+          const data = await response.json()
+          
+          setDataPackets((prev) =>
+            prev.map((env) =>
+              env.id === id ? { ...env, payload: data.payload } : env
+            )
+          )
+        } catch (error) {
+          console.error('Error fetching data packet payload:', error)
+        } finally {
+          setLoadingPayloads((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        }
+      }
+    }
+  }
+
+  const handleDownload = (dataPacket: DataPacketData) => {
+    const dataStr = JSON.stringify(dataPacket.payload, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${dataPacket.id}_${dataPacket.type.toLowerCase()}_v${dataPacket.version}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleCopy = async (dataPacket: DataPacketData) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(dataPacket.payload, null, 2))
+      setCopiedId(dataPacket.id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+    }
   }
 
   const formatDate = (date: string) => {
@@ -141,7 +206,28 @@ export default function HistoryPage() {
     })
   }
 
-  const correctionCount = envelopes.filter((env) => env.version > 1).length
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting changes
+  }
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />
+    }
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="w-3 h-3 ml-1" />
+    ) : (
+      <ArrowDown className="w-3 h-3 ml-1" />
+    )
+  }
+
+  const correctionCount = dataPackets.filter((env) => env.version > 1).length
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const showingStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
   const showingEnd = Math.min(currentPage * PAGE_SIZE, total)
@@ -163,12 +249,12 @@ export default function HistoryPage() {
               <h1 className="text-4xl font-semibold mb-3 gradient-text">History</h1>
               <p className="text-muted-foreground text-base">
                 {currentPersona.organizationType === 'GP'
-                  ? 'View all envelopes published for your assets'
+                  ? 'View all data packets published for your assets'
                   : currentPersona.organizationType === 'LP'
-                  ? 'View all envelopes from your subscribed funds'
+                  ? 'View all data packets from your subscribed funds'
                   : ['AUDITOR', 'CONSULTANT', 'TAX_ADVISOR'].includes(currentPersona.organizationType)
-                  ? 'View all envelopes you have access to through grants'
-                  : 'View all envelopes published by your organization'}
+                  ? 'View all data packets you have access to through grants'
+                  : 'View all data packets published by your organization'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -209,12 +295,12 @@ export default function HistoryPage() {
               </SelectContent>
             </Select>
             <span className="text-sm text-muted-foreground">
-              Showing {showingStart.toLocaleString()} to {showingEnd.toLocaleString()} of {total.toLocaleString()} envelopes
+              Showing {showingStart.toLocaleString()} to {showingEnd.toLocaleString()} of {total.toLocaleString()} data packets
             </span>
           </div>
         </motion.div>
 
-        {/* Envelope Table */}
+        {/* Data Packet Table */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -224,7 +310,7 @@ export default function HistoryPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" />
-                Envelope History
+                Data Packet History
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -232,10 +318,10 @@ export default function HistoryPage() {
                 <div className="empty-state py-12">
                   <p>Loading...</p>
                 </div>
-              ) : envelopes.length === 0 ? (
+              ) : dataPackets.length === 0 ? (
                 <div className="empty-state py-12">
                   <History className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <p>No envelopes found</p>
+                  <p>No data packets found</p>
                 </div>
               ) : (
                 <>
@@ -243,75 +329,179 @@ export default function HistoryPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[100px]">Type</TableHead>
-                          <TableHead>Asset</TableHead>
-                          <TableHead>Publisher</TableHead>
-                          <TableHead className="w-[120px]">Hash</TableHead>
-                          <TableHead className="w-[120px]">Version</TableHead>
-                          <TableHead className="w-[180px]">Date</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
+                          <TableHead 
+                            className="w-[90px] py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                            onClick={() => handleSort('type')}
+                          >
+                            <div className="flex items-center">
+                              Type
+                              <SortIcon column="type" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                            onClick={() => handleSort('asset')}
+                          >
+                            <div className="flex items-center">
+                              Asset
+                              <SortIcon column="asset" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                            onClick={() => handleSort('publisher')}
+                          >
+                            <div className="flex items-center">
+                              Publisher
+                              <SortIcon column="publisher" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[100px] py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                            onClick={() => handleSort('version')}
+                          >
+                            <div className="flex items-center">
+                              Version
+                              <SortIcon column="version" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[150px] py-2 text-xs cursor-pointer hover:bg-secondary/50"
+                            onClick={() => handleSort('createdAt')}
+                          >
+                            <div className="flex items-center">
+                              Date
+                              <SortIcon column="createdAt" />
+                            </div>
+                          </TableHead>
+                          <TableHead className="w-[80px] py-2 text-xs">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {envelopes.map((envelope) => (
-                          <Fragment key={envelope.id}>
+                        {dataPackets.map((dataPacket) => (
+                          <Fragment key={dataPacket.id}>
                             <TableRow className="cursor-pointer hover:bg-secondary/50">
-                              <TableCell>
+                              <TableCell className="py-1.5 px-2">
                                 <Badge
                                   variant="outline"
-                                  className={TYPE_COLORS[envelope.type] || ''}
+                                  className={`text-xs px-1.5 py-0 whitespace-nowrap ${TYPE_COLORS[dataPacket.type] || ''}`}
                                 >
-                                  {envelope.type.replace('_', ' ')}
+                                  {dataPacket.type.replace('_', ' ')}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="font-medium">
-                                {envelope.assetName}
+                              <TableCell className="py-1.5 px-2 text-xs font-medium">
+                                {dataPacket.assetName}
                               </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {envelope.publisherName}
+                              <TableCell className="py-1.5 px-2 text-xs text-muted-foreground">
+                                {dataPacket.publisherName}
                               </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {envelope.hash.slice(0, 8)}
-                              </TableCell>
-                              <TableCell>
-                                {envelope.version > 1 ? (
-                                  <Badge variant="outline" className="bg-orange-500/20 text-orange-400">
-                                    v{envelope.version}
+                              <TableCell className="py-1.5 px-2">
+                                {dataPacket.version > 1 ? (
+                                  <Badge variant="outline" className="text-xs px-1.5 py-0 bg-orange-500/20 text-orange-400">
+                                    v{dataPacket.version}
                                   </Badge>
                                 ) : (
-                                  <span className="text-muted-foreground">v{envelope.version}</span>
+                                  <span className="text-xs text-muted-foreground">v{dataPacket.version}</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {formatDate(envelope.createdAt)}
+                              <TableCell className="py-1.5 px-2 text-xs text-muted-foreground">
+                                {formatDate(dataPacket.createdAt)}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="py-1.5 px-2">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => toggleRow(envelope.id)}
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => toggleRow(dataPacket.id)}
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <Eye className="w-3.5 h-3.5" />
                                 </Button>
                               </TableCell>
                             </TableRow>
-                            {expandedRows.has(envelope.id) && (
+                            {expandedRows.has(dataPacket.id) && (
                               <TableRow>
-                                <TableCell colSpan={7} className="bg-secondary/30">
-                                  <div className="py-4 space-y-2">
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                <TableCell colSpan={6} className="bg-secondary/30 p-0">
+                                  <div className="p-6 space-y-4">
+                                    {/* Metadata */}
+                                    <div className="grid grid-cols-2 gap-4 text-sm border-b border-border/50 pb-4">
                                       <div>
-                                        <span className="text-muted-foreground">Envelope ID:</span>
-                                        <code className="ml-2 font-mono text-xs">{envelope.id}</code>
+                                        <span className="text-muted-foreground">Data Packet ID:</span>
+                                        <code className="ml-2 font-mono text-xs">{dataPacket.id}</code>
                                       </div>
                                       <div>
                                         <span className="text-muted-foreground">Full Hash:</span>
-                                        <code className="ml-2 font-mono text-xs">{envelope.hash}</code>
+                                        <code className="ml-2 font-mono text-xs break-all">{dataPacket.hash}</code>
                                       </div>
-                                      {envelope.parentId && (
+                                      {dataPacket.parentId && (
                                         <div>
                                           <span className="text-muted-foreground">Parent:</span>
-                                          <code className="ml-2 font-mono text-xs">{envelope.parentId}</code>
+                                          <code className="ml-2 font-mono text-xs">{dataPacket.parentId}</code>
+                                        </div>
+                                      )}
+                                      {dataPacket.subscribers && dataPacket.subscribers.length > 0 && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground">Subscribers:</span>
+                                          <div className="mt-1 flex flex-wrap gap-2">
+                                            {dataPacket.subscribers.map((subscriber, idx) => (
+                                              <Badge key={idx} variant="outline" className="text-xs">
+                                                {subscriber}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Payload Section */}
+                                    <div>
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-semibold text-sm">Payload Data</h4>
+                                        {dataPacket.payload && (
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleCopy(dataPacket)}
+                                              className="h-8"
+                                            >
+                                              {copiedId === dataPacket.id ? (
+                                                <>
+                                                  <Check className="w-3.5 h-3.5 mr-1.5" />
+                                                  Copied
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Copy className="w-3.5 h-3.5 mr-1.5" />
+                                                  Copy JSON
+                                                </>
+                                              )}
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleDownload(dataPacket)}
+                                              className="h-8"
+                                            >
+                                              <Download className="w-3.5 h-3.5 mr-1.5" />
+                                              Download
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {loadingPayloads.has(dataPacket.id) ? (
+                                        <div className="code-block border border-border/50 p-4 text-center text-muted-foreground">
+                                          <div className="animate-pulse">Loading payload...</div>
+                                        </div>
+                                      ) : dataPacket.payload ? (
+                                        <div className="code-block border border-border/50 rounded-lg overflow-hidden">
+                                          <pre className="text-xs overflow-x-auto font-mono font-light p-4 max-h-[500px] overflow-y-auto scrollbar-thin">
+                                            {JSON.stringify(dataPacket.payload, null, 2)}
+                                          </pre>
+                                        </div>
+                                      ) : (
+                                        <div className="code-block border border-border/50 p-4 text-center text-muted-foreground">
+                                          Unable to load payload
                                         </div>
                                       )}
                                     </div>

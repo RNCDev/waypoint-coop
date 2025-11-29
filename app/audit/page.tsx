@@ -99,7 +99,13 @@ export default function AuditPage() {
   }
 
   const uniqueActions = ['CREATE', 'UPDATE', 'DELETE', 'PUBLISH', 'CORRECT', 'APPROVE', 'REVOKE', 'VIEW']
-  const uniqueEntities = ['Organization', 'Asset', 'Subscription', 'AccessGrant', 'Envelope', 'User']
+  const uniqueEntities = ['Organization', 'Asset', 'Subscription', 'AccessGrant', 'DataPacket', 'User']
+  
+  // Map entity types for display
+  const getEntityDisplayName = (entityType: string) => {
+    if (entityType === 'DataPacket') return 'Data Packet'
+    return entityType
+  }
 
   return (
     <div className="flex-1 bg-background">
@@ -163,7 +169,7 @@ export default function AuditPage() {
               <SelectItem value="all">All Entities</SelectItem>
               {uniqueEntities.map((entity) => (
                 <SelectItem key={entity} value={entity}>
-                  {entity}
+                  {getEntityDisplayName(entity)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -225,7 +231,7 @@ export default function AuditPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="font-medium">{log.entityType}</span>
+                                <span className="font-medium">{getEntityDisplayName(log.entityType)}</span>
                                 <span className="text-xs text-muted-foreground font-mono">
                                   {log.entityId.slice(0, 12)}...
                                 </span>

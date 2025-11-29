@@ -74,7 +74,7 @@ interface Asset {
   }
   _count: {
     subscriptions: number
-    envelopes: number
+    dataPackets: number
   }
 }
 
@@ -198,7 +198,7 @@ export default function RegistryPage() {
 
       if (response.ok) {
         const created = await response.json()
-        setAssets((prev) => [...prev, { ...created, _count: { subscriptions: 0, envelopes: 0 } }])
+        setAssets((prev) => [...prev, { ...created, _count: { subscriptions: 0, dataPackets: 0 } }])
         setAssetDialogOpen(false)
         setNewAsset({ name: '', type: 'FUND', vintage: '', requireGPApprovalForDelegations: false })
       }
@@ -361,7 +361,7 @@ export default function RegistryPage() {
                           <TableHead>Type</TableHead>
                           <TableHead>Vintage</TableHead>
                           <TableHead>Subscriptions</TableHead>
-                          <TableHead>Envelopes</TableHead>
+                          <TableHead>Data Packets</TableHead>
                           <TableHead>Created</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -383,7 +383,7 @@ export default function RegistryPage() {
                               {asset.vintage || '-'}
                             </TableCell>
                             <TableCell>{asset._count.subscriptions}</TableCell>
-                            <TableCell>{asset._count.envelopes}</TableCell>
+                            <TableCell>{asset._count.dataPackets}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {new Date(asset.createdAt).toLocaleDateString()}
                             </TableCell>

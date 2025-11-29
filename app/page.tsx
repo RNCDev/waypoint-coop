@@ -18,7 +18,7 @@ import { Activity } from 'lucide-react'
 interface ActivityMetrics {
   organizations: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
   assets: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
-  envelopes: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
+  dataPackets: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
 }
 
 export default function DashboardPage() {
@@ -55,13 +55,13 @@ export default function DashboardPage() {
             fetch(`/api/assets?countOnly=true`),
           ])
 
-          // Fetch envelopes counts (using audit logs for PUBLISH action)
-          const [envelopesDaily, envelopesWeekly, envelopesMonthly, envelopesAnnual, envelopesInception] = await Promise.all([
-            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${daily.toISOString()}`),
-            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${weekly.toISOString()}`),
-            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${monthly.toISOString()}`),
-            fetch(`/api/audit?entityType=Envelope&action=PUBLISH&startDate=${annual.toISOString()}`),
-            fetch(`/api/audit?entityType=Envelope&action=PUBLISH`),
+          // Fetch data packet counts (using audit logs for PUBLISH action)
+          const [dataPacketsDaily, dataPacketsWeekly, dataPacketsMonthly, dataPacketsAnnual, dataPacketsInception] = await Promise.all([
+            fetch(`/api/audit?entityType=DataPacket&action=PUBLISH&startDate=${daily.toISOString()}`),
+            fetch(`/api/audit?entityType=DataPacket&action=PUBLISH&startDate=${weekly.toISOString()}`),
+            fetch(`/api/audit?entityType=DataPacket&action=PUBLISH&startDate=${monthly.toISOString()}`),
+            fetch(`/api/audit?entityType=DataPacket&action=PUBLISH&startDate=${annual.toISOString()}`),
+            fetch(`/api/audit?entityType=DataPacket&action=PUBLISH`),
           ])
 
           const [
@@ -75,11 +75,11 @@ export default function DashboardPage() {
             assetsMonthlyData,
             assetsAnnualData,
             assetsInceptionData,
-            envelopesDailyData,
-            envelopesWeeklyData,
-            envelopesMonthlyData,
-            envelopesAnnualData,
-            envelopesInceptionData,
+            dataPacketsDailyData,
+            dataPacketsWeeklyData,
+            dataPacketsMonthlyData,
+            dataPacketsAnnualData,
+            dataPacketsInceptionData,
           ] = await Promise.all([
             orgsDaily.json(),
             orgsWeekly.json(),
@@ -91,11 +91,11 @@ export default function DashboardPage() {
             assetsMonthly.json(),
             assetsAnnual.json(),
             assetsInception.json(),
-            envelopesDaily.json(),
-            envelopesWeekly.json(),
-            envelopesMonthly.json(),
-            envelopesAnnual.json(),
-            envelopesInception.json(),
+            dataPacketsDaily.json(),
+            dataPacketsWeekly.json(),
+            dataPacketsMonthly.json(),
+            dataPacketsAnnual.json(),
+            dataPacketsInception.json(),
           ])
 
           setActivity({
@@ -113,13 +113,13 @@ export default function DashboardPage() {
               annual: assetsAnnualData.count || 0,
               inception: assetsInceptionData.count || 0,
             },
-            envelopes: {
-              daily: envelopesDailyData.total || 0,
-              weekly: envelopesWeeklyData.total || 0,
-              monthly: envelopesMonthlyData.total || 0,
-              annual: envelopesAnnualData.total || 0,
-              inception: envelopesInceptionData.total || 0,
-            },
+              dataPackets: {
+                daily: dataPacketsDailyData.total || 0,
+                weekly: dataPacketsWeeklyData.total || 0,
+                monthly: dataPacketsMonthlyData.total || 0,
+                annual: dataPacketsAnnualData.total || 0,
+                inception: dataPacketsInceptionData.total || 0,
+              },
           })
         }
       } catch (error) {
@@ -127,7 +127,7 @@ export default function DashboardPage() {
         setActivity({
           organizations: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
           assets: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
-          envelopes: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
+          dataPackets: { daily: 0, weekly: 0, monthly: 0, annual: 0, inception: 0 },
         })
       } finally {
         setLoading(false)
@@ -230,22 +230,22 @@ export default function DashboardPage() {
                         </TableRow>
                         <TableRow>
                           <TableCell className="py-5">
-                            <span className="text-base font-medium">Envelopes</span>
+                            <span className="text-base font-medium">Data Packets</span>
                           </TableCell>
                           <TableCell className="text-right font-mono text-base py-5">
-                            {activity?.envelopes.daily ?? '-'}
+                            {activity?.dataPackets.daily ?? '-'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-base py-5">
-                            {activity?.envelopes.weekly ?? '-'}
+                            {activity?.dataPackets.weekly ?? '-'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-base py-5">
-                            {activity?.envelopes.monthly ?? '-'}
+                            {activity?.dataPackets.monthly ?? '-'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-base py-5">
-                            {activity?.envelopes.annual ?? '-'}
+                            {activity?.dataPackets.annual ?? '-'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-base py-5">
-                            {activity?.envelopes.inception ?? '-'}
+                            {activity?.dataPackets.inception ?? '-'}
                           </TableCell>
                         </TableRow>
                       </TableBody>

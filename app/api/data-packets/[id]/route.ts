@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/envelopes/[id] - Get a single envelope
+// GET /api/data-packets/[id] - Get a single data packet
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const envelope = await prisma.envelope.findUnique({
+    const dataPacket = await prisma.dataPacket.findUnique({
       where: { id },
       include: {
         publisher: true,
@@ -41,18 +41,18 @@ export async function GET(
       },
     })
 
-    if (!envelope) {
+    if (!dataPacket) {
       return NextResponse.json(
-        { error: 'Envelope not found' },
+        { error: 'Data packet not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(envelope)
+    return NextResponse.json(dataPacket)
   } catch (error) {
-    console.error('Error fetching envelope:', error)
+    console.error('Error fetching data packet:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch envelope' },
+      { error: 'Failed to fetch data packet' },
       { status: 500 }
     )
   }

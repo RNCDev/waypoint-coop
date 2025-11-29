@@ -14,7 +14,7 @@ async function main() {
   // Clear existing data
   await prisma.readReceipt.deleteMany()
   await prisma.auditLog.deleteMany()
-  await prisma.envelope.deleteMany()
+  await prisma.dataPacket.deleteMany()
   await prisma.accessGrant.deleteMany()
   await prisma.subscription.deleteMany()
   await prisma.user.deleteMany()
@@ -480,9 +480,9 @@ async function main() {
   })
 
   // ==========================================================================
-  // ENVELOPES (Sample Data Packets)
+  // DATA PACKETS
   // ==========================================================================
-  console.log('Creating envelopes...')
+  console.log('Creating data packets...')
 
   // Capital Call - KP Fund XXI
   const capitalCallPayload1 = {
@@ -498,7 +498,7 @@ async function main() {
       routingNumber: '****5678',
     },
   }
-  const envelope1 = await prisma.envelope.create({
+  const dataPacket1 = await prisma.dataPacket.create({
     data: {
       id: 'env_cc_001',
       type: DataArtifact.CAPITAL_CALL,
@@ -521,7 +521,7 @@ async function main() {
     portfolioCompany: 'FinTech Solutions',
     notes: 'Proceeds from secondary sale',
   }
-  await prisma.envelope.create({
+  await prisma.dataPacket.create({
     data: {
       id: 'env_dist_001',
       type: DataArtifact.DISTRIBUTION,
@@ -546,7 +546,7 @@ async function main() {
     tvpi: 1.35,
     dpi: 0.17,
   }
-  await prisma.envelope.create({
+  await prisma.dataPacket.create({
     data: {
       id: 'env_fin_001',
       type: DataArtifact.FINANCIAL_STATEMENT,
@@ -574,14 +574,14 @@ async function main() {
     },
     correctionNote: 'Due date extended by 2 days per LP request',
   }
-  await prisma.envelope.create({
+  await prisma.dataPacket.create({
     data: {
       id: 'env_cc_001_v2',
       type: DataArtifact.CAPITAL_CALL,
       payload: correctedCapitalCallPayload,
       hash: generateHash(correctedCapitalCallPayload),
       version: 2,
-      parentId: envelope1.id,
+      parentId: dataPacket1.id,
       publisherId: geniiAdmin.id,
       assetId: kpFund21.id,
       createdAt: new Date('2024-10-16T11:00:00Z'),
@@ -603,7 +603,7 @@ async function main() {
       NY: 0.20,
     },
   }
-  await prisma.envelope.create({
+  await prisma.dataPacket.create({
     data: {
       id: 'env_tax_001',
       type: DataArtifact.TAX_DOCUMENT,
@@ -623,7 +623,7 @@ async function main() {
 
   await prisma.readReceipt.create({
     data: {
-      envelopeId: 'env_cc_001_v2',
+      dataPacketId: 'env_cc_001_v2',
       userId: charlieLP.id,
       readAt: new Date('2024-10-16T12:30:00Z'),
     },
@@ -631,7 +631,7 @@ async function main() {
 
   await prisma.readReceipt.create({
     data: {
-      envelopeId: 'env_dist_001',
+      dataPacketId: 'env_dist_001',
       userId: charlieLP.id,
       readAt: new Date('2024-10-01T09:15:00Z'),
     },
@@ -660,7 +660,7 @@ async function main() {
   await prisma.auditLog.create({
     data: {
       action: 'PUBLISH',
-      entityType: 'Envelope',
+      entityType: 'DataPacket',
       entityId: 'env_cc_001',
       actorId: geniiPublisher.id,
       organizationId: geniiAdmin.id,
@@ -676,12 +676,12 @@ async function main() {
   await prisma.auditLog.create({
     data: {
       action: 'CORRECT',
-      entityType: 'Envelope',
+      entityType: 'DataPacket',
       entityId: 'env_cc_001_v2',
       actorId: geniiPublisher.id,
       organizationId: geniiAdmin.id,
       details: {
-        originalEnvelopeId: 'env_cc_001',
+        originalDataPacketId: 'env_cc_001',
         reason: 'Due date extension',
       },
       createdAt: new Date('2024-10-16T11:00:00Z'),
@@ -691,7 +691,7 @@ async function main() {
   await prisma.auditLog.create({
     data: {
       action: 'VIEW',
-      entityType: 'Envelope',
+      entityType: 'DataPacket',
       entityId: 'env_cc_001_v2',
       actorId: charlieLP.id,
       organizationId: ohioPension.id,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// POST /api/envelopes/[id]/read - Mark envelope as read
+// POST /api/data-packets/[id]/read - Mark data packet as read
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,8 +21,8 @@ export async function POST(
     // Check if already read
     const existing = await prisma.readReceipt.findUnique({
       where: {
-        envelopeId_userId: {
-          envelopeId: id,
+        dataPacketId_userId: {
+          dataPacketId: id,
           userId,
         },
       },
@@ -40,11 +40,11 @@ export async function POST(
 
     const readReceipt = await prisma.readReceipt.create({
       data: {
-        envelopeId: id,
+        dataPacketId: id,
         userId,
       },
       include: {
-        envelope: {
+        dataPacket: {
           select: {
             id: true,
             type: true,
@@ -72,7 +72,7 @@ export async function POST(
     await prisma.auditLog.create({
       data: {
         action: 'VIEW',
-        entityType: 'Envelope',
+        entityType: 'DataPacket',
         entityId: id,
         actorId: userId,
         organizationId: user?.organizationId,
@@ -84,9 +84,9 @@ export async function POST(
 
     return NextResponse.json(readReceipt)
   } catch (error) {
-    console.error('Error marking envelope as read:', error)
+    console.error('Error marking data packet as read:', error)
     return NextResponse.json(
-      { error: 'Failed to mark envelope as read' },
+      { error: 'Failed to mark data packet as read' },
       { status: 500 }
     )
   }

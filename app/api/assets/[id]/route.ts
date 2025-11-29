@@ -26,7 +26,7 @@ export async function GET(
             grantee: true,
           },
         },
-        envelopes: {
+        dataPackets: {
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {

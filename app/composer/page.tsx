@@ -112,7 +112,7 @@ export default function ComposerPage() {
     setPublishResult(null)
 
     try {
-      const response = await fetch('/api/envelopes', {
+      const response = await fetch('/api/data-packets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -124,7 +124,7 @@ export default function ComposerPage() {
       })
 
       if (response.ok) {
-        setPublishResult({ success: true, message: 'Envelope published successfully!' })
+        setPublishResult({ success: true, message: 'Data packet published successfully!' })
         setRawInput('')
         setParsedData(null)
       } else {
@@ -169,7 +169,7 @@ export default function ComposerPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-primary" />
-                  Envelope Configuration
+                  Data Packet Configuration
                 </CardTitle>
                 <CardDescription>
                   Configure and compose your data packet

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { generateHash } from '@/lib/crypto'
 import { canPerformAction } from '@/lib/permissions'
 
-// POST /api/envelopes/[id]/correct - Create a correction to an envelope
+// POST /api/data-packets/[id]/correct - Create a correction to a data packet
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,8 +20,8 @@ export async function POST(
       )
     }
 
-    // Get the original envelope
-    const original = await prisma.envelope.findUnique({
+    // Get the original data packet
+    const original = await prisma.dataPacket.findUnique({
       where: { id },
       include: {
         asset: true,
@@ -30,7 +30,7 @@ export async function POST(
 
     if (!original) {
       return NextResponse.json(
-        { error: 'Original envelope not found' },
+        { error: 'Original data packet not found' },
         { status: 404 }
       )
     }
@@ -45,7 +45,7 @@ export async function POST(
     }
 
     // Find the latest version in this correction chain
-    const latestVersion = await prisma.envelope.findFirst({
+    const latestVersion = await prisma.dataPacket.findFirst({
       where: {
         OR: [
           { id: original.id },
@@ -58,7 +58,7 @@ export async function POST(
     const newVersion = (latestVersion?.version || 1) + 1
     const hash = generateHash(payload)
 
-    const correction = await prisma.envelope.create({
+    const correction = await prisma.dataPacket.create({
       data: {
         type: original.type,
         payload,
@@ -79,11 +79,11 @@ export async function POST(
     await prisma.auditLog.create({
       data: {
         action: 'CORRECT',
-        entityType: 'Envelope',
+        entityType: 'DataPacket',
         entityId: correction.id,
         organizationId: publisherId,
         details: {
-          originalEnvelopeId: original.id,
+          originalDataPacketId: original.id,
           originalVersion: original.version,
           newVersion,
           hash: hash.slice(0, 8),

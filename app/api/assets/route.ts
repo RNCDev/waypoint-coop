@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           select: {
             children: true,
             subscriptions: true,
-            envelopes: true,
+            dataPackets: true,
           },
         },
       },

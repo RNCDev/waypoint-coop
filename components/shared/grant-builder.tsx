@@ -190,7 +190,7 @@ export function GrantBuilder({
                     View Data
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Read access to envelopes and data
+                    Read access to data packets and data
                   </p>
                 </div>
               </div>
@@ -206,7 +206,7 @@ export function GrantBuilder({
                     Publish
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Publish envelopes on your behalf
+                    Publish data packets on your behalf
                   </p>
                 </div>
               </div>
