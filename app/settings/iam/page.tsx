@@ -26,13 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -42,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Shield, ShieldOff, Mail, Pencil, Trash2, MoreVertical } from 'lucide-react'
+import { Plus, Shield, ShieldOff, Mail, Pencil, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { User, UserRole } from '@/types'
 import { mockUsers } from '@/lib/mock-data'
@@ -364,36 +357,37 @@ export default function IAMSettingsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit User
-                              </DropdownMenuItem>
-                              {user.id !== currentUser?.id && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleToggleAdmin(user.id)}>
-                                    <Shield className="h-4 w-4 mr-2" />
-                                    {user.isOrgAdmin ? 'Remove Admin' : 'Make Admin'}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteUser(user)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete User
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                              title="Edit user"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {user.id !== currentUser?.id && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleAdmin(user.id)}
+                                  title={user.isOrgAdmin ? 'Remove admin' : 'Make admin'}
+                                >
+                                  <Shield className={`h-4 w-4 ${user.isOrgAdmin ? 'text-primary' : ''}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteUser(user)}
+                                  title="Delete user"
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
