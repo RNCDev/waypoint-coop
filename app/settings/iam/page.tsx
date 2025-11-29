@@ -25,7 +25,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Shield, ShieldOff, Mail } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Plus, Shield, ShieldOff, Mail, Pencil, Trash2, MoreVertical } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { User, UserRole } from '@/types'
 import { mockUsers } from '@/lib/mock-data'
@@ -37,7 +54,16 @@ export default function IAMSettingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
   const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    role: '' as UserRole | '',
+  })
+  const [editUser, setEditUser] = useState({
     name: '',
     email: '',
     role: '' as UserRole | '',
@@ -81,6 +107,47 @@ export default function IAMSettingsPage() {
       }
       return u
     }))
+  }
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user)
+    setEditUser({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return
+    
+    // In a real app, this would update via API
+    setOrgUsers(users => users.map(u => {
+      if (u.id === editingUser.id) {
+        return { ...u, name: editUser.name, email: editUser.email, role: editUser.role }
+      }
+      return u
+    }))
+    
+    setEditDialogOpen(false)
+    setEditingUser(null)
+    setEditUser({ name: '', email: '', role: '' })
+  }
+
+  const handleDeleteUser = (user: User) => {
+    setDeletingUser(user)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingUser) return
+    
+    // In a real app, this would delete via API
+    setOrgUsers(users => users.filter(u => u.id !== deletingUser.id))
+    
+    setDeleteDialogOpen(false)
+    setDeletingUser(null)
   }
 
   const getRoleColor = (role: UserRole) => {
@@ -297,16 +364,36 @@ export default function IAMSettingsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.id !== currentUser?.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleAdmin(user.id)}
-                              className="h-8"
-                            >
-                              {user.isOrgAdmin ? 'Remove Admin' : 'Make Admin'}
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit User
+                              </DropdownMenuItem>
+                              {user.id !== currentUser?.id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleToggleAdmin(user.id)}>
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    {user.isOrgAdmin ? 'Remove Admin' : 'Make Admin'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDeleteUser(user)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete User
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -317,6 +404,92 @@ export default function IAMSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information and role
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={editUser.name}
+                onChange={(e) => setEditUser(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <Input
+                type="email"
+                value={editUser.email}
+                onChange={(e) => setEditUser(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="john@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={editUser.role}
+                onValueChange={(value) => setEditUser(prev => ({ ...prev, role: value as UserRole }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAvailableRoles().map(role => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingUser(null); }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveEdit}
+              disabled={!editUser.name || !editUser.email || !editUser.role}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deletingUser?.name}</strong> ({deletingUser?.email})? 
+              This action cannot be undone and will remove all access for this user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingUser(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
