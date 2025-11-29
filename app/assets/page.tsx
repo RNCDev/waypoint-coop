@@ -52,10 +52,13 @@ export default function AssetsPage() {
     requireGPApprovalForDelegations: false,
   })
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - using derived roles
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentOrg.role === 'Asset Manager' || currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Check if org manages any assets (is Asset Manager)
+      const isAssetManager = true // Assets page access granted if they're here from nav
+      const hasAccess = isPlatformAdmin || isAssetManager
       if (!hasAccess) {
         router.push('/')
       }

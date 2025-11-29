@@ -2,7 +2,7 @@ import { Organization, User, Asset, Envelope, Payload, Delegation, Subscription,
 
 export const mockOrganizations: Organization[] = [
   // === PLATFORM ADMIN ===
-  { id: 1, name: 'Waypoint Platform', role: 'Platform Admin', type: 'Platform Operator', status: 'Verified' },
+  { id: 1, name: 'Waypoint Platform', role: 'Platform Admin', type: 'Platform Operator', status: 'Verified', isPlatformAdmin: true },
   
   // === DELEGATES (Fund Administrators with Publishing Rights) ===
   { id: 1001, name: 'Genii Admin Services', role: 'Delegate', type: 'Fund Administrator', status: 'Verified' },
@@ -55,6 +55,10 @@ export const mockOrganizations: Organization[] = [
   { id: 2034, name: 'Greylock Partners', role: 'Asset Manager', type: 'General Partner (GP)', status: 'Verified' },
   { id: 2035, name: 'NEA (New Enterprise Associates)', role: 'Asset Manager', type: 'General Partner (GP)', status: 'Verified' },
   
+  // === MULTI-ROLE ORGANIZATIONS ===
+  // Franklin Park demonstrates contextual roles: Asset Manager for FP Venture XV, LP in Sequoia funds
+  { id: 2050, name: 'Franklin Park, LLC', type: 'Investment Firm', status: 'Verified' },
+  
   // === LIMITED PARTNERS ===
   // US State Pension Funds
   { id: 3001, name: 'State of Ohio Pension (OPERS)', role: 'Limited Partner', type: 'Limited Partner (LP)', status: 'Verified' },
@@ -106,6 +110,8 @@ export const mockOrganizations: Organization[] = [
   { id: 3043, name: 'Cascade Investment', role: 'Limited Partner', type: 'Limited Partner (LP)', status: 'Verified' },
   { id: 3044, name: 'Bezos Family Office', role: 'Limited Partner', type: 'Limited Partner (LP)', status: 'Verified' },
   { id: 3045, name: 'Koch Industries Investments', role: 'Limited Partner', type: 'Limited Partner (LP)', status: 'Verified' },
+  // Wilton Wealth is LP in FP Venture XV (managed by Franklin Park)
+  { id: 3050, name: 'Wilton Wealth Management', role: 'Limited Partner', type: 'Family Office', status: 'Verified' },
   
   // === DELEGATES (Service Providers) ===
   // Auditors
@@ -187,6 +193,10 @@ export const mockUsers: User[] = [
   { id: 552, name: 'Reid Greylock', email: 'reid@greylock.com', orgId: 2034, role: 'Asset Manager', isOrgAdmin: true },
   { id: 553, name: 'Peter NEA', email: 'peter@nea.com', orgId: 2035, role: 'Asset Manager', isOrgAdmin: true },
   
+  // === MULTI-ROLE ORGANIZATION USER ===
+  // Franklin Park - demonstrates contextual roles (Asset Manager for FP Venture XV, LP in Sequoia funds)
+  { id: 600, name: 'David Franklin', email: 'david@franklinpark.com', orgId: 2050, role: 'Asset Manager', isOrgAdmin: true },
+  
   // === LIMITED PARTNER USERS ===
   { id: 503, name: 'Charlie LP', email: 'charlie@ohio.gov', orgId: 3001, role: 'Limited Partner', isOrgAdmin: true },
   { id: 508, name: 'Harry Harvard', email: 'harry@hmc.harvard.edu', orgId: 3002, role: 'Limited Partner', isOrgAdmin: true },
@@ -222,6 +232,8 @@ export const mockUsers: User[] = [
   { id: 580, name: 'Rob Walton', email: 'rob@waltonenterprises.com', orgId: 3041, role: 'Limited Partner', isOrgAdmin: true },
   { id: 581, name: 'Laurene Emerson', email: 'laurene@emersoncollective.com', orgId: 3042, role: 'Limited Partner', isOrgAdmin: true },
   { id: 582, name: 'Michael Cascade', email: 'michael@cascadeinv.com', orgId: 3043, role: 'Limited Partner', isOrgAdmin: true },
+  // Wilton Wealth - LP in FP Venture XV (managed by Franklin Park)
+  { id: 601, name: 'James Wilton', email: 'james@wiltonwealth.com', orgId: 3050, role: 'Limited Partner', isOrgAdmin: true },
   
   // === DELEGATE USERS ===
   { id: 504, name: 'Dana Delegate', email: 'dana@deloitte.com', orgId: 4001, role: 'Auditor', isOrgAdmin: true },
@@ -351,6 +363,11 @@ export const mockAssets: Asset[] = [
   // === NEA FUNDS ===
   { id: 9041, name: 'NEA 18', ownerId: 2035, defaultPublisherId: 1008, type: 'Fund', requireGPApprovalForDelegations: true },
   { id: 9042, name: 'NEA Green Fund', ownerId: 2035, defaultPublisherId: 1008, type: 'Fund', requireGPApprovalForDelegations: false },
+  
+  // === FRANKLIN PARK FUNDS ===
+  // Franklin Park is the Asset Manager for this fund-of-funds
+  // This demonstrates contextual roles: Franklin Park is GP here but LP in Sequoia funds
+  { id: 9500, name: 'FP Venture XV', ownerId: 2050, defaultPublisherId: 2050, type: 'Fund-of-Funds', requireGPApprovalForDelegations: true },
 ]
 
 // Helper to extract LP-specific payload from full payload
@@ -662,6 +679,14 @@ export const mockSubscriptions: Subscription[] = [
   // Note: CPPIB already has an active subscription to Vista Equity VIII (S-022), so no duplicate request
   // Example: BlackRock requesting subscription to a new asset (if needed for demo)
   // { id: 'S-033', assetId: 9001, subscriberId: 3005, grantedById: 2001, grantedAt: '2025-11-26T10:00:00.000Z', status: 'Pending Asset Manager Approval', requestMessage: 'BlackRock requests subscription access for portfolio tracking.' },
+  
+  // === MULTI-ROLE DEMONSTRATION ===
+  // Franklin Park is Asset Manager for FP Venture XV (9500) but LP in Sequoia Seed 2025 (9003)
+  // This demonstrates contextual roles - same org plays different roles for different assets
+  { id: 'S-100', assetId: 9003, subscriberId: 2050, grantedById: 2002, grantedAt: '2024-06-01T10:00:00.000Z', acceptedAt: '2024-06-02T10:00:00.000Z', status: 'Active' },
+  { id: 'S-101', assetId: 9004, subscriberId: 2050, grantedById: 2002, grantedAt: '2024-06-01T10:00:00.000Z', acceptedAt: '2024-06-02T10:00:00.000Z', status: 'Active' },
+  // Wilton Wealth is LP in FP Venture XV (managed by Franklin Park)
+  { id: 'S-102', assetId: 9500, subscriberId: 3050, grantedById: 2050, grantedAt: '2024-07-01T10:00:00.000Z', acceptedAt: '2024-07-02T10:00:00.000Z', status: 'Active' },
 ]
 
 // Publishing Rights - GP delegates publishing rights to Fund Admins

@@ -13,6 +13,44 @@ An Access Grant represents an "edge" in the permission graph where a grantor (As
 
 ---
 
+## Contextual Organization Roles
+
+**Important: Roles are derived from relationships, not fixed per organization.**
+
+An organization can simultaneously play different roles for different assets:
+
+| Relationship | Role for that Asset |
+|-------------|---------------------|
+| `asset.managerId === org.id` | Asset Manager |
+| `subscription.subscriberId === org.id` | Limited Partner |
+| `accessGrant.granteeId === org.id` | Delegate |
+
+**Example: Franklin Park, LLC**
+- Manages **FP Venture XV** (plays Asset Manager role)
+- Invests in **Costanoa Fund VI** (plays Limited Partner role)
+- Same organization, different roles for different assets
+
+**Platform Admin** is special - identified by `org.isPlatformAdmin === true` or `org.type === 'Platform Operator'`.
+
+### Role Derivation Functions
+
+```typescript
+// Check if org is Platform Admin
+function isPlatformAdmin(org: Organization): boolean
+
+// Get all roles an org plays across all assets
+function getOrganizationRoles(org: Organization): {
+  assetManagerFor: Asset[]
+  limitedPartnerIn: Asset[]
+  delegateFor: AccessGrant[]
+}
+
+// Get role for a specific asset
+function getOrganizationRoleForAsset(org: Organization, assetId: number): AssetRole
+```
+
+---
+
 ## Permission Flow Summary
 
 ### Asset Manager (GP) Flow

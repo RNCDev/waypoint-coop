@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ArrowRight, Building2, FileSearch, Users, FolderOpen, Send, History, BookOpen, Share2, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
-import { mockDelegations, mockAccessGrants } from '@/lib/mock-data'
+import { mockDelegations, mockAccessGrants, mockAssets, mockSubscriptions } from '@/lib/mock-data'
 import Image from 'next/image'
 
 const containerVariants = {
@@ -70,42 +70,73 @@ function ActionCard({
 export default function Home() {
   const { currentUser, currentOrg } = useAuthStore()
   
-  // Check if delegate can request or accept subscriptions
+  // Derive roles from relationships (multi-context support)
+  const roles = useMemo(() => {
+    if (!currentOrg) return { isPlatformAdmin: false, isAssetManager: false, isLimitedPartner: false, isDelegate: false }
+    
+    const isPlatformAdmin = currentOrg.isPlatformAdmin === true || 
+                           currentOrg.type === 'Platform Operator' || 
+                           currentOrg.role === 'Platform Admin'
+    
+    // Check if org manages any assets
+    const isAssetManager = mockAssets.some(a => a.ownerId === currentOrg.id)
+    
+    // Check if org has any active subscriptions
+    const isLimitedPartner = mockSubscriptions.some(
+      s => s.subscriberId === currentOrg.id && s.status === 'Active'
+    )
+    
+    // Check if org has any active access grants
+    const isDelegate = mockAccessGrants.some(
+      g => g.granteeId === currentOrg.id && g.status === 'Active'
+    )
+    
+    return { isPlatformAdmin, isAssetManager, isLimitedPartner, isDelegate }
+  }, [currentOrg])
+
+  // Check if delegate can request or accept subscriptions (via LP grants)
   const canManageSubscriptions = useMemo(() => {
-    if (!currentUser || !currentOrg || currentOrg.role !== 'Delegate') return false
-    return mockDelegations.some(
-      d => d.delegateId === currentOrg.id && 
-           (d.status === 'Active' || d.status === 'Pending GP Approval') &&
-           d.canManageSubscriptions === true
+    if (!currentUser || !currentOrg) return false
+    return mockAccessGrants.some(
+      g => g.granteeId === currentOrg.id && 
+           g.status === 'Active' &&
+           !g.canPublish && // LP grant
+           g.canManageSubscriptions === true
     )
   }, [currentUser, currentOrg])
 
-  // Check if user can view data (has canViewData grants or is LP/Asset Manager)
+  // Check if user can view data
   const canViewData = useMemo(() => {
     if (!currentUser || !currentOrg) return false
     
-    // Asset Managers and Limited Partners can always view data
-    if (currentOrg.role === 'Asset Manager' || currentOrg.role === 'Limited Partner') {
-      return true
-    }
-    
     // Platform Admins can view everything
-    if (currentOrg.role === 'Platform Admin') {
-      return true
-    }
+    if (roles.isPlatformAdmin) return true
     
-    // Delegates can view if they have any active grants with canViewData
-    if (currentOrg.role === 'Delegate') {
-      const hasViewGrants = mockAccessGrants.some(
+    // Asset Managers can always view data for their assets
+    if (roles.isAssetManager) return true
+    
+    // Limited Partners can view data they're subscribed to
+    if (roles.isLimitedPartner) return true
+    
+    // Delegates can view if they have grants with canViewData
+    if (roles.isDelegate) {
+      return mockAccessGrants.some(
         g => g.granteeId === currentOrg.id && 
              g.status === 'Active' && 
              g.canViewData === true
       )
-      return hasViewGrants
     }
     
     return false
-  }, [currentUser, currentOrg])
+  }, [currentUser, currentOrg, roles])
+
+  // Check if delegate has publishing rights (GP grants)
+  const hasPublishingRights = useMemo(() => {
+    if (!currentOrg) return false
+    return mockAccessGrants.some(
+      g => g.granteeId === currentOrg.id && g.status === 'Active' && g.canPublish
+    )
+  }, [currentOrg])
 
   return (
     <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
@@ -148,67 +179,56 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Action cards */}
+          {/* Action cards - Multi-context view based on derived roles */}
           <motion.div 
             className="space-y-3"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
           >
-          {/* Publisher (Fund Admin) - Subscriptions, Publish Data, History, Access Grants, Ledger (if canViewData), IAM */}
-          {currentUser?.role === 'Delegate' && (
+          {/* Waypoint Platform Admin - Registry, Audit, Access Grants, Ledger, IAM */}
+          {roles.isPlatformAdmin && (
             <>
               <ActionCard
-                icon={Users}
-                title="Subscriptions"
-                description="View and manage subscriptions for assets you publish"
-                href="/subscriptions"
-                buttonText="Manage Subscriptions"
+                icon={Building2}
+                title="Entity Registry"
+                description="Manage organizations and users across the platform"
+                href="/registry"
+                buttonText="Open Registry"
               />
               <ActionCard
-                icon={Send}
-                title="Publish Data"
-                description="Compose and publish data packets for your assets"
-                href="/composer"
-                buttonText="Open Composer"
-              />
-              <ActionCard
-                icon={History}
-                title="History"
-                description="View history of published data packets and envelopes"
-                href="/history"
-                buttonText="View History"
+                icon={FileSearch}
+                title="Global Audit"
+                description="View system-wide audit log and activity history"
+                href="/audit"
+                buttonText="View Audit"
               />
               <ActionCard
                 icon={Share2}
                 title="Access Grants"
-                description="View and manage your access grants"
+                description="View all access grants across the platform"
                 href="/access-grants"
                 buttonText="View Grants"
               />
-              {canViewData && (
-                <ActionCard
-                  icon={BookOpen}
-                  title="Ledger"
-                  description="View your delegated data feed"
-                  href="/ledger"
-                  buttonText="Open Ledger"
-                />
-              )}
-              {currentUser?.isOrgAdmin && (
-                <ActionCard
-                  icon={Shield}
-                  title="IAM"
-                  description="Manage team members and organization permissions"
-                  href="/settings/iam"
-                  buttonText="Manage IAM"
-                />
-              )}
+              <ActionCard
+                icon={BookOpen}
+                title="Ledger"
+                description="View platform data feed"
+                href="/ledger"
+                buttonText="Open Ledger"
+              />
+              <ActionCard
+                icon={Shield}
+                title="IAM"
+                description="Manage Waypoint team members and permissions"
+                href="/settings/iam"
+                buttonText="Manage IAM"
+              />
             </>
           )}
 
-          {/* Asset Manager (GP) - Assets, Subscriptions, Access Grants, Publish Data, History, Ledger, IAM */}
-          {currentUser?.role === 'Asset Manager' && (
+          {/* As Asset Manager - Assets, Subscriptions, Access Grants, Publish Data, History */}
+          {!roles.isPlatformAdmin && roles.isAssetManager && (
             <>
               <ActionCard
                 icon={FolderOpen}
@@ -245,29 +265,11 @@ export default function Home() {
                 href="/history"
                 buttonText="View History"
               />
-              {canViewData && (
-                <ActionCard
-                  icon={BookOpen}
-                  title="Ledger"
-                  description="View your data feed"
-                  href="/ledger"
-                  buttonText="Open Ledger"
-                />
-              )}
-              {currentUser?.isOrgAdmin && (
-                <ActionCard
-                  icon={Shield}
-                  title="IAM"
-                  description="Manage team members and organization permissions"
-                  href="/settings/iam"
-                  buttonText="Manage IAM"
-                />
-              )}
             </>
           )}
 
-          {/* Limited Partner */}
-          {(currentUser?.role === 'Limited Partner' || ((currentUser?.role === 'Analytics' || currentUser?.role === 'Auditor') && currentOrg?.role !== 'Delegate')) && (
+          {/* As Limited Partner - Subscriptions (Feeds), Access Grants */}
+          {!roles.isPlatformAdmin && roles.isLimitedPartner && (
             <>
               <ActionCard
                 icon={Users}
@@ -276,38 +278,50 @@ export default function Home() {
                 href="/feeds"
                 buttonText="View Feeds"
               />
-              <ActionCard
-                icon={Share2}
-                title="Access Grants"
-                description="Grant data access to service providers"
-                href="/access-grants"
-                buttonText="Manage Grants"
-              />
-              {canViewData && (
+              {/* Only show Access Grants if not already shown as Asset Manager */}
+              {!roles.isAssetManager && (
                 <ActionCard
-                  icon={BookOpen}
-                  title="Ledger"
-                  description="View your chronological data feed"
-                  href="/ledger"
-                  buttonText="Open Ledger"
-                />
-              )}
-              {currentUser?.isOrgAdmin && (
-                <ActionCard
-                  icon={Shield}
-                  title="IAM"
-                  description="Manage team members and organization permissions"
-                  href="/settings/iam"
-                  buttonText="Manage IAM"
+                  icon={Share2}
+                  title="Access Grants"
+                  description="Grant data access to service providers"
+                  href="/access-grants"
+                  buttonText="Manage Grants"
                 />
               )}
             </>
           )}
 
-          {/* Delegate (Service Provider) - Access Grants, Ledger (if canViewData), IAM */}
-          {currentOrg?.role === 'Delegate' && currentUser?.role !== 'Delegate' && (
+          {/* As Delegate - Based on grant capabilities */}
+          {!roles.isPlatformAdmin && roles.isDelegate && !roles.isAssetManager && !roles.isLimitedPartner && (
             <>
-              {canManageSubscriptions && (
+              {/* GP grants - Publishing capabilities */}
+              {hasPublishingRights && (
+                <>
+                  <ActionCard
+                    icon={Users}
+                    title="Subscriptions"
+                    description="View and manage subscriptions for assets you publish"
+                    href="/subscriptions"
+                    buttonText="Manage Subscriptions"
+                  />
+                  <ActionCard
+                    icon={Send}
+                    title="Publish Data"
+                    description="Compose and publish data packets for your assets"
+                    href="/composer"
+                    buttonText="Open Composer"
+                  />
+                  <ActionCard
+                    icon={History}
+                    title="History"
+                    description="View history of published data packets and envelopes"
+                    href="/history"
+                    buttonText="View History"
+                  />
+                </>
+              )}
+              {/* LP grants - Subscription management on behalf of LPs */}
+              {canManageSubscriptions && !hasPublishingRights && (
                 <ActionCard
                   icon={Users}
                   title="Subscriptions"
@@ -323,68 +337,29 @@ export default function Home() {
                 href="/access-grants"
                 buttonText="View Grants"
               />
-              {canViewData && (
-                <ActionCard
-                  icon={BookOpen}
-                  title="Ledger"
-                  description="View your delegated data feed"
-                  href="/ledger"
-                  buttonText="Open Ledger"
-                />
-              )}
-              {currentUser?.isOrgAdmin && (
-                <ActionCard
-                  icon={Shield}
-                  title="IAM"
-                  description="Manage team members and organization permissions"
-                  href="/settings/iam"
-                  buttonText="Manage IAM"
-                />
-              )}
             </>
           )}
 
-          {/* Waypoint Platform Admin - Registry, Audit, Access Grants, Ledger, IAM */}
-          {(currentUser?.role === 'Platform Admin' || currentOrg?.role === 'Platform Admin') && (
-            <>
-              <ActionCard
-                icon={Building2}
-                title="Entity Registry"
-                description="Manage organizations and users across the platform"
-                href="/registry"
-                buttonText="Open Registry"
-              />
-              <ActionCard
-                icon={FileSearch}
-                title="Global Audit"
-                description="View system-wide audit log and activity history"
-                href="/audit"
-                buttonText="View Audit"
-              />
-              <ActionCard
-                icon={Share2}
-                title="Access Grants"
-                description="View all access grants across the platform"
-                href="/access-grants"
-                buttonText="View Grants"
-              />
-              {canViewData && (
-                <ActionCard
-                  icon={BookOpen}
-                  title="Ledger"
-                  description="View platform data feed"
-                  href="/ledger"
-                  buttonText="Open Ledger"
-                />
-              )}
-              <ActionCard
-                icon={Shield}
-                title="IAM"
-                description="Manage Waypoint team members and permissions"
-                href="/settings/iam"
-                buttonText="Manage IAM"
-              />
-            </>
+          {/* Ledger - Show if user can view data */}
+          {!roles.isPlatformAdmin && canViewData && (
+            <ActionCard
+              icon={BookOpen}
+              title="Ledger"
+              description="View your chronological data feed"
+              href="/ledger"
+              buttonText="Open Ledger"
+            />
+          )}
+
+          {/* IAM - Show for org admins (non-platform admin) */}
+          {!roles.isPlatformAdmin && currentUser?.isOrgAdmin && (
+            <ActionCard
+              icon={Shield}
+              title="IAM"
+              description="Manage team members and organization permissions"
+              href="/settings/iam"
+              buttonText="Manage IAM"
+            />
           )}
         </motion.div>
         </div>

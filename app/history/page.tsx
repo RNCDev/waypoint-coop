@@ -32,10 +32,16 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
 
   // Redirect if user doesn't have access to history
-  // Only check after hydration is complete to avoid false redirects
+  // Only Asset Managers and Delegates with publishing rights can access
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = (currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager') && currentOrg.role !== 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Platform admins don't have publishing history
+      if (isPlatformAdmin) {
+        router.push('/')
+        return
+      }
+      const hasAccess = currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager'
       if (!hasAccess) {
         router.push('/')
       }
@@ -44,11 +50,8 @@ export default function HistoryPage() {
 
   const fetchEnvelopes = useCallback(async () => {
     try {
-      // For Asset Owners, fetch by assetOwnerId; for Publishers, fetch by publisherId
-      const queryParam = currentOrg?.role === 'Asset Manager' 
-        ? `assetOwnerId=${currentOrg?.id}`
-        : `publisherId=${currentOrg?.id}`
-      const response = await fetch(`/api/envelopes?${queryParam}`, {
+      // Fetch envelopes - let the API handle filtering based on user context
+      const response = await fetch(`/api/envelopes`, {
         headers: {
           'x-user-id': currentUser?.id.toString() || '',
         },

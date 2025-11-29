@@ -24,10 +24,17 @@ function ComposerContent() {
   const { currentUser, currentOrg, _hasHydrated } = useAuthStore()
 
   // Redirect if user doesn't have access to composer
-  // Only check after hydration is complete to avoid false redirects
+  // Only Asset Managers and Delegates with publishing rights can access
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = (currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager') && currentOrg.role !== 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Platform admins don't compose/publish
+      if (isPlatformAdmin) {
+        router.push('/')
+        return
+      }
+      // Check for Asset Manager or Delegate with publishing rights
+      const hasAccess = currentUser.role === 'Delegate' || currentUser.role === 'Asset Manager'
       if (!hasAccess) {
         router.push('/')
       }

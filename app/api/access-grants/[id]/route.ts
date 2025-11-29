@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getInMemoryDB } from '@/lib/in-memory-db'
 import { z } from 'zod'
 import { checkPermission } from '@/lib/api-guard'
-import { getManageableAccessGrants, getUserOrganization } from '@/lib/permissions'
+import { getManageableAccessGrants, getUserOrganization, isPlatformAdmin } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -86,7 +86,7 @@ export async function PATCH(
     }
 
     // Only the grantor or Platform Admin can update a grant
-    if (grant.grantorId !== org.id && org.role !== 'Platform Admin') {
+    if (grant.grantorId !== org.id && !isPlatformAdmin(org)) {
       return NextResponse.json({ error: 'Only the grantor can update this access grant' }, { status: 403 })
     }
 
@@ -144,7 +144,7 @@ export async function DELETE(
     const grant = db.accessGrants[grantIndex]
 
     // Only the grantor or Platform Admin can delete (revoke) a grant
-    if (grant.grantorId !== org.id && org.role !== 'Platform Admin') {
+    if (grant.grantorId !== org.id && !isPlatformAdmin(org)) {
       return NextResponse.json({ error: 'Only the grantor can revoke this access grant' }, { status: 403 })
     }
 

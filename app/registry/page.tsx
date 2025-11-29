@@ -21,12 +21,12 @@ export default function RegistryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Redirect if user doesn't have access to registry
+  // Redirect if user doesn't have access to registry - Platform Admin only
   // Only check after hydration is complete to avoid false redirects
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentUser.role === 'Platform Admin' || currentOrg.role === 'Platform Admin'
-      if (!hasAccess) {
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      if (!isPlatformAdmin) {
         router.push('/')
       }
     }

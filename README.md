@@ -8,6 +8,9 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 ## Features
 
+- **Contextual Organization Roles**: Roles are derived from relationships, not fixed per org
+  - Same org can be Asset Manager for one fund and Limited Partner in another
+  - Example: Franklin Park manages FP Venture XV but invests in Costanoa Fund VI
 - **Composer Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
 - **LP Ledger**: View chronological feed of data events with read receipt tracking
 - **Subscription Management**: Asset Managers and Delegates manage which LPs can access which assets

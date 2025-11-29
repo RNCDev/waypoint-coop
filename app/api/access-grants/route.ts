@@ -3,7 +3,7 @@ import { getInMemoryDB } from '@/lib/in-memory-db'
 import { z } from 'zod'
 import { AccessGrant, DataType } from '@/types'
 import { checkPermission } from '@/lib/api-guard'
-import { getManageableAccessGrants, getUserOrganization } from '@/lib/permissions'
+import { getManageableAccessGrants, getUserOrganization, isPlatformAdmin, isAssetManager, isLimitedPartner, isDelegate } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,24 +96,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = accessGrantSchema.parse(body)
 
-    // Validate based on org role:
+    // Validate based on derived org role:
     // - Asset Managers can create GP grants (canPublish=true) or LP grants (canPublish=false)
     // - Limited Partners can only create LP grants (canPublish=false)
     // - Delegates cannot create grants
 
-    if (org.role === 'Delegate') {
+    const isPlatAdmin = isPlatformAdmin(org)
+    const isAM = isAssetManager(org)
+    const isLP = isLimitedPartner(org)
+    const isDel = isDelegate(org)
+
+    // Delegates cannot create grants
+    if (isDel && !isAM && !isLP) {
       return NextResponse.json({ error: 'Delegates cannot create access grants' }, { status: 403 })
     }
 
     // If canPublish is true, only Asset Managers can create
-    if (validated.canPublish && org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
+    if (validated.canPublish && !isAM && !isPlatAdmin) {
       return NextResponse.json({ error: 'Only Asset Managers can grant publishing rights' }, { status: 403 })
     }
 
-    // If canPublish is false, must be LP creating for themselves
-    if (!validated.canPublish && org.role === 'Limited Partner') {
+    // If canPublish is false, must be LP creating for themselves or Asset Manager
+    if (!validated.canPublish && isLP) {
       // LP grants are created by the LP (grantor is the LP's org)
-    } else if (!validated.canPublish && org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
+    } else if (!validated.canPublish && !isAM && !isPlatAdmin) {
       return NextResponse.json({ error: 'Invalid grant configuration' }, { status: 400 })
     }
 

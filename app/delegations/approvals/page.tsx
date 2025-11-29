@@ -20,12 +20,12 @@ export default function DelegationApprovalsPage() {
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  // Redirect if user doesn't have access (only Asset Owners can approve)
+  // Redirect if user doesn't have access (only Asset Managers can approve)
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Asset Manager' || 
-        currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Allow access - the API will filter to only delegations they can approve
+      const hasAccess = isPlatformAdmin || currentUser.role === 'Asset Manager'
       if (!hasAccess) {
         router.push('/')
       }

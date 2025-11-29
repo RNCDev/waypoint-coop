@@ -1,5 +1,19 @@
 # Mock Data for Wireframes & Testing
 
+## Contextual Roles
+
+**Important:** Organization roles are now **derived from relationships**, not fixed per organization.
+
+**Example: Franklin Park, LLC (ID: 2050)**
+- **As Asset Manager:** Manages FP Venture XV (ID: 9500)
+- **As Limited Partner:** Invested in Sequoia Seed 2025 (ID: 9003) and Sequoia Growth X (ID: 9004)
+- Same organization plays different roles for different assets!
+
+This demonstrates that a single organization can simultaneously be:
+- Asset Manager for funds they manage
+- Limited Partner in funds they invest in
+- Delegate for other organizations' assets (via Access Grants)
+
 ## 1. Organizations (Orgs)
 **Types:**
 *   **Delegate:** Fund Admins, GPs (Self-Admin).
@@ -19,6 +33,7 @@
 | `2005` | **Insight Partners** | Asset Manager | General Partner (GP) | Verified |
 | `2006` | **Thoma Bravo** | Asset Manager | General Partner (GP) | Verified |
 | `2007` | **Vista Equity** | Asset Manager | General Partner (GP) | Verified |
+| `2050` | **Franklin Park, LLC** | *Contextual* | Investment Firm | Verified |
 | `3001` | **State of Ohio Pension** | Limited Partner | Limited Partner (LP) | Verified |
 | `3002` | **Harvard Management Co.** | Limited Partner | Limited Partner (LP) | Verified |
 | `3003` | **Yale Endowment** | Limited Partner | Limited Partner (LP) | Verified |
@@ -27,6 +42,7 @@
 | `3006` | **GIC (Singapore)** | Limited Partner | Limited Partner (LP) | Verified |
 | `3007` | **CalPERS** | Limited Partner | Limited Partner (LP) | Verified |
 | `3008` | **Teacher's Retirement System of Texas** | Limited Partner | Limited Partner (LP) | Verified |
+| `3050` | **Wilton Wealth Management** | Limited Partner | Family Office | Verified |
 | `4001` | **Deloitte Audit** | Delegate | Auditor | Verified |
 | `4002` | **PwC Tax** | Delegate | Tax Advisor | Verified |
 | `4003` | **Chronograph** | Delegate | LP Data/BI Servicer | Verified |

@@ -1,18 +1,34 @@
 /**
- * Core Organization Roles:
- * - Platform Admin: Waypoint platform operators
- * - Asset Manager: General Partners (GPs) who own and manage funds
- * - Limited Partner: LPs who subscribe to fund data
- * - Delegate: All other organizations (Fund Admins, Auditors, Analytics, Legal, Tax, etc.)
+ * Contextual Organization Roles:
  * 
- * Note: "Delegate" is the universal role for any organization receiving delegated capabilities.
- * What they can do (publish, view, manage subscriptions, etc.) is determined by AccessGrant.
+ * Roles are now DERIVED from relationships, not fixed per organization.
+ * The same organization can play different roles depending on asset context:
+ * 
+ * - Asset Manager: Org manages the asset (asset.managerId === org.id)
+ * - Limited Partner: Org has subscription to the asset
+ * - Delegate: Org has AccessGrant for the asset
+ * - Platform Admin: Special flag for Waypoint platform operators
+ * 
+ * Example: Franklin Park, LLC manages FP Venture XV (Asset Manager role)
+ * AND invests in Costanoa Fund VI (Limited Partner role).
+ * 
+ * @deprecated OrganizationType is kept for backward compatibility during migration.
+ * Use isPlatformAdmin flag and derived role functions instead.
  */
 export type OrganizationType = 'Platform Admin' | 'Asset Manager' | 'Limited Partner' | 'Delegate'
+
+/**
+ * AssetRole - The role an organization plays for a specific asset.
+ * Derived from relationships (ownership, subscription, or access grant).
+ */
+export type AssetRole = 'Asset Manager' | 'Limited Partner' | 'Delegate' | null
+
 export type OrganizationStatus = 'Verified' | 'Pending' | 'Suspended'
+
 /**
  * User roles are functional descriptions within an organization.
- * The organization's role (Asset Manager, Limited Partner, Delegate) determines base capabilities.
+ * These describe what the user does (Admin, Viewer, Auditor, etc.)
+ * The user's capabilities are determined by their org's contextual roles + AccessGrants.
  */
 export type UserRole = 'Admin' | 'Viewer' | 'Auditor' | 'Restricted' | 'Analytics' | 'Tax' | 'Integration' | 'Ops' | 'Signer' | 'IR' | 'Risk' | 'Platform Admin' | 'Legal' | 'Delegate' | 'Asset Manager' | 'Limited Partner'
 export type EnvelopeStatus = 'Delivered' | 'Revoked' | 'Pending'
@@ -29,10 +45,41 @@ export type Action = 'view' | 'create' | 'update' | 'delete' | 'publish' | 'appr
 export interface Organization {
   id: number
   name: string
-  role: OrganizationType
+  /**
+   * @deprecated Role is now derived from relationships (asset ownership, subscriptions, grants).
+   * Kept for backward compatibility during migration. Use isPlatformAdmin and role derivation functions.
+   */
+  role?: OrganizationType
+  /** Descriptive type: "General Partner (GP)", "Pension Fund", "Fund Administrator", etc. */
   type: string
   status: OrganizationStatus
+  /** Only true for Waypoint Platform - the platform operator */
+  isPlatformAdmin?: boolean
   imageUrl?: string
+}
+
+/**
+ * OrganizationContext - All the roles an organization plays across assets.
+ * An organization can simultaneously be:
+ * - Asset Manager for some assets (they own/manage them)
+ * - Limited Partner in other assets (they've subscribed)
+ * - Delegate for other assets (they've received access grants)
+ */
+export interface OrganizationContext {
+  /** Assets this org manages (asset.managerId === org.id) */
+  assetManagerFor: Asset[]
+  /** Assets this org is subscribed to as LP */
+  limitedPartnerIn: Asset[]
+  /** Access grants this org has received */
+  delegateFor: AccessGrant[]
+}
+
+/**
+ * AssetContext - The role an organization plays for a specific asset.
+ */
+export interface AssetContext {
+  assetId: number
+  role: AssetRole
 }
 
 export interface User {

@@ -38,7 +38,7 @@ import {
 import { Plus, Shield, ShieldOff, Mail, Pencil, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { User, UserRole } from '@/types'
-import { mockUsers } from '@/lib/mock-data'
+import { mockUsers, mockAssets, mockSubscriptions, mockAccessGrants } from '@/lib/mock-data'
 
 export default function IAMSettingsPage() {
   const router = useRouter()
@@ -160,18 +160,25 @@ export default function IAMSettingsPage() {
   const getAvailableRoles = (): UserRole[] => {
     if (!currentOrg) return []
     
-    switch (currentOrg.role) {
-      case 'Platform Admin':
-        return ['Platform Admin', 'Admin', 'Viewer']
-      case 'Asset Manager':
-        return ['Asset Manager', 'Admin', 'Viewer', 'Signer', 'IR']
-      case 'Limited Partner':
-        return ['Limited Partner', 'Admin', 'Viewer', 'Risk']
-      case 'Delegate':
-        return ['Delegate', 'Admin', 'Viewer', 'Ops', 'Analytics', 'Auditor', 'Tax', 'Integration']
-      default:
-        return ['Viewer']
+    // Use derived roles to determine available user roles
+    const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+    const isAssetManager = mockAssets.some(a => a.ownerId === currentOrg.id)
+    const isLimitedPartner = mockSubscriptions.some(s => s.subscriberId === currentOrg.id && s.status === 'Active')
+    const isDelegate = mockAccessGrants.some(g => g.granteeId === currentOrg.id && g.status === 'Active')
+    
+    if (isPlatformAdmin) {
+      return ['Platform Admin', 'Admin', 'Viewer']
     }
+    if (isAssetManager) {
+      return ['Asset Manager', 'Admin', 'Viewer', 'Signer', 'IR']
+    }
+    if (isLimitedPartner) {
+      return ['Limited Partner', 'Admin', 'Viewer', 'Risk']
+    }
+    if (isDelegate) {
+      return ['Delegate', 'Admin', 'Viewer', 'Ops', 'Analytics', 'Auditor', 'Tax', 'Integration']
+    }
+    return ['Viewer']
   }
 
   const filteredUsers = orgUsers.filter((user) =>

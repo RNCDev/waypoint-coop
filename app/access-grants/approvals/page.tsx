@@ -22,10 +22,9 @@ export default function AccessGrantApprovalsPage() {
   // Only Asset Managers and Delegates with approval rights can view this page
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Asset Manager' || 
-        currentOrg.role === 'Delegate' ||
-        currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Allow access - the API will filter to only grants they can approve
+      const hasAccess = isPlatformAdmin || currentUser.role === 'Asset Manager' || currentUser.role === 'Delegate'
       if (!hasAccess) {
         router.push('/')
       }

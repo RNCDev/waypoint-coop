@@ -59,10 +59,13 @@ export default function DataRightsPage() {
     accessTypes: [] as AccessType[],
   })
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - using derived roles
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = currentOrg.role === 'Asset Manager' || currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      // Check if org manages any assets (is Asset Manager)
+      const isAssetManager = mockAssets.some(a => a.ownerId === currentOrg.id)
+      const hasAccess = isPlatformAdmin || isAssetManager
       if (!hasAccess) {
         router.push('/')
       }
@@ -84,8 +87,9 @@ export default function DataRightsPage() {
         setPublishingRights(rightsData)
       }
 
-      // Use mock assets filtered by owner
-      const availableAssets = currentOrg.role === 'Platform Admin' 
+      // Use mock assets filtered by owner - using derived roles
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      const availableAssets = isPlatformAdmin 
         ? mockAssets 
         : mockAssets.filter(a => a.ownerId === currentOrg.id)
       setAssets(availableAssets)

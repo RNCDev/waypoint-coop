@@ -1,4 +1,4 @@
-import { User, Organization, Asset, Delegation, Subscription, PublishingRight, AccessGrant, Resource, Action, Permission, PermissionScope, DataType } from '@/types'
+import { User, Organization, Asset, Delegation, Subscription, PublishingRight, AccessGrant, Resource, Action, Permission, PermissionScope, DataType, OrganizationContext, AssetRole } from '@/types'
 import { mockOrganizations, mockAssets, mockDelegations, mockSubscriptions, mockPublishingRights, mockAccessGrants } from '@/lib/mock-data'
 
 // Default permissions by organization role
@@ -53,12 +53,122 @@ export function getUserOrganization(user: User): Organization | undefined {
   return getOrganization(user.orgId)
 }
 
-// Check if user has a specific permission based on their org role
+// ============================================================================
+// CONTEXTUAL ROLE DERIVATION FUNCTIONS
+// 
+// Organizations can play different roles depending on their relationship to assets:
+// - Asset Manager: They own/manage the asset
+// - Limited Partner: They have a subscription to the asset
+// - Delegate: They have an access grant for the asset
+// ============================================================================
+
+/**
+ * Check if an organization is a Platform Admin (Waypoint Platform).
+ * Platform Admin is special - it has full access to everything.
+ */
+export function isPlatformAdmin(org: Organization): boolean {
+  return org.isPlatformAdmin === true || org.type === 'Platform Operator' || org.role === 'Platform Admin'
+}
+
+/**
+ * Get all roles an organization plays across all assets.
+ * Returns the complete context of what roles this org has.
+ * 
+ * Example: Franklin Park manages FP Venture XV (assetManagerFor)
+ * AND invests in Costanoa Fund VI (limitedPartnerIn)
+ */
+export function getOrganizationRoles(org: Organization): OrganizationContext {
+  return {
+    assetManagerFor: mockAssets.filter(a => a.ownerId === org.id),
+    limitedPartnerIn: mockAssets.filter(a => 
+      mockSubscriptions.some(s => 
+        s.assetId === a.id && 
+        s.subscriberId === org.id && 
+        s.status === 'Active'
+      )
+    ),
+    delegateFor: mockAccessGrants.filter(g => 
+      g.granteeId === org.id && g.status === 'Active'
+    )
+  }
+}
+
+/**
+ * Get the role an organization plays for a specific asset.
+ * Returns null if the org has no relationship to the asset.
+ * 
+ * Priority: Asset Manager > Limited Partner > Delegate
+ * (An org could theoretically have multiple relationships)
+ */
+export function getOrganizationRoleForAsset(org: Organization, assetId: number): AssetRole {
+  const asset = mockAssets.find(a => a.id === assetId)
+  if (!asset) return null
+  
+  // Check if they manage this asset
+  if (asset.ownerId === org.id) return 'Asset Manager'
+  
+  // Check if they have a subscription to this asset
+  const hasSubscription = mockSubscriptions.some(
+    s => s.assetId === assetId && s.subscriberId === org.id && s.status === 'Active'
+  )
+  if (hasSubscription) return 'Limited Partner'
+  
+  // Check if they have an access grant for this asset
+  const hasGrant = mockAccessGrants.some(
+    g => g.granteeId === org.id && g.status === 'Active' &&
+         (g.assetScope === 'ALL' || (Array.isArray(g.assetScope) && g.assetScope.includes(assetId)))
+  )
+  if (hasGrant) return 'Delegate'
+  
+  return null
+}
+
+/**
+ * Check if an organization acts as an Asset Manager for any assets.
+ */
+export function isAssetManager(org: Organization): boolean {
+  return mockAssets.some(a => a.ownerId === org.id)
+}
+
+/**
+ * Check if an organization acts as a Limited Partner for any assets.
+ */
+export function isLimitedPartner(org: Organization): boolean {
+  return mockSubscriptions.some(s => s.subscriberId === org.id && s.status === 'Active')
+}
+
+/**
+ * Check if an organization is a Delegate (has any access grants).
+ */
+export function isDelegate(org: Organization): boolean {
+  return mockAccessGrants.some(g => g.granteeId === org.id && g.status === 'Active')
+}
+
+/**
+ * Get the "primary" role for an organization for backward compatibility.
+ * This is used when we need a single role (e.g., for DEFAULT_PERMISSIONS).
+ * 
+ * Priority: Platform Admin > Asset Manager > Limited Partner > Delegate
+ * 
+ * @deprecated Prefer using getOrganizationRoles() for multi-role support
+ */
+export function getPrimaryRole(org: Organization): 'Platform Admin' | 'Asset Manager' | 'Limited Partner' | 'Delegate' {
+  if (isPlatformAdmin(org)) return 'Platform Admin'
+  if (isAssetManager(org)) return 'Asset Manager'
+  if (isLimitedPartner(org)) return 'Limited Partner'
+  return 'Delegate' // Default fallback
+}
+
+// ============================================================================
+
+// Check if user has a specific permission based on their org's derived role
 export function hasDefaultPermission(user: User, resource: Resource, action: Action): boolean {
   const org = getUserOrganization(user)
   if (!org) return false
 
-  const rolePermissions = DEFAULT_PERMISSIONS[org.role]
+  // Use derived role instead of fixed org.role
+  const role = getPrimaryRole(org)
+  const rolePermissions = DEFAULT_PERMISSIONS[role]
   if (!rolePermissions) return false
 
   const resourcePermissions = rolePermissions[resource]
@@ -83,215 +193,207 @@ export function canDelegateManageSubscriptions(delegateOrgId: number, assetOwner
 export const canPublisherManageSubscriptions = canDelegateManageSubscriptions
 
 // Get assets that a user can access
+// Uses derived roles - an org can be Asset Manager, LP, and Delegate for different assets
 export function getAccessibleAssets(user: User): Asset[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  switch (org.role) {
-    case 'Platform Admin':
-      // Platform admin can see all assets
-      return mockAssets
-
-    case 'Asset Manager':
-      // Asset owner can see assets they own
-      return mockAssets.filter(a => a.ownerId === org.id)
-
-    case 'Delegate':
-      // Delegate can see assets from BOTH GP grants (canPublish=true) AND LP grants (canPublish=false)
-      const delegateGrants = mockAccessGrants.filter(
-        g => g.granteeId === org.id && g.status === 'Active' && g.canViewData === true
-      )
-      const delegatedAssetIds = new Set<number>()
-      
-      delegateGrants.forEach(grant => {
-        if (grant.canPublish) {
-          // GP grant - assetScope refers to actual assets
-          if (grant.assetScope === 'ALL') {
-            mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => delegatedAssetIds.add(a.id))
-          } else {
-            (grant.assetScope as number[]).forEach(id => delegatedAssetIds.add(id))
-          }
-        } else {
-          // LP grant - assetScope refers to subscriber's subscribed assets
-          if (grant.assetScope === 'ALL') {
-            // Get all assets the subscriber (grantor) has access to
-            const subSubscriptions = mockSubscriptions.filter(
-              s => s.subscriberId === grant.grantorId && s.status === 'Active'
-            )
-            subSubscriptions.forEach(s => delegatedAssetIds.add(s.assetId))
-          } else {
-            (grant.assetScope as number[]).forEach(id => delegatedAssetIds.add(id))
-          }
-        }
-      })
-      return mockAssets.filter(asset => delegatedAssetIds.has(asset.id))
-
-    case 'Limited Partner':
-      // Subscriber can see assets they have subscriptions for
-      const subscriptions = mockSubscriptions.filter(
-        s => s.subscriberId === org.id && s.status === 'Active'
-      )
-      return mockAssets.filter(asset => 
-        subscriptions.some(s => s.assetId === asset.id)
-      )
-
-    default:
-      return []
+  // Platform Admin can see all assets
+  if (isPlatformAdmin(org)) {
+    return mockAssets
   }
+
+  const accessibleAssetIds = new Set<number>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can see assets they own
+  roles.assetManagerFor.forEach(asset => accessibleAssetIds.add(asset.id))
+
+  // As Limited Partner - can see assets they have subscriptions for
+  roles.limitedPartnerIn.forEach(asset => accessibleAssetIds.add(asset.id))
+
+  // As Delegate - can see assets from grants with canViewData=true
+  roles.delegateFor.forEach(grant => {
+    if (!grant.canViewData) return
+    
+    if (grant.canPublish) {
+      // GP grant - assetScope refers to actual assets
+      if (grant.assetScope === 'ALL') {
+        mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => accessibleAssetIds.add(a.id))
+      } else {
+        (grant.assetScope as number[]).forEach(id => accessibleAssetIds.add(id))
+      }
+    } else {
+      // LP grant - assetScope refers to subscriber's subscribed assets
+      if (grant.assetScope === 'ALL') {
+        // Get all assets the subscriber (grantor) has access to
+        const subSubscriptions = mockSubscriptions.filter(
+          s => s.subscriberId === grant.grantorId && s.status === 'Active'
+        )
+        subSubscriptions.forEach(s => accessibleAssetIds.add(s.assetId))
+      } else {
+        (grant.assetScope as number[]).forEach(id => accessibleAssetIds.add(id))
+      }
+    }
+  })
+
+  return mockAssets.filter(asset => accessibleAssetIds.has(asset.id))
 }
 
-// Get subscriptions that a user can view (for Delegates with GP grants, includes all assets they have publishing rights to)
+// Get subscriptions that a user can view
+// Uses derived roles - an org can view subscriptions as Asset Manager, LP, or Delegate
 export function getViewableSubscriptions(user: User): Subscription[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  switch (org.role) {
-    case 'Platform Admin':
-      return mockSubscriptions
-
-    case 'Asset Manager':
-      // Asset owner can view subscriptions for their assets
-      const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
-      return mockSubscriptions.filter(s => ownedAssetIds.includes(s.assetId))
-
-    case 'Delegate':
-      // Delegate can view subscriptions for assets they have GP grants (canPublish=true) for
-      const gpGrants = mockAccessGrants.filter(
-        g => g.granteeId === org.id && g.status === 'Active' && g.canPublish
-      )
-      if (gpGrants.length === 0) return []
-      
-      // Get assets from those GP grants
-      const viewableAssetIds = new Set<number>()
-      gpGrants.forEach(grant => {
-        if (grant.assetScope === 'ALL') {
-          mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => viewableAssetIds.add(a.id))
-        } else {
-          (grant.assetScope as number[]).forEach(id => viewableAssetIds.add(id))
-        }
-      })
-      return mockSubscriptions.filter(s => viewableAssetIds.has(s.assetId))
-
-    case 'Limited Partner':
-      // Subscriber can only view their own subscriptions
-      return mockSubscriptions.filter(s => s.subscriberId === org.id)
-
-    default:
-      return []
+  // Platform Admin can see all subscriptions
+  if (isPlatformAdmin(org)) {
+    return mockSubscriptions
   }
+
+  const viewableSubscriptionIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can view subscriptions for assets they own
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
+    mockSubscriptions.filter(s => ownedAssetIds.includes(s.assetId))
+      .forEach(s => viewableSubscriptionIds.add(s.id))
+  }
+
+  // As Limited Partner - can view their own subscriptions
+  if (roles.limitedPartnerIn.length > 0) {
+    mockSubscriptions.filter(s => s.subscriberId === org.id)
+      .forEach(s => viewableSubscriptionIds.add(s.id))
+  }
+
+  // As Delegate - can view subscriptions for assets they have GP grants for
+  const gpGrants = roles.delegateFor.filter(g => g.canPublish)
+  gpGrants.forEach(grant => {
+    const assetIds = new Set<number>()
+    if (grant.assetScope === 'ALL') {
+      mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => assetIds.add(a.id))
+    } else {
+      (grant.assetScope as number[]).forEach(id => assetIds.add(id))
+    }
+    mockSubscriptions.filter(s => assetIds.has(s.assetId))
+      .forEach(s => viewableSubscriptionIds.add(s.id))
+  })
+
+  return mockSubscriptions.filter(s => viewableSubscriptionIds.has(s.id))
 }
 
 // Get subscriptions that a user can manage
+// Uses derived roles - management is available as Asset Manager or Delegate with canManageSubscriptions
 export function getManageableSubscriptions(user: User): Subscription[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  switch (org.role) {
-    case 'Platform Admin':
-      return mockSubscriptions
-
-    case 'Asset Manager':
-      // Asset owner can manage subscriptions for their assets
-      const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
-      return mockSubscriptions.filter(s => ownedAssetIds.includes(s.assetId))
-
-    case 'Delegate':
-      // Delegate can manage subscriptions if granted that right via GP grant
-      const gpGrants = mockAccessGrants.filter(
-        g => g.granteeId === org.id && g.status === 'Active' && g.canPublish && g.canManageSubscriptions
-      )
-      if (gpGrants.length === 0) return []
-      
-      // Get assets from those GP grants
-      const manageableAssetIds = new Set<number>()
-      gpGrants.forEach(grant => {
-        if (grant.assetScope === 'ALL') {
-          mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => manageableAssetIds.add(a.id))
-        } else {
-          (grant.assetScope as number[]).forEach(id => manageableAssetIds.add(id))
-        }
-      })
-      return mockSubscriptions.filter(s => manageableAssetIds.has(s.assetId))
-
-    case 'Limited Partner':
-      // Subscriber can only view their own subscriptions, not manage
-      return mockSubscriptions.filter(s => s.subscriberId === org.id)
-
-    default:
-      return []
+  // Platform Admin can manage all subscriptions
+  if (isPlatformAdmin(org)) {
+    return mockSubscriptions
   }
+
+  const manageableSubscriptionIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can manage subscriptions for assets they own
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
+    mockSubscriptions.filter(s => ownedAssetIds.includes(s.assetId))
+      .forEach(s => manageableSubscriptionIds.add(s.id))
+  }
+
+  // As Limited Partner - can view their own subscriptions but not manage others
+  // Note: They can accept/decline their own pending invitations
+  if (roles.limitedPartnerIn.length > 0) {
+    mockSubscriptions.filter(s => s.subscriberId === org.id)
+      .forEach(s => manageableSubscriptionIds.add(s.id))
+  }
+
+  // As Delegate - can manage subscriptions if granted canManageSubscriptions via GP grant
+  const gpGrantsWithManage = roles.delegateFor.filter(g => g.canPublish && g.canManageSubscriptions)
+  gpGrantsWithManage.forEach(grant => {
+    const assetIds = new Set<number>()
+    if (grant.assetScope === 'ALL') {
+      mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => assetIds.add(a.id))
+    } else {
+      (grant.assetScope as number[]).forEach(id => assetIds.add(id))
+    }
+    mockSubscriptions.filter(s => assetIds.has(s.assetId))
+      .forEach(s => manageableSubscriptionIds.add(s.id))
+  })
+
+  return mockSubscriptions.filter(s => manageableSubscriptionIds.has(s.id))
 }
 
 // Check if a user can approve a specific subscription request
 // This checks the canApproveSubscriptions flag, separate from canManageSubscriptions
+// Uses derived roles - an org can approve if they're Asset Manager for the asset or have a GP grant with canApproveSubscriptions
 export function canApproveSubscriptionRequest(user: User, subscription: Subscription): boolean {
   const org = getUserOrganization(user)
   if (!org) return false
 
   // Platform Admins can approve all subscription requests
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return true
   }
 
-  // Asset Owners can always approve subscription requests for their assets
-  if (org.role === 'Asset Manager') {
-    const asset = mockAssets.find(a => a.id === subscription.assetId)
-    if (asset && asset.ownerId === org.id) {
-      return true
-    }
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can approve subscription requests for assets they own
+  const asset = mockAssets.find(a => a.id === subscription.assetId)
+  if (asset && roles.assetManagerFor.some(a => a.id === asset.id)) {
+    return true
   }
 
-  // Delegates can approve if they have canApproveSubscriptions = true via GP grant
-  if (org.role === 'Delegate') {
-    const gpGrants = mockAccessGrants.filter(
-      g => g.granteeId === org.id && 
-           g.status === 'Active' && 
-           g.canPublish &&
-           g.canApproveSubscriptions === true
-    )
-    
-    if (gpGrants.length === 0) {
-      return false
+  // As Delegate - can approve if they have canApproveSubscriptions = true via GP grant
+  const canApproveGrants = roles.delegateFor.filter(
+    g => g.canPublish && g.canApproveSubscriptions === true
+  )
+  
+  // Check if any of these grants cover the subscription's asset
+  return canApproveGrants.some(grant => {
+    if (grant.assetScope === 'ALL') {
+      const subscriptionAsset = mockAssets.find(a => a.id === subscription.assetId)
+      return subscriptionAsset && subscriptionAsset.ownerId === grant.grantorId
     }
-
-    // Check if any of the GP grants cover this asset
-    return gpGrants.some(grant => {
-      if (grant.assetScope === 'ALL') {
-        const asset = mockAssets.find(a => a.id === subscription.assetId)
-        return asset && asset.ownerId === grant.grantorId
-      }
-      return (grant.assetScope as number[]).includes(subscription.assetId)
-    })
-  }
-
-  return false
+    return (grant.assetScope as number[]).includes(subscription.assetId)
+  })
 }
 
 // Get access grants that a user can manage
+// Uses derived roles - combines grants from all roles the org plays
 export function getManageableAccessGrants(user: User): AccessGrant[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return mockAccessGrants
   }
 
-  if (org.role === 'Asset Manager') {
-    // GP can manage grants they've given AND see GP grants (canPublish=true)
-    return mockAccessGrants.filter(g => g.grantorId === org.id)
+  const manageableGrantIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can manage GP grants they've given
+  if (roles.assetManagerFor.length > 0) {
+    mockAccessGrants.filter(g => g.grantorId === org.id && g.canPublish)
+      .forEach(g => manageableGrantIds.add(g.id))
   }
 
-  if (org.role === 'Limited Partner') {
-    // LP can manage LP grants they've given (canPublish=false)
-    return mockAccessGrants.filter(g => g.grantorId === org.id && !g.canPublish)
+  // As Limited Partner - can manage LP grants they've given
+  if (roles.limitedPartnerIn.length > 0) {
+    mockAccessGrants.filter(g => g.grantorId === org.id && !g.canPublish)
+      .forEach(g => manageableGrantIds.add(g.id))
   }
 
-  if (org.role === 'Delegate') {
-    // Delegates can view grants given to them
-    return mockAccessGrants.filter(g => g.granteeId === org.id)
+  // As Delegate - can view grants given to them
+  if (roles.delegateFor.length > 0) {
+    mockAccessGrants.filter(g => g.granteeId === org.id)
+      .forEach(g => manageableGrantIds.add(g.id))
   }
 
-  return []
+  return mockAccessGrants.filter(g => manageableGrantIds.has(g.id))
 }
 
 // Alias for backward compatibility
@@ -313,81 +415,73 @@ export function getManageablePublishingRights(user: User): PublishingRight[] {
 }
 
 // Get access grants (LP grants) that need GP approval for a given user
+// Uses derived roles for contextual access
 export function getAccessGrantsRequiringApproval(user: User): AccessGrant[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  // Asset Owners and Platform Admins can approve LP grants involving their assets
-  if (org.role === 'Asset Manager' || org.role === 'Platform Admin') {
-    // Get all assets owned by this GP
-    const ownedAssetIds = org.role === 'Platform Admin' 
-      ? mockAssets.map(a => a.id)
-      : mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
+  // Platform Admins can approve all LP grants
+  if (isPlatformAdmin(org)) {
+    return mockAccessGrants.filter(g => 
+      g.status === 'Pending Approval' && g.approvalStatus === 'Pending' && !g.canPublish
+    )
+  }
+
+  const approvableGrantIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // Get pending LP grants
+  const pendingLPGrants = mockAccessGrants.filter(g => 
+    g.status === 'Pending Approval' && g.approvalStatus === 'Pending' && !g.canPublish
+  )
+
+  // As Asset Manager - can approve LP grants involving their assets
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
     
-    // Find LP grants that need approval and involve assets this GP owns
-    return mockAccessGrants.filter(g => {
-      if (g.status !== 'Pending Approval' || g.approvalStatus !== 'Pending' || g.canPublish) {
-        return false
-      }
-      
+    pendingLPGrants.forEach(g => {
       // Check if the grant involves any assets owned by this GP
       if (g.assetScope === 'ALL') {
-        // Check if LP (grantor) has subscriptions to GP's assets
         const subSubscriptions = mockSubscriptions.filter(
           s => s.subscriberId === g.grantorId && s.status === 'Active'
         )
-        return subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))
+        if (subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))) {
+          approvableGrantIds.add(g.id)
+        }
+      } else if ((g.assetScope as number[]).some(id => ownedAssetIds.includes(id))) {
+        approvableGrantIds.add(g.id)
       }
-      
-      return (g.assetScope as number[]).some(id => ownedAssetIds.includes(id))
     })
   }
 
-  // Delegates can approve if they have canApproveDelegations = true via GP grant
-  if (org.role === 'Delegate') {
-    // Get GP grants with canApproveDelegations
-    const approvalGrants = mockAccessGrants.filter(
-      g => g.granteeId === org.id && 
-           g.status === 'Active' && 
-           g.canPublish &&
-           g.canApproveDelegations === true
-    )
-    
-    if (approvalGrants.length === 0) {
-      return []
-    }
-
+  // As Delegate - can approve if they have canApproveDelegations = true via GP grant
+  const approvalGrants = roles.delegateFor.filter(g => g.canPublish && g.canApproveDelegations)
+  if (approvalGrants.length > 0) {
     // Get asset IDs this delegate can approve grants for
     const approvableAssetIds = new Set<number>()
     approvalGrants.forEach(grant => {
       if (grant.assetScope === 'ALL') {
-        // Get all assets owned by the asset owner
         mockAssets.filter(a => a.ownerId === grant.grantorId).forEach(a => approvableAssetIds.add(a.id))
       } else {
         (grant.assetScope as number[]).forEach(id => approvableAssetIds.add(id))
       }
     })
 
-    // Find LP grants that need approval and involve assets this delegate can approve
-    return mockAccessGrants.filter(g => {
-      if (g.status !== 'Pending Approval' || g.approvalStatus !== 'Pending' || g.canPublish) {
-        return false
-      }
-      
-      // Check if the grant involves any assets this delegate can approve
+    pendingLPGrants.forEach(g => {
       if (g.assetScope === 'ALL') {
-        // Check if LP has subscriptions to approvable assets
         const subSubscriptions = mockSubscriptions.filter(
           s => s.subscriberId === g.grantorId && s.status === 'Active'
         )
-        return subSubscriptions.some(s => approvableAssetIds.has(s.assetId))
+        if (subSubscriptions.some(s => approvableAssetIds.has(s.assetId))) {
+          approvableGrantIds.add(g.id)
+        }
+      } else if ((g.assetScope as number[]).some(id => approvableAssetIds.has(id))) {
+        approvableGrantIds.add(g.id)
       }
-      
-      return (g.assetScope as number[]).some(id => approvableAssetIds.has(id))
     })
   }
 
-  return []
+  return mockAccessGrants.filter(g => approvableGrantIds.has(g.id))
 }
 
 // Alias for backward compatibility - converts AccessGrants to Delegations
@@ -410,12 +504,13 @@ export function getDelegationsRequiringApproval(user: User): Delegation[] {
 }
 
 // Check if a user can approve a specific access grant (LP grant)
+// Uses derived roles for contextual access
 export function canApproveAccessGrant(user: User, grant: AccessGrant): boolean {
   const org = getUserOrganization(user)
   if (!org) return false
 
   // Platform Admins can approve all grants
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return true
   }
 
@@ -424,58 +519,46 @@ export function canApproveAccessGrant(user: User, grant: AccessGrant): boolean {
     return false
   }
 
-  // Asset Owners can approve LP grants for their assets
-  if (org.role === 'Asset Manager') {
-    // Get all assets owned by this GP
-    const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can approve LP grants for their assets
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
     
-    // Check if the grant involves any assets owned by this GP
     if (grant.assetScope === 'ALL') {
-      // Check if LP has subscriptions to GP's assets
       const subSubscriptions = mockSubscriptions.filter(
         s => s.subscriberId === grant.grantorId && s.status === 'Active'
       )
-      return subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))
+      if (subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))) {
+        return true
+      }
+    } else if ((grant.assetScope as number[]).some(id => ownedAssetIds.includes(id))) {
+      return true
     }
-    
-    return (grant.assetScope as number[]).some(id => ownedAssetIds.includes(id))
   }
 
-  // Delegates can approve if they have canApproveDelegations = true via GP grant
-  if (org.role === 'Delegate') {
-    // Get GP grants with canApproveDelegations
-    const approvalGrants = mockAccessGrants.filter(
-      g => g.granteeId === org.id && 
-           g.status === 'Active' && 
-           g.canPublish &&
-           g.canApproveDelegations === true
-    )
-    
-    if (approvalGrants.length === 0) {
-      return false
-    }
-
-    // Get asset IDs this delegate can approve grants for
+  // As Delegate - can approve if they have canApproveDelegations = true via GP grant
+  const approvalGrants = roles.delegateFor.filter(g => g.canPublish && g.canApproveDelegations)
+  if (approvalGrants.length > 0) {
     const approvableAssetIds = new Set<number>()
     approvalGrants.forEach(g => {
       if (g.assetScope === 'ALL') {
-        // Get all assets owned by the asset owner
         mockAssets.filter(a => a.ownerId === g.grantorId).forEach(a => approvableAssetIds.add(a.id))
       } else {
         (g.assetScope as number[]).forEach(id => approvableAssetIds.add(id))
       }
     })
 
-    // Check if the grant involves any assets this delegate can approve
     if (grant.assetScope === 'ALL') {
-      // Check if LP has subscriptions to approvable assets
       const subSubscriptions = mockSubscriptions.filter(
         s => s.subscriberId === grant.grantorId && s.status === 'Active'
       )
-      return subSubscriptions.some(s => approvableAssetIds.has(s.assetId))
+      if (subSubscriptions.some(s => approvableAssetIds.has(s.assetId))) {
+        return true
+      }
+    } else if ((grant.assetScope as number[]).some(id => approvableAssetIds.has(id))) {
+      return true
     }
-    
-    return (grant.assetScope as number[]).some(id => approvableAssetIds.has(id))
   }
 
   return false
@@ -490,69 +573,63 @@ export function canApproveDelegation(user: User, delegation: Delegation): boolea
 }
 
 // Check if a user (delegate) can manage subscriptions for a specific subscriber
+// Uses derived roles for contextual access
 export function canManageSubscriptionsForSubscriber(user: User, subscriberId: number): boolean {
   const org = getUserOrganization(user)
   if (!org) return false
 
   // Platform Admins can manage all subscriptions
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return true
   }
 
-  // Subscriber can manage their own subscriptions
-  if (org.role === 'Limited Partner' && org.id === subscriberId) {
+  const roles = getOrganizationRoles(org)
+
+  // As Limited Partner - can manage their own subscriptions
+  if (roles.limitedPartnerIn.length > 0 && org.id === subscriberId) {
     return true
   }
 
-  // Delegate can manage subscriptions if they have an active LP grant with canManageSubscriptions = true
-  if (org.role === 'Delegate') {
-    const grants = mockAccessGrants.filter(
-      g => g.granteeId === org.id && 
-           g.grantorId === subscriberId && 
-           g.status === 'Active' &&
-           !g.canPublish && // LP grant
-           g.canManageSubscriptions === true
-    )
-    return grants.length > 0
+  // As Delegate - can manage subscriptions if they have an LP grant with canManageSubscriptions
+  const lpGrantsWithManage = roles.delegateFor.filter(
+    g => !g.canPublish && g.grantorId === subscriberId && g.canManageSubscriptions
+  )
+  if (lpGrantsWithManage.length > 0) {
+    return true
   }
 
   return false
 }
 
 // Get subscriptions that a user can manage (either as subscriber or as delegate)
+// Uses derived roles for contextual access
 export function getManageableSubscriptionsForUser(user: User): Subscription[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
   // Platform Admins can manage all subscriptions
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return mockSubscriptions
   }
 
-  // Subscriber can manage their own subscriptions
-  if (org.role === 'Limited Partner') {
-    return mockSubscriptions.filter(s => s.subscriberId === org.id)
+  const manageableSubscriptionIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // As Limited Partner - can manage their own subscriptions
+  if (roles.limitedPartnerIn.length > 0) {
+    mockSubscriptions.filter(s => s.subscriberId === org.id)
+      .forEach(s => manageableSubscriptionIds.add(s.id))
   }
 
-  // Delegate can manage subscriptions for LPs they have LP grants from
-  if (org.role === 'Delegate') {
-    const lpGrants = mockAccessGrants.filter(
-      g => g.granteeId === org.id && 
-           g.status === 'Active' &&
-           !g.canPublish && // LP grant
-           g.canManageSubscriptions === true
-    )
-    
-    if (lpGrants.length === 0) return []
-
-    // Get LP IDs from LP grants
-    const subscriberIds = new Set(lpGrants.map(g => g.grantorId))
-    
-    // Return subscriptions for those subscribers
-    return mockSubscriptions.filter(s => subscriberIds.has(s.subscriberId))
+  // As Delegate - can manage subscriptions for LPs they have LP grants from
+  const lpGrantsWithManage = roles.delegateFor.filter(g => !g.canPublish && g.canManageSubscriptions)
+  if (lpGrantsWithManage.length > 0) {
+    const subscriberIds = new Set(lpGrantsWithManage.map(g => g.grantorId))
+    mockSubscriptions.filter(s => subscriberIds.has(s.subscriberId))
+      .forEach(s => manageableSubscriptionIds.add(s.id))
   }
 
-  return []
+  return mockSubscriptions.filter(s => manageableSubscriptionIds.has(s.id))
 }
 
 // Check if a subscriber has a subscription that allows publishing (Pending LP Acceptance, Pending Asset Manager Approval, or Active)
@@ -644,50 +721,59 @@ export function hasActiveSubscriptionSync(
 }
 
 // Get access grants that a user can view/manage
+// Uses derived roles - combines accessible grants from all roles the org plays
 export function getAccessibleAccessGrants(user: User): AccessGrant[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
-  switch (org.role) {
-    case 'Platform Admin':
-      return mockAccessGrants
-
-    case 'Asset Manager':
-      // GP can see:
-      // 1. GP grants they've given out
-      // 2. LP grants that involve their assets (for approval)
-      const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
-      return mockAccessGrants.filter(g => {
-        // GP grants they've given
-        if (g.grantorId === org.id && g.canPublish) return true
-        
-        // LP grants involving their assets
-        if (!g.canPublish) {
-          if (g.assetScope === 'ALL') {
-            const subSubscriptions = mockSubscriptions.filter(
-              s => s.subscriberId === g.grantorId && s.status === 'Active'
-            )
-            return subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))
-          }
-          return (g.assetScope as number[]).some(id => ownedAssetIds.includes(id))
-        }
-        return false
-      })
-
-    case 'Limited Partner':
-      // LP can see their own LP grants (grants they've given out)
-      return mockAccessGrants.filter(g => g.grantorId === org.id && !g.canPublish)
-
-    case 'Delegate':
-      // Delegate can see all grants given to them (both GP and LP grants)
-      return mockAccessGrants.filter(g => 
-        g.granteeId === org.id && 
-        (g.status === 'Active' || g.status === 'Pending Approval')
-      )
-
-    default:
-      return []
+  if (isPlatformAdmin(org)) {
+    return mockAccessGrants
   }
+
+  const accessibleGrantIds = new Set<string>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can see:
+  // 1. GP grants they've given out
+  // 2. LP grants that involve their assets (for approval)
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
+    mockAccessGrants.forEach(g => {
+      // GP grants they've given
+      if (g.grantorId === org.id && g.canPublish) {
+        accessibleGrantIds.add(g.id)
+      }
+      // LP grants involving their assets
+      if (!g.canPublish) {
+        if (g.assetScope === 'ALL') {
+          const subSubscriptions = mockSubscriptions.filter(
+            s => s.subscriberId === g.grantorId && s.status === 'Active'
+          )
+          if (subSubscriptions.some(s => ownedAssetIds.includes(s.assetId))) {
+            accessibleGrantIds.add(g.id)
+          }
+        } else if ((g.assetScope as number[]).some(id => ownedAssetIds.includes(id))) {
+          accessibleGrantIds.add(g.id)
+        }
+      }
+    })
+  }
+
+  // As Limited Partner - can see their own LP grants (grants they've given out)
+  if (roles.limitedPartnerIn.length > 0) {
+    mockAccessGrants.filter(g => g.grantorId === org.id && !g.canPublish)
+      .forEach(g => accessibleGrantIds.add(g.id))
+  }
+
+  // As Delegate - can see all grants given to them (both GP and LP grants)
+  if (roles.delegateFor.length > 0) {
+    mockAccessGrants.filter(g => 
+      g.granteeId === org.id && 
+      (g.status === 'Active' || g.status === 'Pending Approval')
+    ).forEach(g => accessibleGrantIds.add(g.id))
+  }
+
+  return mockAccessGrants.filter(g => accessibleGrantIds.has(g.id))
 }
 
 // Alias for backward compatibility - returns only LP grants as Delegations
@@ -712,6 +798,7 @@ export function getAccessibleDelegations(user: User): Delegation[] {
 }
 
 // Check if user can access a specific resource with a specific action
+// Uses derived roles for contextual access
 export function canAccess(
   user: User,
   resource: Resource,
@@ -722,7 +809,7 @@ export function canAccess(
   if (!org) return false
 
   // Platform Admin has access to everything
-  if (org.role === 'Platform Admin') {
+  if (isPlatformAdmin(org)) {
     return true
   }
 
@@ -731,10 +818,12 @@ export function canAccess(
     if (!user.isOrgAdmin) return false
   }
 
+  const roles = getOrganizationRoles(org)
+
   // Check default permissions first
   if (!hasDefaultPermission(user, resource, action)) {
     // Special case: Delegate might have subscription management rights via GP grant
-    if (resource === 'subscriptions' && org.role === 'Delegate') {
+    if (resource === 'subscriptions' && roles.delegateFor.length > 0) {
       const manageableSubscriptions = getManageableSubscriptions(user)
       if (manageableSubscriptions.length > 0) {
         if (action === 'view' || action === 'create' || action === 'update' || action === 'delete') {
@@ -762,8 +851,11 @@ export function canAccess(
       return true
 
     case 'access-grants':
-      if (action === 'approve' && org.role !== 'Asset Manager' && org.role !== 'Delegate') {
-        return false
+      // Approve action requires being Asset Manager or having delegation approval rights
+      if (action === 'approve') {
+        const canApprove = roles.assetManagerFor.length > 0 || 
+          roles.delegateFor.some(g => g.canPublish && g.canApproveDelegations)
+        if (!canApprove) return false
       }
       if (context?.accessGrantId) {
         const accessibleGrants = getAccessibleAccessGrants(user)
@@ -798,85 +890,79 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { label: 'Settings', href: '/settings/iam', permission: { resource: 'users', action: 'view' } },
 ]
 
+// Get navigation items for a user based on their derived roles
+// Uses multi-role support - combines nav items from all roles the org plays
 export function getNavItemsForUser(user: User): NavItem[] {
   const org = getUserOrganization(user)
   if (!org) return []
 
   const navItems: NavItem[] = []
+  const addedHrefs = new Set<string>() // Prevent duplicates
 
-  // Role-specific navigation
-  switch (org.role) {
-    case 'Platform Admin':
-      navItems.push(
-        { label: 'Registry', href: '/registry', permission: { resource: 'registry', action: 'view' } },
-        { label: 'Audit', href: '/audit', permission: { resource: 'audit', action: 'view' } },
-      )
-      break
+  const addNavItem = (item: NavItem) => {
+    if (!addedHrefs.has(item.href)) {
+      navItems.push(item)
+      addedHrefs.add(item.href)
+    }
+  }
 
-    case 'Asset Manager':
-      navItems.push(
-        { label: 'Assets', href: '/assets', permission: { resource: 'assets', action: 'view' } },
-        { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
-        { label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } },
-        { label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
-        { label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } },
-      )
-      break
+  // Platform Admin - special case
+  if (isPlatformAdmin(org)) {
+    addNavItem({ label: 'Registry', href: '/registry', permission: { resource: 'registry', action: 'view' } })
+    addNavItem({ label: 'Audit', href: '/audit', permission: { resource: 'audit', action: 'view' } })
+    addNavItem({ label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } })
+    addNavItem({ label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } })
+  } else {
+    const roles = getOrganizationRoles(org)
 
-    case 'Delegate':
-      // Check if delegate has GP grants (can publish)
-      const hasGPGrants = mockAccessGrants.some(
-        g => g.granteeId === org.id && g.status === 'Active' && g.canPublish
-      )
+    // As Asset Manager - add GP-related nav items
+    if (roles.assetManagerFor.length > 0) {
+      addNavItem({ label: 'Assets', href: '/assets', permission: { resource: 'assets', action: 'view' } })
+      addNavItem({ label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } })
+      addNavItem({ label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } })
+      addNavItem({ label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } })
+      addNavItem({ label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } })
+      addNavItem({ label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } })
+    }
+
+    // As Limited Partner - add LP-related nav items
+    if (roles.limitedPartnerIn.length > 0) {
+      addNavItem({ label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } })
+      addNavItem({ label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } })
+      addNavItem({ label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } })
+    }
+
+    // As Delegate - add based on grant capabilities
+    if (roles.delegateFor.length > 0) {
+      const gpGrants = roles.delegateFor.filter(g => g.canPublish)
+      const lpGrantsWithSubs = roles.delegateFor.filter(g => !g.canPublish && g.canManageSubscriptions)
       
-      if (hasGPGrants) {
-        navItems.push(
-          { label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } },
-          { label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } },
-          { label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } },
-        )
+      if (gpGrants.length > 0) {
+        addNavItem({ label: 'Subscriptions', href: '/subscriptions', permission: { resource: 'subscriptions', action: 'view' } })
+        addNavItem({ label: 'Publish Data', href: '/composer', permission: { resource: 'envelopes', action: 'publish' } })
+        addNavItem({ label: 'History', href: '/history', permission: { resource: 'envelopes', action: 'view' } })
       }
       
-      // Check if delegate has LP grants with subscription management
-      const hasLPGrantsWithSubs = mockAccessGrants.some(
-        g => g.granteeId === org.id && 
-             g.status === 'Active' && 
-             !g.canPublish &&
-             g.canManageSubscriptions === true
-      )
-      if (hasLPGrantsWithSubs) {
-        navItems.push(
-          { label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } },
-        )
+      if (lpGrantsWithSubs.length > 0) {
+        addNavItem({ label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } })
       }
       
-      // All delegates can see their access grants
-      navItems.push(
-        { label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } },
-        { label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } },
-      )
-      break
-
-    case 'Limited Partner':
-      navItems.push(
-        { label: 'Subscriptions', href: '/feeds', permission: { resource: 'subscriptions', action: 'view' } },
-        { label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } },
-        { label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } },
-      )
-      break
+      // All delegates can see their access grants and ledger
+      addNavItem({ label: 'Access Grants', href: '/access-grants', permission: { resource: 'access-grants', action: 'view' } })
+      addNavItem({ label: 'Ledger', href: '/ledger', permission: { resource: 'envelopes', action: 'view' } })
+    }
   }
 
   // Add IAM last for all org admins
   if (user.isOrgAdmin) {
-    navItems.push(
-      { label: 'IAM', href: '/settings/iam', permission: { resource: 'users', action: 'view' } },
-    )
+    addNavItem({ label: 'IAM', href: '/settings/iam', permission: { resource: 'users', action: 'view' } })
   }
 
   return navItems
 }
 
 // Filter envelopes based on user's access
+// Uses derived roles - combines envelope access from all roles the org plays
 export function filterEnvelopesByAccess(
   user: User,
   envelopes: Array<{ id: number; recipientId: number; assetId: number; dataType?: DataType }>
@@ -884,78 +970,75 @@ export function filterEnvelopesByAccess(
   const org = getUserOrganization(user)
   if (!org) return []
 
-  switch (org.role) {
-    case 'Platform Admin':
-      return envelopes
-
-    case 'Asset Manager':
-      // Can see envelopes for assets they own
-      const ownedAssetIds = mockAssets.filter(a => a.ownerId === org.id).map(a => a.id)
-      return envelopes.filter(e => ownedAssetIds.includes(e.assetId))
-
-    case 'Limited Partner':
-      // Can see envelopes addressed to them AND where they have an active subscription
-      return envelopes.filter(e => {
-        // Must be addressed to this subscriber
-        if (e.recipientId !== org.id) return false
-        // Must have an active subscription to the asset
-        return hasActiveSubscriptionSync(e.assetId, org.id)
-      })
-
-    case 'Delegate':
-      // Delegates can see envelopes based on their AccessGrants
-      // Get all active grants for this delegate
-      const grants = mockAccessGrants.filter(
-        g => g.granteeId === org.id && g.status === 'Active' && g.canViewData
-      )
-      
-      // If no active grants, return empty array
-      if (grants.length === 0) {
-        return []
-      }
-      
-      return envelopes.filter(envelope => {
-        return grants.some(grant => {
-          if (grant.canPublish) {
-            // GP grant - check asset scope directly
-            if (grant.assetScope === 'ALL') {
-              const asset = mockAssets.find(a => a.id === envelope.assetId)
-              return asset && asset.ownerId === grant.grantorId
-            }
-            return (grant.assetScope as number[]).includes(envelope.assetId)
-          } else {
-            // LP grant - envelope must be addressed to the LP (grantor)
-            if (envelope.recipientId !== grant.grantorId) {
-              return false
-            }
-
-            // Check asset scope
-            let assetMatch = false
-            if (grant.assetScope === 'ALL') {
-              // Check if envelope is for LP's subscribed assets
-              const subSubscriptions = mockSubscriptions.filter(
-                s => s.subscriberId === grant.grantorId && s.status === 'Active'
-              )
-              assetMatch = subSubscriptions.some(s => s.assetId === envelope.assetId)
-            } else {
-              assetMatch = (grant.assetScope as number[]).includes(envelope.assetId)
-            }
-
-            // Check data type scope
-            let typeMatch = false
-            if (grant.dataTypeScope === 'ALL') {
-              typeMatch = true
-            } else if (envelope.dataType) {
-              typeMatch = (grant.dataTypeScope as DataType[]).includes(envelope.dataType)
-            }
-
-            return assetMatch && typeMatch
-          }
-        })
-      })
-
-    default:
-      return []
+  // Platform Admin can see all envelopes
+  if (isPlatformAdmin(org)) {
+    return envelopes
   }
+
+  const accessibleEnvelopeIds = new Set<number>()
+  const roles = getOrganizationRoles(org)
+
+  // As Asset Manager - can see envelopes for assets they own
+  if (roles.assetManagerFor.length > 0) {
+    const ownedAssetIds = roles.assetManagerFor.map(a => a.id)
+    envelopes.filter(e => ownedAssetIds.includes(e.assetId))
+      .forEach(e => accessibleEnvelopeIds.add(e.id))
+  }
+
+  // As Limited Partner - can see envelopes addressed to them with active subscription
+  if (roles.limitedPartnerIn.length > 0) {
+    envelopes.filter(e => {
+      // Must be addressed to this subscriber
+      if (e.recipientId !== org.id) return false
+      // Must have an active subscription to the asset
+      return hasActiveSubscriptionSync(e.assetId, org.id)
+    }).forEach(e => accessibleEnvelopeIds.add(e.id))
+  }
+
+  // As Delegate - can see envelopes based on AccessGrants with canViewData
+  const viewGrants = roles.delegateFor.filter(g => g.canViewData)
+  if (viewGrants.length > 0) {
+    envelopes.filter(envelope => {
+      return viewGrants.some(grant => {
+        if (grant.canPublish) {
+          // GP grant - check asset scope directly
+          if (grant.assetScope === 'ALL') {
+            const asset = mockAssets.find(a => a.id === envelope.assetId)
+            return asset && asset.ownerId === grant.grantorId
+          }
+          return (grant.assetScope as number[]).includes(envelope.assetId)
+        } else {
+          // LP grant - envelope must be addressed to the LP (grantor)
+          if (envelope.recipientId !== grant.grantorId) {
+            return false
+          }
+
+          // Check asset scope
+          let assetMatch = false
+          if (grant.assetScope === 'ALL') {
+            // Check if envelope is for LP's subscribed assets
+            const subSubscriptions = mockSubscriptions.filter(
+              s => s.subscriberId === grant.grantorId && s.status === 'Active'
+            )
+            assetMatch = subSubscriptions.some(s => s.assetId === envelope.assetId)
+          } else {
+            assetMatch = (grant.assetScope as number[]).includes(envelope.assetId)
+          }
+
+          // Check data type scope
+          let typeMatch = false
+          if (grant.dataTypeScope === 'ALL') {
+            typeMatch = true
+          } else if (envelope.dataType) {
+            typeMatch = (grant.dataTypeScope as DataType[]).includes(envelope.dataType)
+          }
+
+          return assetMatch && typeMatch
+        }
+      })
+    }).forEach(e => accessibleEnvelopeIds.add(e.id))
+  }
+
+  return envelopes.filter(e => accessibleEnvelopeIds.has(e.id))
 }
 

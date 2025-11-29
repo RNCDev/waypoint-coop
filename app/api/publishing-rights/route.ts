@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { PublishingRight } from '@/types'
 import { checkPermission } from '@/lib/api-guard'
-import { getManageablePublishingRights, getUserOrganization } from '@/lib/permissions'
+import { getManageablePublishingRights, getUserOrganization, isPlatformAdmin, isAssetManager } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User organization not found' }, { status: 400 })
     }
 
-    // Only Asset Managers can create publishing rights
-    if (org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
+    // Only Asset Managers can create publishing rights - using derived roles
+    if (!isAssetManager(org) && !isPlatformAdmin(org)) {
       return NextResponse.json({ error: 'Only Asset Managers can grant publishing rights' }, { status: 403 })
     }
 

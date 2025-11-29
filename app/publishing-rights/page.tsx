@@ -44,16 +44,11 @@ export default function PublishingRightsPage() {
     canManageSubscriptions: false,
   })
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - now using /access-grants page
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Asset Manager' || 
-        currentOrg.role === 'Delegate' ||
-        currentOrg.role === 'Platform Admin'
-      if (!hasAccess) {
-        router.push('/')
-      }
+      // Redirect to unified access-grants page
+      router.push('/access-grants?type=gp')
     }
   }, [_hasHydrated, currentUser, currentOrg, router])
 

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Check, X, Mail, Rss, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Subscription } from '@/types'
-import { mockAssets, mockOrganizations, mockSubscriptions } from '@/lib/mock-data'
+import { mockAssets, mockOrganizations, mockSubscriptions, mockAccessGrants } from '@/lib/mock-data'
 import { getManageableSubscriptionsForUser } from '@/lib/permissions'
 
 export default function FeedsPage() {
@@ -21,13 +21,14 @@ export default function FeedsPage() {
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  // Redirect if user doesn't have access (Subscribers or Delegates with subscription management)
+  // Redirect if user doesn't have access (LP or Delegates with subscription management)
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Limited Partner' || 
-        currentOrg.role === 'Platform Admin' ||
-        (currentOrg.role === 'Delegate' && getManageableSubscriptionsForUser(currentUser).length > 0)
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      const isLimitedPartner = mockSubscriptions.some(s => s.subscriberId === currentOrg.id && s.status === 'Active')
+      const canManageForLP = getManageableSubscriptionsForUser(currentUser).length > 0
+      
+      const hasAccess = isPlatformAdmin || isLimitedPartner || canManageForLP
       if (!hasAccess) {
         router.push('/')
       }
@@ -37,18 +38,22 @@ export default function FeedsPage() {
   const fetchSubscriptions = useCallback(async () => {
     if (!currentOrg || !currentUser) return
     
-    // For Subscribers, get their own subscriptions
+    const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+    const isLimitedPartner = mockSubscriptions.some(s => s.subscriberId === currentOrg.id)
+    
+    // For LP, get their own subscriptions
     // For Delegates, get subscriptions they can manage
-    let subscriptions: Subscription[] = []
-    if (currentOrg.role === 'Limited Partner') {
-      subscriptions = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
-    } else if (currentOrg.role === 'Delegate') {
-      subscriptions = getManageableSubscriptionsForUser(currentUser)
-    } else if (currentOrg.role === 'Platform Admin') {
-      subscriptions = mockSubscriptions
+    let subs: Subscription[] = []
+    if (isPlatformAdmin) {
+      subs = mockSubscriptions
+    } else if (isLimitedPartner) {
+      subs = mockSubscriptions.filter(s => s.subscriberId === currentOrg.id)
+    } else {
+      // Delegate with LP grant subscription management
+      subs = getManageableSubscriptionsForUser(currentUser)
     }
     
-    setSubscriptions(subscriptions)
+    setSubscriptions(subs)
     setLoading(false)
   }, [currentOrg, currentUser])
 

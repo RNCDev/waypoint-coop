@@ -3,7 +3,7 @@ import { getInMemoryDB, isVercel } from '@/lib/in-memory-db'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { checkPermission } from '@/lib/api-guard'
-import { getUserOrganization } from '@/lib/permissions'
+import { getUserOrganization, isPlatformAdmin, isAssetManager } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,8 +55,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User organization not found' }, { status: 400 })
     }
 
-    // Only Asset Managers can create assets
-    if (org.role !== 'Asset Manager' && org.role !== 'Platform Admin') {
+    // Only Asset Managers can create assets - using derived roles
+    const isAM = isAssetManager(org)
+    const isPlatAdmin = isPlatformAdmin(org)
+    
+    if (!isAM && !isPlatAdmin) {
       return NextResponse.json(
         { error: 'Only Asset Managers can create assets' },
         { status: 403 }
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
     const validated = assetSchema.parse(body)
 
     // Verify the ownerId matches the user's organization (unless Platform Admin)
-    if (org.role !== 'Platform Admin' && validated.ownerId !== org.id) {
+    if (!isPlatAdmin && validated.ownerId !== org.id) {
       return NextResponse.json(
         { error: 'You can only create assets for your own organization' },
         { status: 403 }

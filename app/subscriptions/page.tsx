@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Plus, Trash2, Mail, Check, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Subscription, Asset, Organization } from '@/types'
-import { mockAssets, mockOrganizations, mockSubscriptions } from '@/lib/mock-data'
+import { mockAssets, mockOrganizations, mockSubscriptions, mockAccessGrants } from '@/lib/mock-data'
 import { getAccessibleAssets } from '@/lib/permissions'
 
 export default function SubscriptionsPage() {
@@ -46,13 +46,14 @@ export default function SubscriptionsPage() {
     inviteMessage: '',
   })
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - using derived roles
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Asset Manager' || 
-        currentOrg.role === 'Delegate' ||
-        currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      const isAssetManager = mockAssets.some(a => a.ownerId === currentOrg.id)
+      const hasGPGrants = mockAccessGrants.some(g => g.granteeId === currentOrg.id && g.status === 'Active' && g.canPublish)
+      
+      const hasAccess = isPlatformAdmin || isAssetManager || hasGPGrants
       if (!hasAccess) {
         router.push('/')
       }

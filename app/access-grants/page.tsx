@@ -30,7 +30,7 @@ import {
 import { Plus, Trash2, Check, X, Shield, Eye, Send, Users, CheckCircle, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AccessGrant, DataType, Organization } from '@/types'
-import { mockAssets, mockOrganizations } from '@/lib/mock-data'
+import { mockAssets, mockOrganizations, mockSubscriptions, mockAccessGrants } from '@/lib/mock-data'
 
 const DATA_TYPES: DataType[] = [
   'CAPITAL_CALL',
@@ -79,14 +79,15 @@ export default function AccessGrantsPage() {
     canApproveDelegations: false,
   })
 
-  // Redirect if user doesn't have access
+  // Redirect if user doesn't have access - using derived roles
   useEffect(() => {
     if (_hasHydrated && currentUser && currentOrg) {
-      const hasAccess = 
-        currentOrg.role === 'Asset Manager' || 
-        currentOrg.role === 'Limited Partner' ||
-        currentOrg.role === 'Delegate' ||
-        currentOrg.role === 'Platform Admin'
+      const isPlatformAdmin = currentOrg.isPlatformAdmin || currentOrg.type === 'Platform Operator' || currentOrg.role === 'Platform Admin'
+      const isAssetManager = mockAssets.some(a => a.ownerId === currentOrg.id)
+      const isLimitedPartner = mockSubscriptions.some(s => s.subscriberId === currentOrg.id && s.status === 'Active')
+      const isDelegate = mockAccessGrants.some(g => g.granteeId === currentOrg.id && g.status === 'Active')
+      
+      const hasAccess = isPlatformAdmin || isAssetManager || isLimitedPartner || isDelegate
       if (!hasAccess) {
         router.push('/')
       }
