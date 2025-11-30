@@ -17,11 +17,12 @@ datasource db {
 // =============================================================================
 // Organizations are the primary actors in the system: GPs, LPs, Fund Admins, etc.
 // The same organization can have different roles in different contexts.
+// OrgType is optional/informational - actual roles are derived from relationships.
 
 model Organization {
   id        String   @id @default(cuid())
   name      String
-  type      OrgType
+  type      OrgType? // Optional - informational only, not used for access control
   lei       String?  // Legal Entity Identifier for identity verification
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -35,7 +36,6 @@ model Organization {
   publishedDataPackets DataPacket[]
   auditLogs          AuditLog[]
 
-  @@index([type])
   @@index([lei])
 }
 
@@ -57,12 +57,13 @@ model Asset {
   updatedAt                     DateTime  @updatedAt
 
   // Relations
-  manager       Organization   @relation("AssetManager", fields: [managerId], references: [id], onDelete: Cascade)
-  parent        Asset?         @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children      Asset[]        @relation("AssetHierarchy")
+  manager       Organization       @relation("AssetManager", fields: [managerId], references: [id], onDelete: Cascade)
+  parent        Asset?             @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Asset[]            @relation("AssetHierarchy")
   subscriptions Subscription[]
   dataPackets   DataPacket[]
-  accessGrants  AccessGrant[]
+  accessGrants  AccessGrant[]      // Legacy single-asset grants
+  grantAssets   AccessGrantAsset[] // Multi-asset grant junction
 
   @@index([managerId])
   @@index([parentId])
@@ -74,12 +75,13 @@ model Asset {
 // =============================================================================
 // The atomic unit of delegation in the ReBAC model.
 // Represents a directed edge from Grantor to Grantee with specific capabilities.
+// Supports multi-asset grants via the AccessGrantAsset junction table.
 
 model AccessGrant {
   id        String      @id @default(cuid())
   grantorId String
   granteeId String
-  assetId   String?     // null means all assets the grantor controls
+  assetId   String?     // Deprecated: use grantAssets for multi-asset support. null means all assets.
   status    GrantStatus @default(PENDING_APPROVAL)
 
   // Capabilities - what the grantee can do
@@ -98,14 +100,35 @@ model AccessGrant {
   updatedAt  DateTime  @updatedAt
 
   // Relations
-  grantor Organization @relation("Grantor", fields: [grantorId], references: [id], onDelete: Cascade)
-  grantee Organization @relation("Grantee", fields: [granteeId], references: [id], onDelete: Cascade)
-  asset   Asset?       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  grantor     Organization       @relation("Grantor", fields: [grantorId], references: [id], onDelete: Cascade)
+  grantee     Organization       @relation("Grantee", fields: [granteeId], references: [id], onDelete: Cascade)
+  asset       Asset?             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  grantAssets AccessGrantAsset[] // Multi-asset support
 
   @@index([grantorId])
   @@index([granteeId])
   @@index([assetId])
   @@index([status])
+}
+
+// =============================================================================
+// ACCESS GRANT ASSETS (Junction Table)
+// =============================================================================
+// Many-to-many relationship between AccessGrants and Assets.
+// Allows a single grant to apply to multiple assets.
+
+model AccessGrantAsset {
+  id      String @id @default(cuid())
+  grantId String
+  assetId String
+
+  // Relations
+  grant AccessGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  asset Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([grantId, assetId])
+  @@index([grantId])
+  @@index([assetId])
 }
 
 // =============================================================================

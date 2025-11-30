@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requiresGPApproval } from '@/lib/permissions'
+import { requiresGPApproval, validateBulkDelegation } from '@/lib/permissions'
 
 // GET /api/access-grants - List access grants
 export async function GET(request: NextRequest) {
@@ -17,9 +17,18 @@ export async function GET(request: NextRequest) {
     const whereClause: any = {}
     if (grantorId) whereClause.grantorId = grantorId
     if (granteeId) whereClause.granteeId = granteeId
-    if (assetId) whereClause.assetId = assetId
+    if (assetId) {
+      // Check both legacy assetId and multi-asset grants
+      whereClause.OR = [
+        { assetId },
+        { grantAssets: { some: { assetId } } },
+      ]
+    }
     if (managerId) {
-      whereClause.asset = { managerId }
+      whereClause.OR = [
+        { asset: { managerId } },
+        { grantAssets: { some: { asset: { managerId } } } },
+      ]
     }
     if (status) {
       whereClause.status = status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED'
@@ -41,6 +50,11 @@ export async function GET(request: NextRequest) {
         grantor: true,
         grantee: true,
         asset: true,
+        grantAssets: {
+          include: {
+            asset: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -55,14 +69,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/access-grants - Create a new access grant
+// POST /api/access-grants - Create a new access grant (supports bulk assets)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
       grantorId,
       granteeId,
-      assetId,
+      assetId,      // Legacy single-asset (deprecated)
+      assetIds,     // New multi-asset support
       canPublish,
       canViewData,
       canManageSubscriptions,
@@ -77,31 +92,78 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine if this grant needs GP approval
-    let status: string = 'ACTIVE'
-    if (assetId) {
-      const needsApproval = await requiresGPApproval(grantorId, assetId)
-      if (needsApproval) {
-        status = 'PENDING_APPROVAL'
-      }
+    // Normalize to assetIds array
+    const normalizedAssetIds: string[] = assetIds ?? (assetId ? [assetId] : [])
+
+    if (normalizedAssetIds.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one assetId is required' },
+        { status: 400 }
+      )
     }
 
+    // Validate that grantor can delegate the requested capabilities
+    const requestedCapabilities = {
+      canPublish: canPublish ?? false,
+      canViewData: canViewData ?? true,
+      canManageSubscriptions: canManageSubscriptions ?? false,
+      canApproveDelegations: canApproveDelegations ?? false,
+    }
+
+    const validation = await validateBulkDelegation(
+      grantorId,
+      normalizedAssetIds,
+      requestedCapabilities
+    )
+
+    if (!validation.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Insufficient permissions to delegate requested capabilities',
+          details: validation.assetResults,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Check GP approval requirement for each asset
+    const approvalStatus: Record<string, 'ACTIVE' | 'PENDING_APPROVAL'> = {}
+    for (const id of normalizedAssetIds) {
+      const needsApproval = await requiresGPApproval(grantorId, id)
+      approvalStatus[id] = needsApproval ? 'PENDING_APPROVAL' : 'ACTIVE'
+    }
+
+    // If any asset requires approval, the whole grant is pending
+    const anyPending = Object.values(approvalStatus).includes('PENDING_APPROVAL')
+    const grantStatus = anyPending ? 'PENDING_APPROVAL' : 'ACTIVE'
+
+    // Create the grant with multi-asset support
     const grant = await prisma.accessGrant.create({
       data: {
         grantorId,
         granteeId,
-        assetId,
-        status: status as 'ACTIVE' | 'PENDING_APPROVAL' | 'REVOKED' | 'EXPIRED',
-        canPublish: canPublish ?? false,
-        canViewData: canViewData ?? true,
-        canManageSubscriptions: canManageSubscriptions ?? false,
-        canApproveDelegations: canApproveDelegations ?? false,
+        assetId: null, // Using junction table instead
+        status: grantStatus,
+        canPublish: requestedCapabilities.canPublish,
+        canViewData: requestedCapabilities.canViewData,
+        canManageSubscriptions: requestedCapabilities.canManageSubscriptions,
+        canApproveDelegations: requestedCapabilities.canApproveDelegations,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        grantAssets: {
+          create: normalizedAssetIds.map((id) => ({
+            assetId: id,
+          })),
+        },
       },
       include: {
         grantor: true,
         grantee: true,
         asset: true,
+        grantAssets: {
+          include: {
+            asset: true,
+          },
+        },
       },
     })
 
@@ -114,13 +176,10 @@ export async function POST(request: NextRequest) {
         organizationId: grantorId,
         details: {
           grantee: grant.grantee.name,
-          status,
-          capabilities: {
-            canPublish,
-            canViewData,
-            canManageSubscriptions,
-            canApproveDelegations,
-          },
+          status: grantStatus,
+          assetCount: normalizedAssetIds.length,
+          assets: grant.grantAssets.map((ga) => ga.asset.name),
+          capabilities: requestedCapabilities,
         },
       },
     })
@@ -134,4 +193,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

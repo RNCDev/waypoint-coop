@@ -10,6 +10,16 @@ export type PermissionAction =
   | 'approve_delegations'
 
 /**
+ * Capabilities that can be delegated
+ */
+export interface Capabilities {
+  canPublish: boolean
+  canViewData: boolean
+  canManageSubscriptions: boolean
+  canApproveDelegations: boolean
+}
+
+/**
  * Result of a permission check with explanation
  */
 export interface PermissionCheckResult {
@@ -17,6 +27,15 @@ export interface PermissionCheckResult {
   reason: string
   via?: 'manager' | 'subscription' | 'grant'
   grantId?: string
+}
+
+/**
+ * Result of a delegation capability check
+ */
+export interface DelegationCheckResult {
+  allowed: boolean
+  reason: string
+  allowedCapabilities: Capabilities
 }
 
 /**
@@ -296,15 +315,362 @@ export async function getContextualRole(
 
   if (subscription) return 'subscriber'
 
+  // Check both legacy single-asset grants and multi-asset grants
   const grant = await prisma.accessGrant.findFirst({
     where: {
       granteeId: orgId,
-      assetId,
       status: 'ACTIVE',
+      OR: [
+        { assetId }, // Legacy single-asset grant
+        { grantAssets: { some: { assetId } } }, // Multi-asset grant
+        { assetId: null }, // Global grant
+      ],
     },
   })
 
   if (grant) return 'delegate'
 
   return 'none'
+}
+
+/**
+ * Get the capabilities an organization can delegate for a specific asset
+ * Based on their contextual role and any grants they hold
+ */
+export async function getGrantorCapabilities(
+  grantorId: string,
+  assetId: string
+): Promise<Capabilities> {
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    select: { managerId: true },
+  })
+
+  if (!asset) {
+    return {
+      canPublish: false,
+      canViewData: false,
+      canManageSubscriptions: false,
+      canApproveDelegations: false,
+    }
+  }
+
+  // Managers have full capabilities
+  if (asset.managerId === grantorId) {
+    return {
+      canPublish: true,
+      canViewData: true,
+      canManageSubscriptions: true,
+      canApproveDelegations: true,
+    }
+  }
+
+  // Subscribers can only delegate view rights (to their slice)
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      assetId,
+      subscriberId: grantorId,
+      status: 'ACTIVE',
+    },
+  })
+
+  if (subscription) {
+    return {
+      canPublish: false,
+      canViewData: true, // Can delegate view access to consultants
+      canManageSubscriptions: false,
+      canApproveDelegations: false,
+    }
+  }
+
+  // Delegates can only re-delegate what they have (if allowed)
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      granteeId: grantorId,
+      status: 'ACTIVE',
+      OR: [
+        { assetId },
+        { grantAssets: { some: { assetId } } },
+        { assetId: null },
+      ],
+      AND: [
+        {
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
+      ],
+    },
+  })
+
+  if (grant) {
+    // Delegates can only re-delegate view rights they have
+    return {
+      canPublish: false, // Delegates cannot re-delegate publish
+      canViewData: grant.canViewData,
+      canManageSubscriptions: false, // Cannot re-delegate subscription management
+      canApproveDelegations: false, // Cannot re-delegate approval rights
+    }
+  }
+
+  return {
+    canPublish: false,
+    canViewData: false,
+    canManageSubscriptions: false,
+    canApproveDelegations: false,
+  }
+}
+
+/**
+ * Check if a grantor can delegate the requested capabilities for a specific asset
+ * Implements capability inheritance validation
+ */
+export async function canDelegateCapabilities(
+  grantorId: string,
+  assetId: string,
+  requestedCapabilities: Partial<Capabilities>
+): Promise<DelegationCheckResult> {
+  const grantorCaps = await getGrantorCapabilities(grantorId, assetId)
+
+  const errors: string[] = []
+
+  if (requestedCapabilities.canPublish && !grantorCaps.canPublish) {
+    errors.push('Cannot delegate publish rights')
+  }
+  if (requestedCapabilities.canViewData && !grantorCaps.canViewData) {
+    errors.push('Cannot delegate view rights')
+  }
+  if (requestedCapabilities.canManageSubscriptions && !grantorCaps.canManageSubscriptions) {
+    errors.push('Cannot delegate subscription management')
+  }
+  if (requestedCapabilities.canApproveDelegations && !grantorCaps.canApproveDelegations) {
+    errors.push('Cannot delegate approval rights')
+  }
+
+  if (errors.length > 0) {
+    return {
+      allowed: false,
+      reason: errors.join('; '),
+      allowedCapabilities: grantorCaps,
+    }
+  }
+
+  return {
+    allowed: true,
+    reason: 'Grantor has authority to delegate these capabilities',
+    allowedCapabilities: grantorCaps,
+  }
+}
+
+/**
+ * Get all assets an organization can delegate permissions for
+ * Returns assets where org is manager, subscriber, or has delegation rights
+ */
+export async function getDelegatableAssets(orgId: string): Promise<{
+  id: string
+  name: string
+  type: string
+  role: 'manager' | 'subscriber' | 'delegate'
+  capabilities: Capabilities
+}[]> {
+  const result: {
+    id: string
+    name: string
+    type: string
+    role: 'manager' | 'subscriber' | 'delegate'
+    capabilities: Capabilities
+  }[] = []
+
+  // 1. Assets where org is manager (full capabilities)
+  const managedAssets = await prisma.asset.findMany({
+    where: { managerId: orgId },
+    select: { id: true, name: true, type: true },
+  })
+
+  for (const asset of managedAssets) {
+    result.push({
+      id: asset.id,
+      name: asset.name,
+      type: asset.type,
+      role: 'manager',
+      capabilities: {
+        canPublish: true,
+        canViewData: true,
+        canManageSubscriptions: true,
+        canApproveDelegations: true,
+      },
+    })
+  }
+
+  // 2. Assets where org has active subscription (can delegate view)
+  const subscriptions = await prisma.subscription.findMany({
+    where: {
+      subscriberId: orgId,
+      status: 'ACTIVE',
+    },
+    include: {
+      asset: {
+        select: { id: true, name: true, type: true },
+      },
+    },
+  })
+
+  for (const sub of subscriptions) {
+    // Don't add duplicates (org might manage and subscribe to same asset)
+    if (!result.find((a) => a.id === sub.asset.id)) {
+      result.push({
+        id: sub.asset.id,
+        name: sub.asset.name,
+        type: sub.asset.type,
+        role: 'subscriber',
+        capabilities: {
+          canPublish: false,
+          canViewData: true,
+          canManageSubscriptions: false,
+          canApproveDelegations: false,
+        },
+      })
+    }
+  }
+
+  // 3. Assets where org has active grants with view rights (can potentially re-delegate view)
+  const grants = await prisma.accessGrant.findMany({
+    where: {
+      granteeId: orgId,
+      status: 'ACTIVE',
+      canViewData: true,
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gt: new Date() } },
+      ],
+    },
+    include: {
+      asset: {
+        select: { id: true, name: true, type: true },
+      },
+      grantAssets: {
+        include: {
+          asset: {
+            select: { id: true, name: true, type: true },
+          },
+        },
+      },
+    },
+  })
+
+  for (const grant of grants) {
+    // Handle legacy single-asset grants
+    if (grant.asset && !result.find((a) => a.id === grant.asset!.id)) {
+      result.push({
+        id: grant.asset.id,
+        name: grant.asset.name,
+        type: grant.asset.type,
+        role: 'delegate',
+        capabilities: {
+          canPublish: false,
+          canViewData: grant.canViewData,
+          canManageSubscriptions: false,
+          canApproveDelegations: false,
+        },
+      })
+    }
+
+    // Handle multi-asset grants
+    for (const grantAsset of grant.grantAssets) {
+      if (!result.find((a) => a.id === grantAsset.asset.id)) {
+        result.push({
+          id: grantAsset.asset.id,
+          name: grantAsset.asset.name,
+          type: grantAsset.asset.type,
+          role: 'delegate',
+          capabilities: {
+            canPublish: false,
+            canViewData: grant.canViewData,
+            canManageSubscriptions: false,
+            canApproveDelegations: false,
+          },
+        })
+      }
+    }
+  }
+
+  // 4. Handle global grants (assetId = null) - get all assets from grantor
+  const globalGrants = await prisma.accessGrant.findMany({
+    where: {
+      granteeId: orgId,
+      status: 'ACTIVE',
+      assetId: null,
+      grantAssets: { none: {} }, // True global grant, not multi-asset
+      canViewData: true,
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gt: new Date() } },
+      ],
+    },
+    select: { grantorId: true, canViewData: true },
+  })
+
+  for (const grant of globalGrants) {
+    const grantorAssets = await prisma.asset.findMany({
+      where: { managerId: grant.grantorId },
+      select: { id: true, name: true, type: true },
+    })
+
+    for (const asset of grantorAssets) {
+      if (!result.find((a) => a.id === asset.id)) {
+        result.push({
+          id: asset.id,
+          name: asset.name,
+          type: asset.type,
+          role: 'delegate',
+          capabilities: {
+            canPublish: false,
+            canViewData: grant.canViewData,
+            canManageSubscriptions: false,
+            canApproveDelegations: false,
+          },
+        })
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Validate capability delegation for multiple assets
+ * Returns the intersection of allowed capabilities across all assets
+ */
+export async function validateBulkDelegation(
+  grantorId: string,
+  assetIds: string[],
+  requestedCapabilities: Partial<Capabilities>
+): Promise<{
+  allowed: boolean
+  reason: string
+  assetResults: { assetId: string; allowed: boolean; reason: string }[]
+}> {
+  const assetResults: { assetId: string; allowed: boolean; reason: string }[] = []
+  let allAllowed = true
+
+  for (const assetId of assetIds) {
+    const result = await canDelegateCapabilities(grantorId, assetId, requestedCapabilities)
+    assetResults.push({
+      assetId,
+      allowed: result.allowed,
+      reason: result.reason,
+    })
+    if (!result.allowed) {
+      allAllowed = false
+    }
+  }
+
+  return {
+    allowed: allAllowed,
+    reason: allAllowed
+      ? 'All assets validated for delegation'
+      : 'Some assets cannot be delegated with requested capabilities',
+    assetResults,
+  }
 }

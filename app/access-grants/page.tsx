@@ -15,10 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { GrantBuilder, type GrantFormData } from '@/components/shared/grant-builder'
+import { GrantBuilder, type GrantFormData, type DelegatableAsset } from '@/components/shared/grant-builder'
 import { useAuthStore } from '@/store/auth-store'
-import { formatDateTime } from '@/lib/utils'
-import { Shield, CheckCircle, Clock, XCircle, Plus } from 'lucide-react'
+import { Shield, CheckCircle, Clock, XCircle } from 'lucide-react'
 
 interface AccessGrant {
   id: string
@@ -33,37 +32,38 @@ interface AccessGrant {
   grantor: {
     id: string
     name: string
-    type: string
+    type: string | null
   }
   grantee: {
     id: string
     name: string
-    type: string
+    type: string | null
   }
   asset: {
     id: string
     name: string
     type: string
   } | null
+  grantAssets?: {
+    asset: {
+      id: string
+      name: string
+      type: string
+    }
+  }[]
 }
 
 interface Organization {
   id: string
   name: string
-  type: string
-}
-
-interface Asset {
-  id: string
-  name: string
-  type: string
+  type: string | null
 }
 
 export default function AccessGrantsPage() {
   const { currentPersona } = useAuthStore()
   const [grants, setGrants] = useState<AccessGrant[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [assets, setAssets] = useState<Asset[]>([])
+  const [delegatableAssets, setDelegatableAssets] = useState<DelegatableAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [activeTab, setActiveTab] = useState('given')
@@ -74,7 +74,7 @@ export default function AccessGrantsPage() {
         const [grantsRes, orgsRes, assetsRes] = await Promise.all([
           fetch('/api/access-grants'),
           fetch('/api/organizations'),
-          fetch('/api/assets'),
+          fetch(`/api/assets/delegatable?orgId=${currentPersona.organizationId}`),
         ])
 
         const [grantsData, orgsData, assetsData] = await Promise.all([
@@ -85,7 +85,7 @@ export default function AccessGrantsPage() {
 
         setGrants(grantsData)
         setOrganizations(orgsData)
-        setAssets(assetsData)
+        setDelegatableAssets(assetsData)
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
@@ -94,7 +94,7 @@ export default function AccessGrantsPage() {
     }
 
     fetchData()
-  }, [])
+  }, [currentPersona.organizationId])
 
   const handleCreateGrant = async (data: GrantFormData) => {
     setCreating(true)
@@ -105,7 +105,7 @@ export default function AccessGrantsPage() {
         body: JSON.stringify({
           grantorId: currentPersona.organizationId,
           granteeId: data.granteeId,
-          assetId: data.assetId,
+          assetIds: data.assetIds, // Now sending array of asset IDs
           ...data.capabilities,
           expiresAt: data.expiresAt,
         }),
@@ -113,7 +113,12 @@ export default function AccessGrantsPage() {
 
       if (response.ok) {
         const created = await response.json()
-        setGrants((prev) => [created, ...prev])
+        // Handle both single and array responses
+        if (Array.isArray(created)) {
+          setGrants((prev) => [...created, ...prev])
+        } else {
+          setGrants((prev) => [created, ...prev])
+        }
       }
     } catch (error) {
       console.error('Error creating grant:', error)
@@ -166,10 +171,7 @@ export default function AccessGrantsPage() {
     (g) => g.grantee.id === currentPersona.organizationId
   )
   const pendingApprovals = grants.filter(
-    (g) =>
-      g.status === 'PENDING_APPROVAL' &&
-      g.asset?.id &&
-      assets.find((a) => a.id === g.asset?.id)
+    (g) => g.status === 'PENDING_APPROVAL'
   )
 
   const getStatusIcon = (status: string) => {
@@ -193,6 +195,25 @@ export default function AccessGrantsPage() {
     if (grant.canManageSubscriptions) caps.push('Subscriptions')
     if (grant.canApproveDelegations) caps.push('Approve')
     return caps.join(', ')
+  }
+
+  const getAssetDisplay = (grant: AccessGrant) => {
+    // Check for multi-asset grants first
+    if (grant.grantAssets && grant.grantAssets.length > 0) {
+      if (grant.grantAssets.length === 1) {
+        return grant.grantAssets[0].asset.name
+      }
+      return `${grant.grantAssets.length} assets`
+    }
+    // Fall back to legacy single asset
+    if (grant.asset) {
+      return grant.asset.name
+    }
+    return (
+      <Badge variant="outline" className="bg-purple-500/20 text-purple-400">
+        All Assets
+      </Badge>
+    )
   }
 
   return (
@@ -222,7 +243,7 @@ export default function AccessGrantsPage() {
           >
             <GrantBuilder
               organizations={organizations}
-              assets={assets}
+              delegatableAssets={delegatableAssets}
               currentOrgId={currentPersona.organizationId}
               onSubmit={handleCreateGrant}
               isLoading={creating}
@@ -263,6 +284,7 @@ export default function AccessGrantsPage() {
                       showGrantee
                       getStatusIcon={getStatusIcon}
                       getCapabilities={getCapabilities}
+                      getAssetDisplay={getAssetDisplay}
                       onRevoke={handleRevoke}
                     />
                   </CardContent>
@@ -283,6 +305,7 @@ export default function AccessGrantsPage() {
                       showGrantor
                       getStatusIcon={getStatusIcon}
                       getCapabilities={getCapabilities}
+                      getAssetDisplay={getAssetDisplay}
                     />
                   </CardContent>
                 </Card>
@@ -303,6 +326,7 @@ export default function AccessGrantsPage() {
                       showGrantee
                       getStatusIcon={getStatusIcon}
                       getCapabilities={getCapabilities}
+                      getAssetDisplay={getAssetDisplay}
                       onApprove={handleApprove}
                     />
                   </CardContent>
@@ -322,6 +346,7 @@ function GrantsTable({
   showGrantee,
   getStatusIcon,
   getCapabilities,
+  getAssetDisplay,
   onApprove,
   onRevoke,
 }: {
@@ -330,6 +355,7 @@ function GrantsTable({
   showGrantee?: boolean
   getStatusIcon: (status: string) => React.ReactNode
   getCapabilities: (grant: AccessGrant) => string
+  getAssetDisplay: (grant: AccessGrant) => React.ReactNode
   onApprove?: (id: string) => void
   onRevoke?: (id: string) => void
 }) {
@@ -349,7 +375,7 @@ function GrantsTable({
           <TableRow>
             {showGrantor && <TableHead>Grantor</TableHead>}
             {showGrantee && <TableHead>Grantee</TableHead>}
-            <TableHead>Asset</TableHead>
+            <TableHead>Asset(s)</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Capabilities</TableHead>
             <TableHead>Actions</TableHead>
@@ -364,17 +390,11 @@ function GrantsTable({
               {showGrantee && (
                 <TableCell className="font-medium">{grant.grantee.name}</TableCell>
               )}
-              <TableCell>
-                {grant.asset?.name || (
-                  <Badge variant="outline" className="bg-purple-500/20 text-purple-400">
-                    All Assets
-                  </Badge>
-                )}
-              </TableCell>
+              <TableCell>{getAssetDisplay(grant)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(grant.status)}
-                  <span>{grant.status}</span>
+                  <span>{grant.status.replace('_', ' ')}</span>
                 </div>
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
@@ -410,4 +430,3 @@ function GrantsTable({
     </div>
   )
 }
-

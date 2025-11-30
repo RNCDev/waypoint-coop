@@ -12,7 +12,7 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
   - Same org can be Asset Manager for one fund and Limited Partner in another
   - Example: Franklin Park manages FP Venture XV but invests in Costanoa Fund VI
 - **Composer Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
-- **LP Ledger**: View chronological feed of data events with read receipt tracking
+- **History View**: View chronological feed of data packets with filtering, sorting, and version tracking
 - **Subscription Management**: Asset Managers and Delegates manage which LPs can access which assets
 - **Unified Access Grants**: Single model for delegated capabilities:
   - **GP Grants**: Asset Managers delegate publishing and management to Fund Admins
@@ -105,7 +105,7 @@ Switch between demo personas using the dropdown in the navigation:
 | **Alice Admin** | Waypoint Cooperative | Platform Admin | Registry, Audit logs, IAM |
 | **Bob GP** | Kleiner Perkins | Asset Manager | Full management, publishing |
 | **Genii Publisher** | Genii Admin Services | Fund Admin | Publishing, subscriptions |
-| **Charlie LP** | State of Ohio Pension | Limited Partner | Feeds, Ledger, grants |
+| **Charlie LP** | State of Ohio Pension | Limited Partner | History, grants |
 | **Dana Delegate** | Deloitte | Auditor | Delegated view access |
 
 ## Onboarding Demo
@@ -177,9 +177,7 @@ waypoint-coop/
 │   │   └── audit/          # Audit log retrieval
 │   ├── demo/onboarding/    # Interactive onboarding demo
 │   ├── composer/           # Compose and publish data
-│   ├── history/            # Published data history
-│   ├── ledger/             # LP ledger page
-│   ├── feeds/              # LP subscription feeds
+│   ├── history/            # Data packet history with filtering
 │   ├── subscriptions/      # Subscription management
 │   ├── access-grants/      # Access Grant management
 │   ├── settings/iam/       # Identity and Access Management page

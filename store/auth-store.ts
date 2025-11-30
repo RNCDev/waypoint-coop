@@ -58,7 +58,7 @@ export const DEMO_PERSONAS: Persona[] = [
     organizationId: 'org_ohio',
     organizationName: 'State of Ohio Pension',
     organizationType: OrgType.LP,
-    description: 'Limited Partner - Views feeds, manages access grants',
+    description: 'Limited Partner - Views history, manages access grants',
   },
   {
     userId: 'user_dana',
@@ -146,7 +146,7 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
  */
 export interface PermissionFlags {
   canPublish: boolean
-  canViewLedger: boolean
+  canViewHistory: boolean
   canManageSubscriptions: boolean
   canManageGrants: boolean
   canViewRegistry: boolean
@@ -162,7 +162,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     case OrgType.PLATFORM_ADMIN:
       return {
         canPublish: false,
-        canViewLedger: true,
+        canViewHistory: true,
         canManageSubscriptions: false,
         canManageGrants: false,
         canViewRegistry: true,
@@ -173,7 +173,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     case OrgType.GP:
       return {
         canPublish: true,
-        canViewLedger: true,
+        canViewHistory: true,
         canManageSubscriptions: true,
         canManageGrants: true,
         canViewRegistry: true,
@@ -184,7 +184,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     case OrgType.FUND_ADMIN:
       return {
         canPublish: true, // Delegated
-        canViewLedger: true,
+        canViewHistory: true,
         canManageSubscriptions: true, // Delegated
         canManageGrants: false,
         canViewRegistry: false,
@@ -195,7 +195,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     case OrgType.LP:
       return {
         canPublish: false,
-        canViewLedger: true,
+        canViewHistory: true,
         canManageSubscriptions: false,
         canManageGrants: true, // Can delegate to their service providers
         canViewRegistry: false,
@@ -208,7 +208,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     case OrgType.TAX_ADVISOR:
       return {
         canPublish: false,
-        canViewLedger: true, // Delegated view
+        canViewHistory: true, // Delegated view
         canManageSubscriptions: false,
         canManageGrants: false,
         canViewRegistry: false,
@@ -219,7 +219,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
     default:
       return {
         canPublish: false,
-        canViewLedger: false,
+        canViewHistory: false,
         canManageSubscriptions: false,
         canManageGrants: false,
         canViewRegistry: false,
