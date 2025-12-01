@@ -10,8 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, User, Sparkles } from 'lucide-react'
-import Link from 'next/link'
+import { ChevronDown, User } from 'lucide-react'
 
 const orgTypeColors: Record<string, string> = {
   PLATFORM_ADMIN: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -44,31 +43,21 @@ export function PersonaSwitcher() {
 
   return (
     <div className="flex items-center gap-1.5">
-      {/* Onboarding Demo Link */}
-      <Link
-        href="/demo/onboarding"
-        className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors group"
-        title="Launch Onboarding Demo"
-      >
-        <Sparkles className="w-3 h-3 text-amber-400 group-hover:text-amber-300" />
-        <span className="text-[10px] font-medium text-amber-400 group-hover:text-amber-300 hidden sm:inline">Demo</span>
-      </Link>
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-3 h-3 text-primary" />
+          <button className="flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all hover:border-primary/50 group">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                <User className="w-4 h-4 text-primary" />
               </div>
               <div className="text-left hidden sm:block">
-                <div className="text-xs font-light leading-tight">{currentPersona.userName}</div>
-                <div className="text-[10px] text-muted-foreground font-light leading-tight">
+                <div className="text-sm font-medium leading-tight text-primary">{currentPersona.userName}</div>
+                <div className="text-xs text-muted-foreground font-light leading-tight">
                   {currentPersona.organizationName}
                 </div>
               </div>
             </div>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <ChevronDown className="w-4 h-4 text-primary group-hover:translate-y-0.5 transition-transform" />
           </button>
         </DropdownMenuTrigger>
 

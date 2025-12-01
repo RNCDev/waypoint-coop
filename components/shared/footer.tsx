@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { MessageCircle, Shield, ExternalLink } from 'lucide-react'
+import { MessageCircle, Shield, ExternalLink, Sparkles } from 'lucide-react'
 import packageJson from '@/package.json'
 
 export function Footer() {
@@ -36,8 +36,15 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Right: Version and Chat Button */}
+          {/* Right: Demo Button, Version and Chat Button */}
           <div className="flex items-center gap-4">
+            <Link
+              href="/demo/onboarding"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors group"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400 group-hover:text-amber-300" />
+              <span className="text-sm font-medium text-amber-400 group-hover:text-amber-300">Show Onboarding Demo</span>
+            </Link>
             <span className="text-xs font-mono text-muted-foreground">v{packageJson.version}</span>
             <Button
               variant="outline"
