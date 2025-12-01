@@ -27,7 +27,11 @@ export async function GET(
 
     // If we have binary data stored, serve it
     if (organization.imageData && organization.imageMime) {
-      return new NextResponse(organization.imageData, {
+      // Convert Buffer to Uint8Array for NextResponse compatibility
+      const imageBuffer = Buffer.isBuffer(organization.imageData)
+        ? new Uint8Array(organization.imageData)
+        : new Uint8Array(Buffer.from(organization.imageData))
+      return new NextResponse(imageBuffer, {
         headers: {
           'Content-Type': organization.imageMime,
           'Cache-Control': 'public, max-age=31536000, immutable',
