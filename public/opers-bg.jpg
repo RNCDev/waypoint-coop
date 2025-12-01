@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>OPERS</title>
+<link href="/css/styles.css" rel="stylesheet" type="text/css">
+<link rel="shortcut icon" href="/siteicon.ico">
+<style>
+	body {
+		background: #f9f9f9;
+	}
+	
+	h2 {
+		line-height: 1.35em;
+		margin-bottom: .5em;
+	}
+	
+	.search-wrap {
+		width: calc(80px + 100%);
+		text-align: center;
+		background: #e8e8e8;
+		margin: 20px -40px 0 -40px;
+		padding: 0 40px 30px 40px;
+	}
+	
+	.site-header__inner-wrap {
+		width: 100%;
+		max-width: 100%;
+		text-align: center;
+		margin: 0 auto;
+		padding: 0;
+	}
+	
+	.site-header__search {
+		width: 100%;
+		max-width: 600px;
+		margin: 0 auto !important;
+	}
+	
+	.site-header__search h3 {
+		margin-top: 1em;
+	}
+		
+	.site-header__search button.site-header__search-submit {
+		top: initial;
+		bottom: 0;
+		border-top-right-radius: 4px;
+		border-bottom-right-radius: 4px;
+	}
+	
+	.site-header__logo {
+		text-align: center;
+		margin: 50px auto;
+		height: 150px;
+		width: 100%;
+	}
+	
+	.site-header__logo a {
+		background-position: center;
+	}
+
+	.container-wrap {
+		box-sizing: border-box;
+		width: 90%;
+		max-width: 1180px;
+		border: 20px solid #fff;
+		box-shadow: 0 0 6px #ccc;
+		margin: 0 auto;
+		padding: 15px 40px 0 40px;
+		text-align: center;
+		background: #f2f2f2;
+	}
+
+	.container-wrap p {
+		font-size: 18px;
+		margin-bottom: 2.5em;
+	}
+	
+	p.note {
+		font-size: 16px;
+		margin-top: 40px;
+		color: #555;
+		text-align: center;
+	}
+	
+	@media only screen and (max-width: 480px) {
+		.search-wrap {
+			padding: 10px 20px 30px 20px;
+		}
+	}
+	
+	@media only screen and (max-width: 1080px) {
+		.site-header__search {
+			display: block;
+		}
+	}
+</style>
+</head>
+
+<body>
+
+<div class="site-header__logo"> 
+	<a href="/index.shtml"><span class="sr-only">OPERS.org</span></a>
+</div>
+
+<div class="container-wrap">
+	<h2>The page you are looking for has moved or does not exist.</h2>
+	<p>Please check the spelling, try a search, or visit the <a href="/index.shtml">OPERS homepage</a>.</p>
+	<div class="search-wrap">
+		<div class="site-header__inner-wrap">
+			<div class="site-header__search">
+				<h3>Search OPERS.org</h3>
+				<form id="opers-search" action="/site-search/index.shtml">
+					<label for="searchQuery" class="sr-only">Search OPERS.org</label>
+					<input id="searchQuery" class="site-header__search-input" name="q" type="text" placeholder="Search OPERS.org">
+					<button class="site-header__search-submit" type="submit"><span class="sr-only">Search</span><span class="fa fa-search"></span></button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+<!--<p class="note">If you believe this to be an error, please contact us at <a href="mailto:communications@opers.org">communications@opers.org</a></p>-->
+<script type="text/javascript" src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=1&cb=1372082000" async></script></body>
+</html>

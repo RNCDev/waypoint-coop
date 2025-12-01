@@ -1,0 +1,87 @@
+<svg width="460" height="570" viewBox="110 195 390 540" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&amp;display=swap');
+      .primary-text { 
+        fill: #FFFFFF; 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+        font-weight: 700; 
+        font-size: 72px; 
+        letter-spacing: -0.025em;
+      }
+      .accent-text {
+        fill: #3B82F6; /* Blue - matches primary color scheme */
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+        font-weight: 700; 
+        font-size: 72px; 
+        letter-spacing: -0.025em;
+      }
+      .compass-stroke { 
+        stroke: #FFFFFF; 
+        stroke-width: 3; 
+        fill: none; 
+        stroke-linecap: round;
+      }
+      .compass-fill { 
+        fill: #FFFFFF; 
+      }
+      .compass-outline {
+        fill: none;
+        stroke: #FFFFFF;
+        stroke-width: 2;
+      }
+    </style>
+  </defs>
+  
+  <!-- Center Point: 350, 350 -->
+  
+  <!-- HORIZONTAL: WAYP [Compass] INT -->
+  <g transform="translate(350, 350)">
+    <!-- WAYP (Left) -->
+    <text x="-44" y="0" text-anchor="end" dominant-baseline="central" alignment-baseline="central" class="primary-text">WAYP</text>
+    
+    <!-- INT (Right) -->
+    <text x="44" y="0" text-anchor="start" dominant-baseline="central" alignment-baseline="central" class="primary-text">INT</text>
+  </g>
+  
+  <!-- VERTICAL: CO [Compass] PERATIVE -->
+  <g transform="translate(350, 350)">
+     <!-- CO (Top) -->
+     <g transform="translate(0, -44) rotate(90)">
+        <text x="0" y="0" text-anchor="end" dominant-baseline="central" alignment-baseline="central" class="accent-text">CO</text>
+     </g>
+     
+     <!-- PERATIVE (Bottom) -->
+     <g transform="translate(0, 44) rotate(90)">
+        <text x="0" y="0" text-anchor="start" dominant-baseline="central" alignment-baseline="central" class="accent-text">PERATIVE</text>
+     </g>
+  </g>
+
+  <!-- Compass Icon (Center) -->
+  <g transform="translate(350, 350)">
+    <!-- Outer Ring -->
+    <circle cx="0" cy="0" r="32" class="compass-stroke" />
+    <!-- Inner Ring -->
+    <circle cx="0" cy="0" r="26" stroke="#FFFFFF" stroke-width="1.5" fill="none" opacity="0.3" />
+    
+    <!-- Needle Group: Rotated 60 degrees (2 o'clock) -->
+    <g transform="rotate(60)">
+        <!-- Compass Needle (North - filled dark) -->
+        <path d="M0,-26 L8,0 L0,26 L-8,0 Z" class="compass-fill" />
+        
+        <!-- Compass Needle (South - outlined dark) -->
+        <path d="M0,26 L8,0 L0,-26 L-8,0 Z" class="compass-outline" />
+        
+        <!-- Center Dot -->
+        <circle cx="0" cy="0" r="3.5" class="compass-fill" />
+    </g>
+    
+    <!-- Compass dial markings -->
+    <line x1="0" y1="-32" x2="0" y2="-38" class="compass-stroke" stroke-width="2" />
+    <line x1="0" y1="32" x2="0" y2="38" class="compass-stroke" stroke-width="2" />
+    <line x1="32" y1="0" x2="38" y2="0" class="compass-stroke" stroke-width="2" />
+    <line x1="-32" y1="0" x2="-38" y2="0" class="compass-stroke" stroke-width="2" />
+  </g>
+
+</svg>
+
