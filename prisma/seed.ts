@@ -33,6 +33,8 @@ async function main() {
       name: 'Waypoint Cooperative',
       type: OrgType.PLATFORM_ADMIN,
       lei: 'WAYPOINT000000000001',
+      narrative: 'Building the open infrastructure for private markets. Our cooperative model ensures that the benefits of network effects flow back to the participants who create them.',
+      imageUrl: '/waypoint-logo-blue.svg',
     },
   })
 
@@ -43,6 +45,7 @@ async function main() {
       name: 'Kleiner Perkins',
       type: OrgType.GP,
       lei: 'KP00000000000000001',
+      narrative: 'For over 50 years, Kleiner Perkins has partnered with some of the most ingenious founders in technology and life sciences. We invest at the earliest stages and help build iconic companies.',
     },
   })
 
@@ -52,6 +55,7 @@ async function main() {
       name: 'Costanoa Ventures',
       type: OrgType.GP,
       lei: 'COSTANOA0000000001',
+      narrative: 'Early-stage venture capital focused on B2B enterprise software. We back founders who are building the next generation of enterprise infrastructure.',
     },
   })
 
@@ -61,6 +65,7 @@ async function main() {
       name: 'Franklin Park',
       type: OrgType.GP, // Also acts as LP in some funds
       lei: 'FP00000000000000001',
+      narrative: 'Private equity investment manager providing innovative fund solutions to institutional investors worldwide.',
     },
   })
 
@@ -71,6 +76,8 @@ async function main() {
       name: 'State of Ohio Pension',
       type: OrgType.LP,
       lei: 'OHIO00000000000001',
+      narrative: 'Serving over 1.5 million members, we are committed to securing retirement benefits for Ohio public employees through prudent investment management.',
+      imageUrl: '/opers-bg.jpg',
     },
   })
 
@@ -80,6 +87,7 @@ async function main() {
       name: 'CalPERS',
       type: OrgType.LP,
       lei: 'CALPERS000000000001',
+      narrative: 'The largest public pension fund in the United States, managing retirement and health benefits for California public employees.',
     },
   })
 
@@ -89,6 +97,7 @@ async function main() {
       name: 'Harvard Management Company',
       type: OrgType.LP,
       lei: 'HARVARD000000000001',
+      narrative: 'Managing the Harvard University endowment with a long-term investment strategy to support the university mission in perpetuity.',
     },
   })
 
@@ -99,6 +108,7 @@ async function main() {
       name: 'Genii Admin Services',
       type: OrgType.FUND_ADMIN,
       lei: 'GENII0000000000001',
+      narrative: 'Comprehensive fund administration services for private equity and venture capital funds. Trusted by leading GPs worldwide.',
     },
   })
 
@@ -109,6 +119,7 @@ async function main() {
       name: 'Deloitte',
       type: OrgType.AUDITOR,
       lei: 'DELOITTE00000000001',
+      narrative: 'Global professional services firm providing audit, consulting, tax, and advisory services to leading organizations.',
     },
   })
 
@@ -119,6 +130,7 @@ async function main() {
       name: 'Mercer',
       type: OrgType.CONSULTANT,
       lei: 'MERCER0000000000001',
+      narrative: 'Leading investment consulting firm helping institutional investors achieve their long-term investment goals.',
     },
   })
 
@@ -129,6 +141,7 @@ async function main() {
       name: 'PwC',
       type: OrgType.TAX_ADVISOR,
       lei: 'PWC0000000000000001',
+      narrative: 'Providing tax advisory and compliance services to private equity funds and their investors globally.',
     },
   })
 
@@ -145,6 +158,8 @@ async function main() {
       email: 'alice@waypoint.coop',
       organizationId: waypointCoop.id,
       role: UserRole.ADMIN,
+      narrative: 'Platform Operations Lead at Waypoint. Passionate about building infrastructure that makes private markets more accessible and transparent.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Alice&backgroundColor=b6e3f4',
     },
   })
 
@@ -156,6 +171,8 @@ async function main() {
       email: 'bob@kleinerperkins.com',
       organizationId: kleinerPerkins.id,
       role: UserRole.ADMIN,
+      narrative: 'Partner at Kleiner Perkins focused on enterprise software and fintech investments. Previously led product at Stripe.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Bob&backgroundColor=c0aede',
     },
   })
 
@@ -167,6 +184,8 @@ async function main() {
       email: 'publisher@genii.com',
       organizationId: geniiAdmin.id,
       role: UserRole.ADMIN,
+      narrative: 'Senior Fund Administrator managing reporting and investor communications for top-tier VC funds.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Genii&backgroundColor=ffd5dc',
     },
   })
 
@@ -178,6 +197,8 @@ async function main() {
       email: 'charlie@ohiopension.gov',
       organizationId: ohioPension.id,
       role: UserRole.ADMIN,
+      narrative: 'Private Markets Investment Officer overseeing venture capital and private equity allocations for Ohio public employees.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Charlie&backgroundColor=d1d4f9',
     },
   })
 
@@ -189,6 +210,8 @@ async function main() {
       email: 'dana@deloitte.com',
       organizationId: deloitte.id,
       role: UserRole.MEMBER,
+      narrative: 'Senior Auditor specializing in private equity fund audits and SEC compliance reviews.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Dana&backgroundColor=ffdfbf',
     },
   })
 
@@ -200,6 +223,8 @@ async function main() {
       email: 'sarah@costanoa.com',
       organizationId: costanoaVentures.id,
       role: UserRole.ADMIN,
+      narrative: 'General Partner at Costanoa Ventures with a focus on data infrastructure and developer tools.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah&backgroundColor=c1f0c1',
     },
   })
 
@@ -210,6 +235,8 @@ async function main() {
       email: 'mike@calpers.ca.gov',
       organizationId: calpers.id,
       role: UserRole.ADMIN,
+      narrative: 'Managing Investment Director leading CalPERS private equity portfolio strategy.',
+      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Mike&backgroundColor=ffeaa7',
     },
   })
 

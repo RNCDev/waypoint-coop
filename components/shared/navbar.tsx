@@ -1,23 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { PersonaSwitcher } from './persona-switcher'
 import { cn } from '@/lib/utils'
-import { Home, ChevronDown, ChevronUp } from 'lucide-react'
+import { Home } from 'lucide-react'
 
 export function Navbar() {
   const pathname = usePathname()
   const { navItems } = useAuthStore()
-  const [isPersonaStripOpen, setIsPersonaStripOpen] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
 
   return (
     <>
@@ -49,8 +42,9 @@ export function Navbar() {
               </div>
             </div>
 
-            {/* Right Side - Logo */}
-            <div className="flex items-center">
+            {/* Right Side - Persona Switcher and Logo */}
+            <div className="flex items-center gap-4">
+              <PersonaSwitcher />
               <div className="h-80 w-32 overflow-hidden relative flex items-center justify-center">
                 <div className="scale-[1.75] origin-center -translate-x-0 translate-y-14">
                   <Image 
@@ -88,35 +82,6 @@ export function Navbar() {
           </div>
         </div>
       </nav>
-
-      {/* Secondary Header - Demo Controls */}
-      {isMounted && (
-        <div className="sticky top-20 z-40 border-b border-border/40 bg-secondary/30 backdrop-blur-sm">
-          <div className="container mx-auto px-4">
-            <button
-              onClick={() => setIsPersonaStripOpen(!isPersonaStripOpen)}
-              className="w-full flex items-center justify-between px-4 py-2 hover:bg-secondary/50 transition-colors"
-            >
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                Demo Controls
-              </span>
-              {isPersonaStripOpen ? (
-                <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              )}
-            </button>
-            
-            {isPersonaStripOpen && (
-              <div className="px-4 pb-3 pt-2 bg-secondary/20">
-                <div className="flex items-center gap-3">
-                  <PersonaSwitcher />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   )
 }

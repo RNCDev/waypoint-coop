@@ -43,37 +43,37 @@ export function PersonaSwitcher() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       {/* Onboarding Demo Link */}
       <Link
         href="/demo/onboarding"
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors group"
+        className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors group"
         title="Launch Onboarding Demo"
       >
-        <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:text-amber-300" />
-        <span className="text-xs font-medium text-amber-400 group-hover:text-amber-300 hidden sm:inline">Onboarding Demo</span>
+        <Sparkles className="w-3 h-3 text-amber-400 group-hover:text-amber-300" />
+        <span className="text-[10px] font-medium text-amber-400 group-hover:text-amber-300 hidden sm:inline">Demo</span>
       </Link>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-3.5 h-3.5 text-primary" />
+          <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-3 h-3 text-primary" />
               </div>
               <div className="text-left hidden sm:block">
-                <div className="text-sm font-light">{currentPersona.userName}</div>
-                <div className="text-xs text-muted-foreground font-light">
+                <div className="text-xs font-light leading-tight">{currentPersona.userName}</div>
+                <div className="text-[10px] text-muted-foreground font-light leading-tight">
                   {currentPersona.organizationName}
                 </div>
               </div>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel className="text-xs font-light text-muted-foreground px-3 py-2">
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="text-[10px] font-light text-muted-foreground px-2 py-1.5">
           Switch Persona
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -82,23 +82,23 @@ export function PersonaSwitcher() {
           <DropdownMenuItem
             key={persona.userId}
             onClick={() => handlePersonaChange(persona)}
-            className={`flex items-center gap-3 p-3 cursor-pointer ${
+            className={`flex items-center gap-2 p-2 cursor-pointer ${
               currentPersona.userId === persona.userId ? 'bg-primary/5' : ''
             }`}
           >
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User className="w-3.5 h-3.5 text-primary" />
+            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <User className="w-3 h-3 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-light text-sm">{persona.userName}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-light text-xs leading-tight">{persona.userName}</span>
                 {currentPersona.userId === persona.userId && (
-                  <Badge variant="outline" className="text-xs bg-primary/20 text-primary border-primary/30">
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">
                     Active
                   </Badge>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground font-light mt-0.5">
+              <div className="text-[10px] text-muted-foreground font-light leading-tight mt-0.5">
                 {persona.organizationName}
               </div>
             </div>

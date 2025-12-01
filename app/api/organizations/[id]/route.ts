@@ -59,7 +59,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, type, lei } = body
+    const { name, type, lei, narrative, imageUrl } = body
 
     const organization = await prisma.organization.update({
       where: { id },
@@ -67,6 +67,8 @@ export async function PUT(
         ...(name && { name }),
         ...(type && { type }),
         ...(lei !== undefined && { lei }),
+        ...(narrative !== undefined && { narrative }),
+        ...(imageUrl !== undefined && { imageUrl }),
       },
     })
 
@@ -77,7 +79,7 @@ export async function PUT(
         entityType: 'Organization',
         entityId: organization.id,
         organizationId: organization.id,
-        details: { name, type, lei },
+        details: { name, type, lei, narrative, imageUrl },
       },
     })
 

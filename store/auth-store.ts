@@ -10,6 +10,8 @@ export interface Persona {
   userName: string
   userEmail: string
   userRole: UserRole
+  userPictureUrl?: string
+  userNarrative?: string
   organizationId: string
   organizationName: string
   organizationType: OrgType
@@ -25,6 +27,8 @@ export const DEMO_PERSONAS: Persona[] = [
     userName: 'Alice Admin',
     userEmail: 'alice@waypoint.coop',
     userRole: UserRole.ADMIN,
+    userPictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Alice&backgroundColor=b6e3f4',
+    userNarrative: 'Platform Operations Lead at Waypoint. Passionate about building infrastructure that makes private markets more accessible and transparent.',
     organizationId: 'org_waypoint',
     organizationName: 'Waypoint Cooperative',
     organizationType: OrgType.PLATFORM_ADMIN,
@@ -35,6 +39,8 @@ export const DEMO_PERSONAS: Persona[] = [
     userName: 'Bob GP',
     userEmail: 'bob@kleinerperkins.com',
     userRole: UserRole.ADMIN,
+    userPictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Bob&backgroundColor=c0aede',
+    userNarrative: 'Partner at Kleiner Perkins focused on enterprise software and fintech investments.',
     organizationId: 'org_kp',
     organizationName: 'Kleiner Perkins',
     organizationType: OrgType.GP,
@@ -45,6 +51,8 @@ export const DEMO_PERSONAS: Persona[] = [
     userName: 'Genii Publisher',
     userEmail: 'publisher@genii.com',
     userRole: UserRole.ADMIN,
+    userPictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Genii&backgroundColor=ffd5dc',
+    userNarrative: 'Senior Fund Administrator managing reporting and investor communications for top-tier VC funds.',
     organizationId: 'org_genii',
     organizationName: 'Genii Admin Services',
     organizationType: OrgType.FUND_ADMIN,
@@ -55,6 +63,8 @@ export const DEMO_PERSONAS: Persona[] = [
     userName: 'Charlie LP',
     userEmail: 'charlie@ohiopension.gov',
     userRole: UserRole.ADMIN,
+    userPictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Charlie&backgroundColor=d1d4f9',
+    userNarrative: 'Private Markets Investment Officer overseeing venture capital and private equity allocations for Ohio public employees.',
     organizationId: 'org_ohio',
     organizationName: 'State of Ohio Pension',
     organizationType: OrgType.LP,
@@ -65,6 +75,8 @@ export const DEMO_PERSONAS: Persona[] = [
     userName: 'Dana Delegate',
     userEmail: 'dana@deloitte.com',
     userRole: UserRole.MEMBER,
+    userPictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Dana&backgroundColor=ffdfbf',
+    userNarrative: 'Senior Auditor specializing in private equity fund audits and SEC compliance reviews.',
     organizationId: 'org_deloitte',
     organizationName: 'Deloitte',
     organizationType: OrgType.AUDITOR,

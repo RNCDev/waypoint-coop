@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Navbar } from '@/components/shared/navbar'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -57,12 +58,37 @@ const TYPE_COLORS: Record<string, string> = {
   LEGAL_DOCUMENT: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
+// Get user profile image - check for database-stored image first, then fall back to URL
+function getUserProfileImage(userId: string, fallbackUrl?: string, hasDatabaseImage?: boolean): string | null {
+  if (hasDatabaseImage) {
+    return `/api/images/user/${userId}`
+  }
+  return fallbackUrl || null
+}
+
 export default function DashboardPage() {
   const { currentPersona, navItems } = useAuthStore()
   const [activity, setActivity] = useState<ActivityMetrics | null>(null)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentDataPackets, setRecentDataPackets] = useState<RecentDataPacket[]>([])
   const [loading, setLoading] = useState(true)
+  const [userHasDatabaseImage, setUserHasDatabaseImage] = useState(false)
+
+  // Check if user has a database-stored image
+  useEffect(() => {
+    async function checkUserImage() {
+      try {
+        const res = await fetch(`/api/users/${currentPersona.userId}`)
+        if (res.ok) {
+          const user = await res.json()
+          setUserHasDatabaseImage(!!user.pictureMime)
+        }
+      } catch (error) {
+        console.error('Error checking user image:', error)
+      }
+    }
+    checkUserImage()
+  }, [currentPersona.userId])
 
   useEffect(() => {
     async function fetchData() {
@@ -215,12 +241,42 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <h1 className="text-4xl font-semibold mb-3 gradient-text">
-              Welcome back, {currentPersona.userName}
-            </h1>
-            <p className="text-muted-foreground text-base">
-              Platform activity monitoring
-            </p>
+            {(() => {
+              const profileImageUrl = getUserProfileImage(
+                currentPersona.userId,
+                currentPersona.userPictureUrl,
+                userHasDatabaseImage
+              )
+              return (
+                <div className="flex items-center gap-4 mb-3">
+                  {profileImageUrl ? (
+                    <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
+                      <Image
+                        src={profileImageUrl}
+                        alt={currentPersona.userName}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xl font-medium">
+                        {currentPersona.userName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <h1 className="text-4xl font-semibold gradient-text">
+                      Welcome back, {currentPersona.userName}
+                    </h1>
+                    <p className="text-muted-foreground text-base">
+                      Platform activity monitoring
+                    </p>
+                  </div>
+                </div>
+              )
+            })()}
           </motion.div>
 
           <motion.div
@@ -301,12 +357,42 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-4xl font-semibold mb-3 gradient-text">
-            Welcome back, {currentPersona.userName}
-          </h1>
-          <p className="text-muted-foreground text-base">
-            {currentPersona.organizationName}
-          </p>
+          {(() => {
+            const profileImageUrl = getUserProfileImage(
+              currentPersona.userId,
+              currentPersona.userPictureUrl,
+              userHasDatabaseImage
+            )
+            return (
+              <div className="flex items-center gap-4 mb-3">
+                {profileImageUrl ? (
+                  <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
+                    <Image
+                      src={profileImageUrl}
+                      alt={currentPersona.userName}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl font-medium">
+                      {currentPersona.userName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-4xl font-semibold gradient-text">
+                    Welcome back, {currentPersona.userName}
+                  </h1>
+                  <p className="text-muted-foreground text-base">
+                    {currentPersona.organizationName}
+                  </p>
+                </div>
+              </div>
+            )
+          })()}
         </motion.div>
 
         {/* Stats Grid */}

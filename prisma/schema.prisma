@@ -24,6 +24,10 @@ model Organization {
   name      String
   type      OrgType? // Optional - informational only, not used for access control
   lei       String?  // Legal Entity Identifier for identity verification
+  narrative String?  // Organization description/mission statement
+  imageUrl  String?  // Legacy: external image URL for branding
+  imageData Bytes?   // Binary image data stored in database
+  imageMime String?  // MIME type of stored image (e.g., image/png)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -219,6 +223,10 @@ model User {
   email          String   @unique
   organizationId String
   role           UserRole @default(MEMBER)
+  narrative      String?  // Personal bio/description
+  pictureUrl     String?  // Legacy: external profile picture URL
+  pictureData    Bytes?   // Binary image data stored in database
+  pictureMime    String?  // MIME type of stored image (e.g., image/png)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
