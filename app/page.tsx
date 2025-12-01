@@ -248,9 +248,9 @@ export default function DashboardPage() {
                 userHasDatabaseImage
               )
               return (
-                <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-5 mb-3">
                   {profileImageUrl ? (
-                    <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
+                    <div className="w-[84px] h-[84px] rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
                       <Image
                         src={profileImageUrl}
                         alt={currentPersona.userName}
@@ -260,8 +260,8 @@ export default function DashboardPage() {
                       />
                     </div>
                   ) : (
-                    <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl font-medium">
+                    <div className="w-[84px] h-[84px] rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-3xl font-medium">
                         {currentPersona.userName.charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -364,9 +364,9 @@ export default function DashboardPage() {
               userHasDatabaseImage
             )
             return (
-              <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-center gap-5 mb-3">
                 {profileImageUrl ? (
-                  <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
+                  <div className="w-[84px] h-[84px] rounded-full overflow-hidden relative flex-shrink-0 ring-2 ring-primary/20">
                     <Image
                       src={profileImageUrl}
                       alt={currentPersona.userName}
@@ -376,8 +376,8 @@ export default function DashboardPage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl font-medium">
+                  <div className="w-[84px] h-[84px] rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-3xl font-medium">
                       {currentPersona.userName.charAt(0).toUpperCase()}
                     </span>
                   </div>

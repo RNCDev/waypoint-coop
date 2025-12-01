@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuthStore } from '@/store/auth-store'
-import { Users, Plus, Building2, Pencil, Camera, Upload, Loader2 } from 'lucide-react'
+import { Users, Plus, Pencil, Camera, Upload, Loader2 } from 'lucide-react'
 
 interface User {
   id: string
@@ -297,24 +297,25 @@ export default function IAMPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
         >
           <Card className="overflow-hidden relative">
-            {/* Background Image */}
+            {/* Background Image - larger than container, clipped at edges */}
             {orgImageUrl && (
-              <div className="absolute inset-0 z-0">
-                <Image
-                  src={orgImageUrl}
-                  alt=""
-                  fill
-                  className="object-cover opacity-10"
-                  unoptimized
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/80" />
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <div className="absolute -inset-0">
+                  <Image
+                    src={orgImageUrl}
+                    alt=""
+                    fill
+                    className="object-cover object-center opacity-25"
+                    unoptimized
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/60" />
               </div>
             )}
             
             <CardHeader className="relative z-10 pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Building2 className="w-5 h-5 text-primary" />
+                <CardTitle className="text-lg">
                   Organization Details
                 </CardTitle>
                 {isAdmin && (
@@ -441,8 +442,7 @@ export default function IAMPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
+                  <CardTitle>
                     Team Members
                   </CardTitle>
                   <CardDescription>
@@ -543,7 +543,7 @@ export default function IAMPage() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-3">
                                 {userImageUrl ? (
-                                  <div className="w-9 h-9 rounded-full overflow-hidden relative flex-shrink-0">
+                                  <div className="w-[54px] h-[54px] rounded-full overflow-hidden relative flex-shrink-0">
                                     <Image
                                       src={userImageUrl}
                                       alt={user.name}
@@ -553,8 +553,8 @@ export default function IAMPage() {
                                     />
                                   </div>
                                 ) : (
-                                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                                    <span className="text-sm font-medium">
+                                  <div className="w-[54px] h-[54px] rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-lg font-medium">
                                       {user.name.charAt(0).toUpperCase()}
                                     </span>
                                   </div>

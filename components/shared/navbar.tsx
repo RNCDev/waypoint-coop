@@ -46,7 +46,7 @@ export function Navbar() {
             <div className="flex items-center gap-4">
               <PersonaSwitcher />
               <div className="h-80 w-32 overflow-hidden relative flex items-center justify-center">
-                <div className="scale-[1.75] origin-center -translate-x-0 translate-y-14">
+                <div className="scale-[1.25] origin-center -translate-x-0 translate-y-8">
                   <Image 
                     src="/waypoint-logo.svg" 
                     alt="Waypoint" 
