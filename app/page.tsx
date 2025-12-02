@@ -25,13 +25,25 @@ import {
   ArrowRight,
   Clock,
   TrendingUp,
-  Send
+  Send,
+  Activity,
+  BarChart3,
+  ArrowUp
 } from 'lucide-react'
 
 interface ActivityMetrics {
   organizations: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
   assets: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
   dataPackets: { daily: number; weekly: number; monthly: number; annual: number; inception: number }
+}
+
+interface RecentActivity {
+  id: string
+  action: string
+  entityType: string
+  createdAt: string
+  actor?: { name: string }
+  organization?: { name: string; type: string }
 }
 
 interface DashboardStats {
@@ -75,6 +87,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [userHasDatabaseImage, setUserHasDatabaseImage] = useState(false)
   const [imageCheckComplete, setImageCheckComplete] = useState(false)
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
 
   // Check if user has a database-stored image
   useEffect(() => {
@@ -163,6 +176,11 @@ export default function DashboardPage() {
               inception: dataPacketsInceptionData.total || 0,
             },
           })
+
+          // Fetch recent activity
+          const activityRes = await fetch('/api/audit?limit=10')
+          const activityData = await activityRes.json()
+          setRecentActivity(activityData.logs || [])
         } else {
           // Non-admin: fetch persona-specific stats
           const orgId = currentPersona.organizationId
@@ -288,65 +306,203 @@ export default function DashboardPage() {
             })()}
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            <Card className="border-border/50">
-              <CardHeader className="pb-6">
-                <CardTitle className="text-xl">Activity Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="empty-state py-12">
-                    <p className="text-lg">Loading...</p>
+          {/* Key Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <Card className="border-border/50 hover:border-primary/30 transition-colors">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-end mb-4">
+                    {activity && activity.organizations.weekly > activity.organizations.daily && (
+                      <div className="flex items-center gap-1 text-green-400 text-sm">
+                        <ArrowUp className="w-4 h-4" />
+                        <span>{Math.round(((activity.organizations.weekly - activity.organizations.daily) / Math.max(activity.organizations.daily, 1)) * 100)}%</span>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[250px] text-base font-semibold py-4">Category</TableHead>
-                          <TableHead className="text-right text-base font-semibold py-4">Daily</TableHead>
-                          <TableHead className="text-right text-base font-semibold py-4">Weekly</TableHead>
-                          <TableHead className="text-right text-base font-semibold py-4">Monthly</TableHead>
-                          <TableHead className="text-right text-base font-semibold py-4">Annual</TableHead>
-                          <TableHead className="text-right text-base font-semibold py-4">Since Inception</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell className="py-5"><span className="text-base font-medium">Organizations</span></TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.organizations.daily ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.organizations.weekly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.organizations.monthly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.organizations.annual ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.organizations.inception ?? '-'}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="py-5"><span className="text-base font-medium">Assets</span></TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.assets.daily ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.assets.weekly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.assets.monthly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.assets.annual ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.assets.inception ?? '-'}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="py-5"><span className="text-base font-medium">Data Packets</span></TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.dataPackets.daily ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.dataPackets.weekly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.dataPackets.monthly ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.dataPackets.annual ?? '-'}</TableCell>
-                          <TableCell className="text-right font-mono text-base py-5">{activity?.dataPackets.inception ?? '-'}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold">{activity?.organizations.inception ?? 0}</p>
+                    <p className="text-sm text-muted-foreground">Organizations</p>
+                    <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+                      <span>+{activity?.organizations.monthly ?? 0} this month</span>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <Card className="border-border/50 hover:border-primary/30 transition-colors">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-end mb-4">
+                    {activity && activity.assets.weekly > activity.assets.daily && (
+                      <div className="flex items-center gap-1 text-green-400 text-sm">
+                        <ArrowUp className="w-4 h-4" />
+                        <span>{Math.round(((activity.assets.weekly - activity.assets.daily) / Math.max(activity.assets.daily, 1)) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold">{activity?.assets.inception ?? 0}</p>
+                    <p className="text-sm text-muted-foreground">Assets</p>
+                    <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+                      <span>+{activity?.assets.monthly ?? 0} this month</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              <Card className="border-border/50 hover:border-primary/30 transition-colors">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-end mb-4">
+                    {activity && activity.dataPackets.weekly > activity.dataPackets.daily && (
+                      <div className="flex items-center gap-1 text-green-400 text-sm">
+                        <ArrowUp className="w-4 h-4" />
+                        <span>{Math.round(((activity.dataPackets.weekly - activity.dataPackets.daily) / Math.max(activity.dataPackets.daily, 1)) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold">{activity?.dataPackets.inception ?? 0}</p>
+                    <p className="text-sm text-muted-foreground">Data Packets</p>
+                    <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+                      <span>+{activity?.dataPackets.monthly ?? 0} this month</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Growth Trends */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
+              <Card className="border-border/50">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    <CardTitle>Growth Trends</CardTitle>
+                  </div>
+                  <CardDescription>Activity over time periods</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="py-12 text-center text-muted-foreground">Loading...</div>
+                  ) : activity ? (
+                    <div className="space-y-6">
+                      {[
+                        { label: 'Organizations', data: activity.organizations, color: 'bg-blue-500' },
+                        { label: 'Assets', data: activity.assets, color: 'bg-purple-500' },
+                        { label: 'Data Packets', data: activity.dataPackets, color: 'bg-green-500' },
+                      ].map(({ label, data, color }) => {
+                        const max = Math.max(data.daily, data.weekly, data.monthly, data.annual, 1)
+                        return (
+                          <div key={label} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium">{label}</span>
+                              <span className="text-muted-foreground font-mono">{data.monthly}</span>
+                            </div>
+                            <div className="flex gap-2 h-3">
+                              <div className={`${color} rounded-full`} style={{ width: `${(data.daily / max) * 100}%`, opacity: 0.6 }} />
+                              <div className={`${color} rounded-full`} style={{ width: `${(data.weekly / max) * 100}%`, opacity: 0.7 }} />
+                              <div className={`${color} rounded-full`} style={{ width: `${(data.monthly / max) * 100}%`, opacity: 0.8 }} />
+                              <div className={`${color} rounded-full`} style={{ width: `${(data.annual / max) * 100}%`, opacity: 0.9 }} />
+                              <div className={`${color} rounded-full flex-1`} style={{ opacity: 1 }} />
+                            </div>
+                            <div className="flex gap-4 text-xs text-muted-foreground">
+                              <span>D: {data.daily}</span>
+                              <span>W: {data.weekly}</span>
+                              <span>M: {data.monthly}</span>
+                              <span>Y: {data.annual}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Recent Activity */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.5 }}
+            >
+              <Card className="border-border/50">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-primary" />
+                      <CardTitle>Recent Activity</CardTitle>
+                    </div>
+                    <Link href="/audit">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        View All
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                  <CardDescription>Latest platform events and actions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="py-12 text-center text-muted-foreground">Loading...</div>
+                  ) : recentActivity.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentActivity.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Activity className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {item.action}
+                              </Badge>
+                              <span className="text-sm font-medium">{item.entityType}</span>
+                              {item.actor && (
+                                <span className="text-xs text-muted-foreground">by {item.actor.name}</span>
+                              )}
+                              {item.organization && (
+                                <span className="text-xs text-muted-foreground">• {item.organization.name}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatDate(item.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-muted-foreground">No recent activity</div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </main>
       </div>
     )
