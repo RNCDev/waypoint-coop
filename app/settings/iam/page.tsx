@@ -57,13 +57,14 @@ interface Organization {
   imageMime?: string // If set, image is stored in database
 }
 
-// Helper to get image URL - either from database API or external URL
+// Helper to get image URL - only use database-stored images, never external URLs
 function getUserImageUrl(user: User): string | null {
   if (user.pictureMime) {
     // Image stored in database
     return `/api/images/user/${user.id}?t=${Date.now()}`
   }
-  return user.pictureUrl || null
+  // Don't use external URLs (like Dicebear) - show initial letter instead
+  return null
 }
 
 function getOrgImageUrl(org: Organization): string | null {

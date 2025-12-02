@@ -58,12 +58,13 @@ const TYPE_COLORS: Record<string, string> = {
   LEGAL_DOCUMENT: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
-// Get user profile image - check for database-stored image first, then fall back to URL
+// Get user profile image - only use database-stored images, never use external URLs to avoid cartoon placeholder flash
 function getUserProfileImage(userId: string, fallbackUrl?: string, hasDatabaseImage?: boolean): string | null {
   if (hasDatabaseImage) {
     return `/api/images/user/${userId}`
   }
-  return fallbackUrl || null
+  // Don't use fallback URLs (like Dicebear) - show initial letter instead
+  return null
 }
 
 export default function DashboardPage() {
@@ -73,6 +74,7 @@ export default function DashboardPage() {
   const [recentDataPackets, setRecentDataPackets] = useState<RecentDataPacket[]>([])
   const [loading, setLoading] = useState(true)
   const [userHasDatabaseImage, setUserHasDatabaseImage] = useState(false)
+  const [imageCheckComplete, setImageCheckComplete] = useState(false)
 
   // Check if user has a database-stored image
   useEffect(() => {
@@ -85,8 +87,11 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error('Error checking user image:', error)
+      } finally {
+        setImageCheckComplete(true)
       }
     }
+    setImageCheckComplete(false)
     checkUserImage()
   }, [currentPersona.userId])
 
@@ -242,11 +247,14 @@ export default function DashboardPage() {
             transition={{ duration: 0.4 }}
           >
             {(() => {
-              const profileImageUrl = getUserProfileImage(
-                currentPersona.userId,
-                currentPersona.userPictureUrl,
-                userHasDatabaseImage
-              )
+              // Only check for image URL after we've completed the image check to avoid showing cartoon placeholder
+              const profileImageUrl = imageCheckComplete 
+                ? getUserProfileImage(
+                    currentPersona.userId,
+                    currentPersona.userPictureUrl,
+                    userHasDatabaseImage
+                  )
+                : null
               return (
                 <div className="flex items-center gap-5 mb-3">
                   {profileImageUrl ? (
@@ -257,6 +265,7 @@ export default function DashboardPage() {
                         fill
                         className="object-cover"
                         unoptimized
+                        priority
                       />
                     </div>
                   ) : (
@@ -358,11 +367,14 @@ export default function DashboardPage() {
           transition={{ duration: 0.4 }}
         >
           {(() => {
-            const profileImageUrl = getUserProfileImage(
-              currentPersona.userId,
-              currentPersona.userPictureUrl,
-              userHasDatabaseImage
-            )
+            // Only check for image URL after we've completed the image check to avoid showing cartoon placeholder
+            const profileImageUrl = imageCheckComplete 
+              ? getUserProfileImage(
+                  currentPersona.userId,
+                  currentPersona.userPictureUrl,
+                  userHasDatabaseImage
+                )
+              : null
             return (
               <div className="flex items-center gap-5 mb-3">
                 {profileImageUrl ? (
@@ -373,6 +385,7 @@ export default function DashboardPage() {
                       fill
                       className="object-cover"
                       unoptimized
+                      priority
                     />
                   </div>
                 ) : (

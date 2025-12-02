@@ -39,11 +39,8 @@ export async function GET(
       })
     }
 
-    // Fallback: redirect to external URL if set
-    if (user.pictureUrl) {
-      return NextResponse.redirect(user.pictureUrl)
-    }
-
+    // Don't redirect to external URLs (especially not Dicebear cartoon placeholders)
+    // Return 404 so the UI can show the initial letter fallback instead
     return NextResponse.json(
       { error: 'No image found' },
       { status: 404 }

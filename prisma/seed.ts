@@ -159,7 +159,6 @@ async function main() {
       organizationId: waypointCoop.id,
       role: UserRole.ADMIN,
       narrative: 'Platform Operations Lead at Waypoint. Passionate about building infrastructure that makes private markets more accessible and transparent.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Alice&backgroundColor=b6e3f4',
     },
   })
 
@@ -172,7 +171,6 @@ async function main() {
       organizationId: kleinerPerkins.id,
       role: UserRole.ADMIN,
       narrative: 'Partner at Kleiner Perkins focused on enterprise software and fintech investments. Previously led product at Stripe.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Bob&backgroundColor=c0aede',
     },
   })
 
@@ -185,7 +183,6 @@ async function main() {
       organizationId: geniiAdmin.id,
       role: UserRole.ADMIN,
       narrative: 'Senior Fund Administrator managing reporting and investor communications for top-tier VC funds.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Genii&backgroundColor=ffd5dc',
     },
   })
 
@@ -198,7 +195,6 @@ async function main() {
       organizationId: ohioPension.id,
       role: UserRole.ADMIN,
       narrative: 'Private Markets Investment Officer overseeing venture capital and private equity allocations for Ohio public employees.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Charlie&backgroundColor=d1d4f9',
     },
   })
 
@@ -209,9 +205,8 @@ async function main() {
       name: 'Dana Delegate',
       email: 'dana@deloitte.com',
       organizationId: deloitte.id,
-      role: UserRole.MEMBER,
+      role: UserRole.ADMIN,
       narrative: 'Senior Auditor specializing in private equity fund audits and SEC compliance reviews.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Dana&backgroundColor=ffdfbf',
     },
   })
 
@@ -224,7 +219,6 @@ async function main() {
       organizationId: costanoaVentures.id,
       role: UserRole.ADMIN,
       narrative: 'General Partner at Costanoa Ventures with a focus on data infrastructure and developer tools.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah&backgroundColor=c1f0c1',
     },
   })
 
@@ -236,7 +230,6 @@ async function main() {
       organizationId: calpers.id,
       role: UserRole.ADMIN,
       narrative: 'Managing Investment Director leading CalPERS private equity portfolio strategy.',
-      pictureUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Mike&backgroundColor=ffeaa7',
     },
   })
 
