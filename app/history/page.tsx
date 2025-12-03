@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import { Pagination } from '@/components/ui/pagination'
 import { useAuthStore } from '@/store/auth-store'
-import { History, Filter, Eye, Download, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { History, Filter, Eye, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -24,6 +24,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ToastContainer } from '@/components/ui/toast'
 
 interface DataPacketData {
   id: string
@@ -60,6 +68,8 @@ export default function HistoryPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string>('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string }>>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function fetchDataPackets() {
@@ -173,18 +183,48 @@ export default function HistoryPage() {
     }
   }
 
-  const handleDownload = (dataPacket: DataPacketData) => {
-    const dataStr = JSON.stringify(dataPacket.payload, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${dataPacket.id}_${dataPacket.type.toLowerCase()}_v${dataPacket.version}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  const showToast = (message: string) => {
+    const id = Math.random().toString(36).substring(7)
+    setToasts((prev) => [...prev, { id, message }])
   }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(dataPackets.map((dp) => dp.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }
+
+  const handleExport = (format: string) => {
+    const count = selectedIds.size
+    if (count === 0) {
+      showToast('Please select at least one data packet to export')
+      return
+    }
+    const message = count === 1 
+      ? `Exporting to ${format}` 
+      : `Exporting ${count} data packets to ${format}`
+    showToast(message)
+  }
+
+  const isAllSelected = dataPackets.length > 0 && selectedIds.size === dataPackets.length
 
   const handleCopy = async (dataPacket: DataPacketData) => {
     try {
@@ -308,10 +348,43 @@ export default function HistoryPage() {
         >
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-primary" />
-                Data Packet History
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-primary" />
+                  Data Packet History
+                </CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={selectedIds.size === 0}
+                    >
+                      EXPORT {selectedIds.size > 0 && `(${selectedIds.size})`}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExport('Excel')}>
+                      Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('CSV')}>
+                      CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('Carta')}>
+                      Carta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('LP Analyst')}>
+                      LP Analyst
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('eFront')}>
+                      eFront
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('Cobalt')}>
+                      Cobalt
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -329,6 +402,12 @@ export default function HistoryPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px] py-2">
+                            <Checkbox
+                              checked={isAllSelected}
+                              onCheckedChange={handleSelectAll}
+                            />
+                          </TableHead>
                           <TableHead 
                             className="w-[90px] py-2 text-xs cursor-pointer hover:bg-secondary/50"
                             onClick={() => handleSort('type')}
@@ -382,6 +461,13 @@ export default function HistoryPage() {
                           <Fragment key={dataPacket.id}>
                             <TableRow className="cursor-pointer hover:bg-secondary/50">
                               <TableCell className="py-1.5 px-2">
+                                <Checkbox
+                                  checked={selectedIds.has(dataPacket.id)}
+                                  onCheckedChange={(checked) => handleSelectOne(dataPacket.id, checked as boolean)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </TableCell>
+                              <TableCell className="py-1.5 px-2">
                                 <Badge
                                   variant="outline"
                                   className={`text-xs px-1.5 py-0 whitespace-nowrap ${TYPE_COLORS[dataPacket.type] || ''}`}
@@ -420,7 +506,7 @@ export default function HistoryPage() {
                             </TableRow>
                             {expandedRows.has(dataPacket.id) && (
                               <TableRow>
-                                <TableCell colSpan={6} className="bg-secondary/30 p-0">
+                                <TableCell colSpan={7} className="bg-secondary/30 p-0">
                                   <div className="p-6 space-y-4">
                                     {/* Metadata */}
                                     <div className="grid grid-cols-2 gap-4 text-sm border-b border-border/50 pb-4">
@@ -476,15 +562,6 @@ export default function HistoryPage() {
                                                 </>
                                               )}
                                             </Button>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => handleDownload(dataPacket)}
-                                              className="h-8"
-                                            >
-                                              <Download className="w-3.5 h-3.5 mr-1.5" />
-                                              Download
-                                            </Button>
                                           </div>
                                         )}
                                       </div>
@@ -531,6 +608,7 @@ export default function HistoryPage() {
           </Card>
         </motion.div>
       </main>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }
