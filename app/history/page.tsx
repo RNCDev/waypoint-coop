@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import { Pagination } from '@/components/ui/pagination'
 import { useAuthStore } from '@/store/auth-store'
-import { History, Filter, Eye, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { History, Filter, Eye, Copy, Check, ArrowUpDown, ArrowUp, ArrowDown, Map } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -32,6 +32,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ToastContainer } from '@/components/ui/toast'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { RouteMap } from '@/components/shared/route-map'
 
 interface DataPacketData {
   id: string
@@ -39,7 +47,9 @@ interface DataPacketData {
   hash: string
   version: number
   parentId: string | null
+  publisherId: string
   publisherName: string
+  assetId: string
   assetName: string
   subscribers: string[] // Array of subscriber names
   createdAt: string
@@ -70,6 +80,7 @@ export default function HistoryPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [toasts, setToasts] = useState<Array<{ id: string; message: string }>>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [routeMapPacket, setRouteMapPacket] = useState<DataPacketData | null>(null)
 
   useEffect(() => {
     async function fetchDataPackets() {
@@ -119,7 +130,9 @@ export default function HistoryPage() {
             hash: env.hash,
             version: env.version,
             parentId: env.parentId,
+            publisherId: env.publisher?.id || '',
             publisherName: env.publisher?.name || 'Unknown',
+            assetId: env.asset?.id || '',
             assetName: env.asset?.name || 'Unknown',
             subscribers: subscribers,
             createdAt: env.createdAt,
@@ -494,14 +507,26 @@ export default function HistoryPage() {
                                 {formatDate(dataPacket.createdAt)}
                               </TableCell>
                               <TableCell className="py-1.5 px-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => toggleRow(dataPacket.id)}
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => toggleRow(dataPacket.id)}
+                                    title="View payload"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => setRouteMapPacket(dataPacket)}
+                                    title="View route map"
+                                  >
+                                    <Map className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                             {expandedRows.has(dataPacket.id) && (
@@ -608,6 +633,29 @@ export default function HistoryPage() {
           </Card>
         </motion.div>
       </main>
+
+      {/* Route Map Dialog */}
+      <Dialog open={!!routeMapPacket} onOpenChange={(open) => !open && setRouteMapPacket(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Map className="w-5 h-5 text-primary" />
+              Data Packet Route Map
+            </DialogTitle>
+            <DialogDescription>
+              Visualization of the permission topology for {routeMapPacket?.assetName}
+            </DialogDescription>
+          </DialogHeader>
+          {routeMapPacket && (
+            <RouteMap
+              assetId={routeMapPacket.assetId}
+              publisherId={routeMapPacket.publisherId}
+              assetName={routeMapPacket.assetName}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
