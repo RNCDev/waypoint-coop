@@ -49,6 +49,13 @@ export async function GET(
                 type: true,
               },
             },
+            grantor: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+              },
+            },
           },
         },
         grantAssets: {
@@ -56,6 +63,13 @@ export async function GET(
             grant: {
               include: {
                 grantee: {
+                  select: {
+                    id: true,
+                    name: true,
+                    type: true,
+                  },
+                },
+                grantor: {
                   select: {
                     id: true,
                     name: true,
@@ -80,6 +94,7 @@ export async function GET(
     const legacyGrants = asset.accessGrants.map((g) => ({
       id: g.id,
       grantee: g.grantee,
+      grantor: g.grantor,
       canPublish: g.canPublish,
       canViewData: g.canViewData,
       canManageSubscriptions: g.canManageSubscriptions,
@@ -91,6 +106,7 @@ export async function GET(
       .map((ga) => ({
         id: ga.grant.id,
         grantee: ga.grant.grantee,
+        grantor: ga.grant.grantor,
         canPublish: ga.grant.canPublish,
         canViewData: ga.grant.canViewData,
         canManageSubscriptions: ga.grant.canManageSubscriptions,
@@ -101,6 +117,7 @@ export async function GET(
 
     // Deduplicate grants by grantee id, merging capabilities with OR logic
     // If a grantee has multiple grants, combine their capabilities
+    // Preserve the first grantor found (primary delegator)
     const uniqueGrants = allGrants.reduce<typeof allGrants>((acc, grant) => {
       const existing = acc.find((g) => g.grantee.id === grant.grantee.id)
       if (existing) {
@@ -109,6 +126,7 @@ export async function GET(
         existing.canViewData = existing.canViewData || grant.canViewData
         existing.canManageSubscriptions = existing.canManageSubscriptions || grant.canManageSubscriptions
         existing.canApproveDelegations = existing.canApproveDelegations || grant.canApproveDelegations
+        // Keep the first grantor found (don't overwrite)
       } else {
         // First grant for this grantee - add it (with a copy to avoid mutation issues)
         acc.push({ ...grant })

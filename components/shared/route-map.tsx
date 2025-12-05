@@ -40,6 +40,11 @@ interface RouteMapData {
       name: string
       type: string | null
     }
+    grantor: {
+      id: string
+      name: string
+      type: string | null
+    }
     canPublish: boolean
     canViewData: boolean
     canManageSubscriptions: boolean
@@ -85,7 +90,7 @@ function AssetNode({ data }: { data: { label: string; type: string } }) {
   )
 }
 
-function OrgNode({ data }: { data: { label: string; type: string | null; role: string; isPublisher?: boolean } }) {
+function OrgNode({ data }: { data: { label: string; type: string | null; role: string; isPublisher?: boolean; delegatorName?: string } }) {
   const colors = TYPE_COLORS[data.type || ''] || DEFAULT_COLORS
   const Icon = data.role === 'manager' ? Building2 : data.role === 'subscriber' ? Users : Shield
 
@@ -99,6 +104,11 @@ function OrgNode({ data }: { data: { label: string; type: string | null; role: s
         <span className={`text-xs uppercase ${colors.text}`}>{data.type || 'ORG'}</span>
       </div>
       <div className="font-semibold text-sm text-foreground">{data.label}</div>
+      {data.delegatorName && (
+        <div className="mt-1 text-[9px] text-muted-foreground italic">
+          Delegated by: {data.delegatorName}
+        </div>
+      )}
       {data.isPublisher && (
         <div className="absolute -top-2 -right-2">
           <Badge variant="outline" className="bg-primary/20 text-primary border-primary text-[10px] px-1.5 py-0">
@@ -200,6 +210,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
             type: publisherGrant.grantee.type,
             role: 'delegate',
             isPublisher: true,
+            delegatorName: publisherGrant.grantor.name,
           },
         })
         // Publisher branches from the asset (data packet-centric)
@@ -214,18 +225,6 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
           markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' },
           label: 'Delegated Publisher',
           labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 },
-          labelBgStyle: { fill: 'hsl(var(--background))' },
-        })
-        // Also show delegation relationship from manager (secondary visual)
-        edges.push({
-          id: 'manager-publisher',
-          source: 'manager',
-          target: 'publisher',
-          animated: false,
-          style: { stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '3,3', opacity: 0.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' },
-          label: 'Delegates',
-          labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 9, opacity: 0.7 },
           labelBgStyle: { fill: 'hsl(var(--background))' },
         })
       }
@@ -285,6 +284,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
           label: grant.grantee.name,
           type: grant.grantee.type,
           role: 'grantee',
+          delegatorName: grant.grantor.name,
         },
       })
       edges.push({
