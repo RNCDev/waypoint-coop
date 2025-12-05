@@ -99,10 +99,19 @@ export async function GET(
 
     const allGrants = [...legacyGrants, ...multiAssetGrants]
 
-    // Deduplicate grants by grantee id
+    // Deduplicate grants by grantee id, merging capabilities with OR logic
+    // If a grantee has multiple grants, combine their capabilities
     const uniqueGrants = allGrants.reduce<typeof allGrants>((acc, grant) => {
-      if (!acc.find((g) => g.grantee.id === grant.grantee.id)) {
-        acc.push(grant)
+      const existing = acc.find((g) => g.grantee.id === grant.grantee.id)
+      if (existing) {
+        // Merge capabilities - if any grant provides a capability, the grantee has it
+        existing.canPublish = existing.canPublish || grant.canPublish
+        existing.canViewData = existing.canViewData || grant.canViewData
+        existing.canManageSubscriptions = existing.canManageSubscriptions || grant.canManageSubscriptions
+        existing.canApproveDelegations = existing.canApproveDelegations || grant.canApproveDelegations
+      } else {
+        // First grant for this grantee - add it (with a copy to avoid mutation issues)
+        acc.push({ ...grant })
       }
       return acc
     }, [])
