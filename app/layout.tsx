@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Footer } from '@/components/shared/footer'
-import { DemoBanner } from '@/components/shared/demo-banner'
 import { DemoModeProvider } from '@/components/shared/demo-mode-provider'
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -43,7 +42,6 @@ export default function RootLayout({
         className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} font-sans font-light antialiased min-h-screen flex flex-col`}
       >
         <DemoModeProvider>
-          <DemoBanner />
           {children}
           <Footer />
         </DemoModeProvider>
