@@ -186,6 +186,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
     })
 
     // If publisher is different from manager, add separate publisher node
+    // Publisher branches from the asset (data packet-centric view)
     if (!isManagerPublisher) {
       // Find if publisher is in grants
       const publisherGrant = routeData.grants.find((g) => g.grantee.id === publisherId)
@@ -193,7 +194,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
         nodes.push({
           id: 'publisher',
           type: 'org',
-          position: { x: 450, y: 100 },
+          position: { x: 450, y: 200 }, // Same Y as asset, to the right
           data: {
             label: publisherGrant.grantee.name,
             type: publisherGrant.grantee.type,
@@ -201,27 +202,30 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
             isPublisher: true,
           },
         })
+        // Publisher branches from the asset (data packet-centric)
+        edges.push({
+          id: 'asset-publisher',
+          source: 'asset',
+          sourceHandle: 'right',
+          target: 'publisher',
+          targetHandle: 'left',
+          animated: true,
+          style: { stroke: 'hsl(var(--primary))', strokeDasharray: '5,5' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' },
+          label: 'Delegated Publisher',
+          labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 },
+          labelBgStyle: { fill: 'hsl(var(--background))' },
+        })
+        // Also show delegation relationship from manager (secondary visual)
         edges.push({
           id: 'manager-publisher',
           source: 'manager',
           target: 'publisher',
-          animated: true,
-          style: { stroke: 'hsl(var(--primary))', strokeDasharray: '5,5' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' },
+          animated: false,
+          style: { stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '3,3', opacity: 0.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' },
           label: 'Delegates',
-          labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 },
-          labelBgStyle: { fill: 'hsl(var(--background))' },
-        })
-        edges.push({
-          id: 'publisher-asset',
-          source: 'publisher',
-          target: 'asset',
-          targetHandle: 'right',
-          animated: true,
-          style: { stroke: 'hsl(var(--primary))' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' },
-          label: 'Publishes to',
-          labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 },
+          labelStyle: { fill: 'hsl(var(--muted-foreground))', fontSize: 9, opacity: 0.7 },
           labelBgStyle: { fill: 'hsl(var(--background))' },
         })
       }
@@ -258,7 +262,9 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
     })
 
     // Grant recipients on the right (excluding publisher if already shown)
-    const grantStartY = 280
+    // Position them below the publisher if publisher exists, otherwise start from top
+    const hasPublisher = !isManagerPublisher && routeData.grants.some((g) => g.grantee.id === publisherId)
+    const grantStartY = hasPublisher ? 320 : 280 // Start below publisher if it exists
     const grantX = 500
     const grantSpacing = 100
 
