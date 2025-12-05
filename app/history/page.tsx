@@ -651,6 +651,7 @@ export default function HistoryPage() {
               assetId={routeMapPacket.assetId}
               publisherId={routeMapPacket.publisherId}
               assetName={routeMapPacket.assetName}
+              viewerOrgId={currentPersona.organizationId}
             />
           )}
         </DialogContent>

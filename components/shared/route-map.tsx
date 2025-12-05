@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   ReactFlow,
   Node,
@@ -51,20 +51,22 @@ interface RouteMapProps {
   assetId: string
   publisherId: string
   assetName: string
+  viewerOrgId: string // The organization viewing the route map (for privacy filtering)
 }
 
 // Color mapping for organization types
-const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  GP: { bg: 'bg-blue-500/20', border: 'border-blue-500', text: 'text-blue-400' },
-  LP: { bg: 'bg-green-500/20', border: 'border-green-500', text: 'text-green-400' },
-  FUND_ADMIN: { bg: 'bg-purple-500/20', border: 'border-purple-500', text: 'text-purple-400' },
-  AUDITOR: { bg: 'bg-yellow-500/20', border: 'border-yellow-500', text: 'text-yellow-400' },
-  CONSULTANT: { bg: 'bg-orange-500/20', border: 'border-orange-500', text: 'text-orange-400' },
-  TAX_ADVISOR: { bg: 'bg-pink-500/20', border: 'border-pink-500', text: 'text-pink-400' },
-  PLATFORM_ADMIN: { bg: 'bg-red-500/20', border: 'border-red-500', text: 'text-red-400' },
+// Note: All class names must be static for Tailwind JIT to compile them
+const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; handle: string }> = {
+  GP: { bg: 'bg-blue-500/20', border: 'border-blue-500', text: 'text-blue-400', handle: '!bg-blue-500' },
+  LP: { bg: 'bg-green-500/20', border: 'border-green-500', text: 'text-green-400', handle: '!bg-green-500' },
+  FUND_ADMIN: { bg: 'bg-purple-500/20', border: 'border-purple-500', text: 'text-purple-400', handle: '!bg-purple-500' },
+  AUDITOR: { bg: 'bg-yellow-500/20', border: 'border-yellow-500', text: 'text-yellow-400', handle: '!bg-yellow-500' },
+  CONSULTANT: { bg: 'bg-orange-500/20', border: 'border-orange-500', text: 'text-orange-400', handle: '!bg-orange-500' },
+  TAX_ADVISOR: { bg: 'bg-pink-500/20', border: 'border-pink-500', text: 'text-pink-400', handle: '!bg-pink-500' },
+  PLATFORM_ADMIN: { bg: 'bg-red-500/20', border: 'border-red-500', text: 'text-red-400', handle: '!bg-red-500' },
 }
 
-const DEFAULT_COLORS = { bg: 'bg-gray-500/20', border: 'border-gray-500', text: 'text-gray-400' }
+const DEFAULT_COLORS = { bg: 'bg-gray-500/20', border: 'border-gray-500', text: 'text-gray-400', handle: '!bg-gray-500' }
 
 // Custom node components
 function AssetNode({ data }: { data: { label: string; type: string } }) {
@@ -89,9 +91,9 @@ function OrgNode({ data }: { data: { label: string; type: string | null; role: s
 
   return (
     <div className={`px-4 py-3 rounded-lg ${colors.bg} border-2 ${colors.border} min-w-[140px] text-center relative ${data.isPublisher ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}>
-      <Handle type="target" position={Position.Top} className={`!${colors.border.replace('border-', 'bg-')}`} />
-      <Handle type="target" position={Position.Left} className={`!${colors.border.replace('border-', 'bg-')}`} id="left" />
-      <Handle type="target" position={Position.Right} className={`!${colors.border.replace('border-', 'bg-')}`} id="right" />
+      <Handle type="target" position={Position.Top} className={colors.handle} />
+      <Handle type="target" position={Position.Left} className={colors.handle} id="left" />
+      <Handle type="target" position={Position.Right} className={colors.handle} id="right" />
       <div className="flex items-center justify-center gap-2 mb-1">
         <Icon className={`w-4 h-4 ${colors.text}`} />
         <span className={`text-xs uppercase ${colors.text}`}>{data.type || 'ORG'}</span>
@@ -105,7 +107,7 @@ function OrgNode({ data }: { data: { label: string; type: string | null; role: s
           </Badge>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className={`!${colors.border.replace('border-', 'bg-')}`} />
+      <Handle type="source" position={Position.Bottom} className={colors.handle} />
     </div>
   )
 }
@@ -115,7 +117,7 @@ const nodeTypes = {
   org: OrgNode,
 }
 
-export function RouteMap({ assetId, publisherId, assetName }: RouteMapProps) {
+export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: RouteMapProps) {
   const [routeData, setRouteData] = useState<RouteMapData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -123,7 +125,8 @@ export function RouteMap({ assetId, publisherId, assetName }: RouteMapProps) {
   useEffect(() => {
     async function fetchRouteData() {
       try {
-        const response = await fetch(`/api/assets/${assetId}/route-map`)
+        // Pass viewerOrgId for privacy-aware filtering
+        const response = await fetch(`/api/assets/${assetId}/route-map?viewerOrgId=${viewerOrgId}`)
         if (!response.ok) {
           throw new Error('Failed to fetch route data')
         }
@@ -137,7 +140,7 @@ export function RouteMap({ assetId, publisherId, assetName }: RouteMapProps) {
     }
 
     fetchRouteData()
-  }, [assetId])
+  }, [assetId, viewerOrgId])
 
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!routeData) return { initialNodes: [], initialEdges: [] }
