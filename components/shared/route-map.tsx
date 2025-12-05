@@ -123,6 +123,10 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Reset state when props change to show loading indicator
+    setLoading(true)
+    setError(null)
+
     async function fetchRouteData() {
       try {
         // Pass viewerOrgId for privacy-aware filtering
