@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 // GET /api/assets/[id]/route-map - Get asset permission topology for visualization
 // Query params:
 //   - viewerOrgId: The organization viewing the route map (for privacy filtering)
+//   - publisherId: The organization that published the data packet (optional, for showing publisher to LPs)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +13,7 @@ export async function GET(
     const { id } = await params
     const { searchParams } = new URL(request.url)
     const viewerOrgId = searchParams.get('viewerOrgId')
+    const publisherId = searchParams.get('publisherId')
 
     const asset = await prisma.asset.findUnique({
       where: { id },
@@ -151,8 +153,14 @@ export async function GET(
       if (isSubscriber) {
         // Subscribers only see themselves, not other subscribers
         filteredSubscribers = filteredSubscribers.filter((s) => s.id === viewerOrgId)
-        // Subscribers don't see grants (other delegates)
-        filteredGrants = []
+        // Subscribers don't see grants (other delegates), EXCEPT the publisher grant
+        // This allows LPs to see who published the data packet (essential for data provenance)
+        if (publisherId) {
+          const publisherGrant = uniqueGrants.find((g) => g.grantee.id === publisherId)
+          filteredGrants = publisherGrant ? [publisherGrant] : []
+        } else {
+          filteredGrants = []
+        }
       } else if (isGrantee) {
         // Grantees don't see subscribers (privacy)
         filteredSubscribers = []

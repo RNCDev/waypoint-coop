@@ -139,8 +139,8 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
 
     async function fetchRouteData() {
       try {
-        // Pass viewerOrgId for privacy-aware filtering
-        const response = await fetch(`/api/assets/${assetId}/route-map?viewerOrgId=${viewerOrgId}`)
+        // Pass viewerOrgId for privacy-aware filtering and publisherId to show publisher to LPs
+        const response = await fetch(`/api/assets/${assetId}/route-map?viewerOrgId=${viewerOrgId}&publisherId=${publisherId}`)
         if (!response.ok) {
           throw new Error('Failed to fetch route data')
         }
@@ -154,7 +154,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
     }
 
     fetchRouteData()
-  }, [assetId, viewerOrgId])
+  }, [assetId, viewerOrgId, publisherId])
 
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!routeData) return { initialNodes: [], initialEdges: [] }
@@ -209,7 +209,7 @@ export function RouteMap({ assetId, publisherId, assetName, viewerOrgId }: Route
             label: publisherGrant.grantee.name,
             type: publisherGrant.grantee.type,
             role: 'delegate',
-            isPublisher: true,
+            isPublisher: false, // Don't show badge - edge label "Delegated Publisher" already indicates this
             delegatorName: publisherGrant.grantor.name,
           },
         })
