@@ -54,9 +54,9 @@ datasource db {
 
 ---
 
-## Data Model (ReBAC)
+## Data Model (ReBAC with Temporal Ownership)
 
-The system implements **Relationship-Based Access Control** where permissions are derived from relationships between entities, not static roles.
+The system implements **Relationship-Based Access Control** where permissions are derived from relationships between entities, not static roles. The model includes temporal tracking to handle ownership transfers and automatic access revocation.
 
 ### Core Entities
 
@@ -64,6 +64,7 @@ The system implements **Relationship-Based Access Control** where permissions ar
 ┌─────────────────────────────────────────────────────────────────┐
 │                         ORGANIZATIONS                           │
 │  (GPs, LPs, Fund Admins, Auditors, Consultants, Tax Advisors)   │
+│  Type: String (extensible - no hardcoded enums)                 │
 └─────────────────────────────────────────────────────────────────┘
          │                    │                      │
          │ manages            │ subscribes           │ delegated
@@ -71,30 +72,66 @@ The system implements **Relationship-Based Access Control** where permissions ar
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
 │     ASSETS      │  │  SUBSCRIPTIONS  │  │    ACCESS GRANTS    │
 │  (Funds, SPVs,  │  │  (LP→Asset)     │  │  (Grantor→Grantee)  │
-│   PortCos)      │  │                 │  │                     │
+│   PortCos)      │  │  + validFrom    │  │  + validFrom        │
+│  Type: String   │  │  + validTo      │  │  + expiresAt        │
 └─────────────────┘  └─────────────────┘  └─────────────────────┘
          │                                           │
          │ contains                                  │ enables
          ▼                                           ▼
 ┌─────────────────┐                      ┌─────────────────────┐
-│    ENVELOPES    │                      │    CAPABILITIES     │
-│  (Data Packets) │                      │  (Publish, View,    │
+│  DATA PACKETS   │                      │    CAPABILITIES     │
+│  (Envelopes)    │                      │  (Publish, View,    │
 │                 │                      │   Manage, Approve)  │
 └─────────────────┘                      └─────────────────────┘
 ```
+
+### Temporal Chain of Trust
+
+The system implements automatic access revocation through temporal subscription tracking:
+
+1. **Subscriptions track ownership periods**:
+   - `validFrom`: When subscription became active (default: now())
+   - `validTo`: When subscription ended (null = currently active)
+   - Allows same LP to hold same asset at different times (no unique constraint)
+
+2. **Permission checks validate grant chains**:
+   - When checking a grant, verify grantor's authority is still valid
+   - If grantor is Manager: pass (always has authority)
+   - If grantor is LP: check subscription has `validTo = null` OR `validTo > now()`
+   - If chain breaks: deny access even if grant status is ACTIVE
+
+3. **Benefits**:
+   - **Auto-revocation**: No manual cleanup when LP sells position
+   - **Audit preservation**: Grants remain ACTIVE for history, but fail permission checks
+   - **Resilience**: Ownership can transfer without rewriting permission records
+
+### Extensible Type System
+
+- **Organization.type**: `String?` (previously enum) - supports 'GP', 'LP', 'CRYPTO_FUND', etc.
+- **Asset.type**: `String` (previously enum) - supports 'FUND', 'SPV', 'PORTFOLIO_COMPANY', etc.
+- **Governance enums preserved**: GrantStatus, SubscriptionStatus remain enums (finite states)
 
 ### Permission Evaluation
 
 Permissions are evaluated at runtime by traversing the relationship graph:
 
 1. **Is Org the Asset Manager?** → Full authority (root access)
-2. **Is Org a Subscriber (LP)?** → Implicit view rights for subscribed assets
-3. **Does Org have an Active AccessGrant?** → Rights defined by grant capabilities
+2. **Is Org a Subscriber (LP)?** → Check temporal validity, then grant implicit view rights
+3. **Does Org have an Active AccessGrant?** → Validate grant chain, then check capabilities
 
 ```typescript
-// Permission check example
-const canPublish = await canPerformAction(orgId, 'publish', assetId)
-// Returns: { allowed: boolean, reason: string, via: 'manager' | 'subscription' | 'grant' }
+// Permission check with chain validation
+const result = await canPerformAction(orgId, 'view', assetId)
+// Returns: { 
+//   allowed: boolean, 
+//   reason: string, 
+//   via: 'manager' | 'subscription' | 'grant'
+// }
+
+// If via 'grant', internally validates:
+// 1. Grant status is ACTIVE
+// 2. Grant not expired
+// 3. Grantor still has authority (temporal subscription check)
 ```
 
 ---
@@ -167,15 +204,16 @@ All API routes follow RESTful conventions:
 | `/api/organizations/[id]` | GET, PUT, DELETE | Single organization |
 | `/api/assets` | GET, POST | Asset CRUD |
 | `/api/assets/[id]` | GET, PUT, DELETE | Single asset |
+| `/api/assets/[id]/route-map` | GET | Permission topology visualization |
 | `/api/subscriptions` | GET, POST | Subscription management |
-| `/api/subscriptions/[id]` | GET, PUT, DELETE | Single subscription |
+| `/api/subscriptions/[id]` | GET, PATCH, DELETE | Single subscription (PATCH for transfers) |
 | `/api/access-grants` | GET, POST | Access Grant CRUD |
 | `/api/access-grants/[id]` | GET, PUT, DELETE | Single grant |
 | `/api/access-grants/[id]/approve` | POST | GP approval workflow |
-| `/api/envelopes` | GET, POST | Envelope publishing |
-| `/api/envelopes/[id]` | GET | Single envelope |
-| `/api/envelopes/[id]/correct` | POST | Correction workflow |
-| `/api/envelopes/[id]/read` | POST | Mark as read |
+| `/api/data-packets` | GET, POST | Data packet publishing |
+| `/api/data-packets/[id]` | GET | Single data packet |
+| `/api/data-packets/[id]/correct` | POST | Correction workflow |
+| `/api/data-packets/[id]/read` | POST | Mark as read |
 | `/api/audit` | GET | Audit log retrieval |
 | `/api/users` | GET, POST | User management |
 
@@ -187,6 +225,8 @@ Most list endpoints support filtering:
 - `?grantorId=xxx` - Filter by grantor
 - `?status=ACTIVE` - Filter by status
 - `?type=CAPITAL_CALL` - Filter by type
+- `?temporal=current` - Filter subscriptions by temporal state (current/historical/all)
+- `?publisherId=xxx` - Filter by publisher (route-map visibility)
 
 ---
 
@@ -335,15 +375,35 @@ Opens at http://localhost:5555
 
 ## Demo Personas
 
-The application includes five demo personas for testing different user flows:
+The application includes demo personas for testing different user flows and temporal scenarios:
 
 | Persona | Organization | Type | Access |
 |---------|--------------|------|--------|
 | Alice Admin | Waypoint Cooperative | PLATFORM_ADMIN | Registry, Audit |
 | Bob GP | Kleiner Perkins | GP | Full management |
 | Genii Publisher | Genii Admin Services | FUND_ADMIN | Publishing |
-| Charlie LP | State of Ohio Pension | LP | Feeds, Ledger |
+| Charlie LP | State of Ohio Pension | LP | Feeds, History |
 | Dana Delegate | Deloitte | AUDITOR | Delegated view |
+| Sarah Michigan | Michigan State Pension | LP | Position transfer recipient |
+
+### Temporal Chain of Trust Demonstrations
+
+**Scenario 1: LP Position Transfer (CalPERS → Michigan Pension)**
+- CalPERS subscription to KP Fund XXI: CLOSED with validTo 3 months ago
+- Michigan Pension subscription: ACTIVE with validFrom 3 months ago
+- CalPERS consultant (Cambridge): Grant ACTIVE but access DENIED (broken chain)
+- Michigan consultant (Cambridge): Grant ACTIVE and access ALLOWED (valid chain)
+
+**Scenario 2: Publisher Administrative Change**
+- KP Fund XX switched from Genii Admin to SS&C Admin 1 year ago
+- Old admin grant: EXPIRED with expiresAt in past
+- New admin grant: ACTIVE from transition date
+- Demonstrates seamless operational transitions
+
+**Scenario 3: Historical Ownership**
+- Ohio Pension's historical position in KP Fund XX (2020-2023)
+- Subscription closed with validTo = 2023-12-31
+- Full audit trail preserved
 
 Switch personas using the dropdown in the navigation bar.
 
