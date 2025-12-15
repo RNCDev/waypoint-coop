@@ -28,6 +28,10 @@ export async function GET(
         subscriptions: {
           where: {
             status: 'ACTIVE',
+            OR: [
+              { validTo: null },
+              { validTo: { gt: new Date() } },
+            ],
           },
           include: {
             subscriber: {
