@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { OrgType } from '@prisma/client'
 
 // GET /api/organizations - List all organizations
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') as OrgType | null
+    const type = searchParams.get('type') // Now a string instead of enum
     const startDate = searchParams.get('startDate')
     const countOnly = searchParams.get('countOnly') === 'true'
 

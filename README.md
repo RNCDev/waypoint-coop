@@ -8,12 +8,25 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 
 ## Features
 
+- **Temporal Chain of Trust**: Automatic access revocation when LPs transfer ownership
+  - Subscriptions track `validFrom`/`validTo` for temporal ownership history
+  - Grants remain ACTIVE but fail permission checks when grantor subscription ends
+  - Full audit trail of historical ownership and delegation chains
 - **Contextual Organization Roles**: Roles are derived from relationships, not fixed per org
   - Same org can be Asset Manager for one fund and Limited Partner in another
   - Example: Franklin Park manages FP Venture XV but invests in Costanoa Fund VI
+- **Extensible Organization & Asset Types**: String-based types support future participants
+  - No hardcoded enums - easily add new types like 'CRYPTO_FUND', 'FAMILY_OFFICE'
+  - Future-proof for evolving private markets ecosystem
+- **Route Map Visualization**: Interactive permission topology using ReactFlow
+  - Shows asset managers, subscribers, and delegates with their capabilities
+  - Privacy-aware filtering based on viewer's role
+  - Demonstrates valid vs broken grant chains
 - **Composer Terminal (GP/Fund Admin)**: Compose and publish data packets with Smart Paste CSV/TSV conversion
 - **History View**: View chronological feed of data packets with filtering, sorting, and version tracking
 - **Subscription Management**: Asset Managers and Delegates manage which LPs can access which assets
+  - Temporal filtering: view current vs historical subscriptions
+  - Transfer endpoint for closing subscriptions (LP position transfers)
 - **Unified Access Grants**: Single model for delegated capabilities:
   - **GP Grants**: Asset Managers delegate publishing and management to Fund Admins
   - **LP Grants**: Limited Partners delegate data access to service providers (auditors, analytics)
@@ -107,6 +120,26 @@ Switch between demo personas using the dropdown in the navigation:
 | **Genii Publisher** | Genii Admin Services | Fund Admin | Publishing, subscriptions |
 | **Charlie LP** | State of Ohio Pension | Limited Partner | History, grants |
 | **Dana Delegate** | Deloitte | Auditor | Delegated view access |
+| **Sarah Michigan** | Michigan State Pension | Limited Partner (NEW) | Received CalPERS position transfer |
+
+### Temporal Chain of Trust Demo Scenarios
+
+The seed data includes examples demonstrating automatic access revocation:
+
+1. **LP Position Transfer (3 months ago)**
+   - CalPERS transferred their KP Fund XXI position to Michigan State Pension
+   - CalPERS consultant (Cambridge Associates) automatically lost access
+   - Michigan consultant has valid access via new subscription
+   - Both grants remain ACTIVE in database for audit trail
+
+2. **Publisher Administrative Change (1 year ago)**
+   - KP Fund XX switched from Genii Admin to SS&C Admin
+   - Old admin's grant expired, new admin's grant active
+   - Demonstrates seamless operational transitions
+
+3. **Historical Subscriptions**
+   - Ohio Pension's historical position in KP Fund XX (2020-2023)
+   - Full ownership history preserved with validFrom/validTo timestamps
 
 ## Onboarding Demo
 
@@ -260,9 +293,30 @@ npx prisma migrate dev --name <migration-name>
 See the `reference/` folder for detailed documentation:
 
 - `architecture_and_deployment.md` - System architecture and deployment guide
-- `0_design_guide.md` - Design system and UI patterns
-- `2_permission_schema.md` - ReBAC permission model
-- `Waypoint_Narrative.md` - Stakeholder dynamics and data flows
+- `permission_schema.md` - ReBAC permission model with temporal ownership
+- `design_guide.md` - Design system and UI patterns
+- `pe_relationships.md` - Private equity stakeholder dynamics
+- `newReBAC.md` - Temporal Chain of Trust specification
+- `Waypoint_20251016.pdf` - Comprehensive system overview
+
+## Key Architectural Features
+
+### Temporal Chain of Trust
+
+The system implements a resilient ReBAC architecture where:
+
+- **Subscriptions are temporal**: Track `validFrom` and `validTo` for ownership history
+- **Grants validate chains**: Permission checks verify grantor still has authority
+- **Automatic revocation**: When an LP transfers their position, their delegates lose access automatically
+- **Audit preservation**: Grants remain ACTIVE in database but fail permission checks when chain breaks
+
+Example: If LP X sells to LP Y today, LP X's consultants lose access immediately because the temporal subscription ends, breaking the chain of trust.
+
+### Extensible Type System
+
+- **String-based types**: No hardcoded enums for OrgType or AssetType
+- **Future-proof**: Add new participant types ('CRYPTO_FUND', 'SOVEREIGN_WEALTH') without code changes
+- **Governance enums preserved**: Status fields (GrantStatus, SubscriptionStatus) remain enums as they represent finite states
 
 ## Phase 1 Scope
 

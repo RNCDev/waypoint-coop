@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { AssetType } from '@prisma/client'
 import { getAccessibleAssets } from '@/lib/permissions'
 
 // GET /api/assets - List all assets
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const managerId = searchParams.get('managerId')
     const orgId = searchParams.get('orgId') // For filtering by organization permissions
-    const type = searchParams.get('type') as AssetType | null
+    const type = searchParams.get('type') // Now a string instead of enum
     const startDate = searchParams.get('startDate')
     const countOnly = searchParams.get('countOnly') === 'true'
 

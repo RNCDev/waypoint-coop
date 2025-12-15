@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const managerId = searchParams.get('managerId') // For GP to see subscriptions to their assets
     const startDate = searchParams.get('startDate')
     const status = searchParams.get('status')
+    const temporal = searchParams.get('temporal') || 'current' // 'current' | 'historical' | 'all'
     const countOnly = searchParams.get('countOnly') === 'true'
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -24,6 +25,19 @@ export async function GET(request: NextRequest) {
     if (startDate) {
       whereClause.createdAt = { gte: new Date(startDate) }
     }
+
+    // Temporal filtering for ownership history
+    if (temporal === 'current') {
+      // Only active subscriptions (validTo is null or in future)
+      whereClause.OR = [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ]
+    } else if (temporal === 'historical') {
+      // Only historical subscriptions (validTo is in the past)
+      whereClause.validTo = { lte: new Date() }
+    }
+    // 'all' means no temporal filtering
 
     if (countOnly) {
       const count = await prisma.subscription.count({
@@ -72,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { assetId, subscriberId, status, accessLevel, commitment } = body
+    const { assetId, subscriberId, status, accessLevel, commitment, validFrom } = body
 
     if (!assetId || !subscriberId) {
       return NextResponse.json(
@@ -81,19 +95,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if subscription already exists
-    const existing = await prisma.subscription.findUnique({
+    // Note: No unique constraint check - allows historical records
+    // Check for overlapping active subscriptions instead
+    const overlapping = await prisma.subscription.findFirst({
       where: {
-        assetId_subscriberId: {
-          assetId,
-          subscriberId,
-        },
+        assetId,
+        subscriberId,
+        OR: [
+          { validTo: null },
+          { validTo: { gt: new Date() } },
+        ],
       },
     })
 
-    if (existing) {
+    if (overlapping) {
       return NextResponse.json(
-        { error: 'Subscription already exists' },
+        { error: 'An active subscription already exists for this asset and subscriber' },
         { status: 400 }
       )
     }
@@ -105,6 +122,7 @@ export async function POST(request: NextRequest) {
         status: status || 'ACTIVE',
         accessLevel: accessLevel || 'FULL',
         commitment,
+        validFrom: validFrom ? new Date(validFrom) : undefined, // defaults to now() in schema
       },
       include: {
         asset: true,

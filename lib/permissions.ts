@@ -71,12 +71,17 @@ export async function canPerformAction(
   }
 
   // 2. Check if org has an active subscription (implicit view rights)
+  // Chain of Trust: Subscription must be temporally valid (validTo is null or future)
   if (action === 'view') {
     const subscription = await prisma.subscription.findFirst({
       where: {
         assetId,
         subscriberId: orgId,
         status: 'ACTIVE',
+        OR: [
+          { validTo: null },
+          { validTo: { gt: new Date() } },
+        ],
       },
     })
 
@@ -90,6 +95,7 @@ export async function canPerformAction(
   }
 
   // 3. Check for active Access Grant with required capability
+  // Chain of Trust: Validate grantor's authority to ensure delegation is still valid
   const grant = await prisma.accessGrant.findFirst({
     where: {
       granteeId: orgId,
@@ -100,11 +106,23 @@ export async function canPerformAction(
         { expiresAt: { gt: new Date() } },
       ],
     },
+    include: {
+      grantor: true,
+    },
   })
 
   if (grant) {
     const hasCapability = checkGrantCapability(grant, action)
     if (hasCapability) {
+      // Chain of Trust: Verify grantor still has authority
+      const grantorValid = await validateGrantorChain(grant.grantorId, assetId)
+      if (!grantorValid) {
+        return {
+          allowed: false,
+          reason: 'Grant chain broken: grantor no longer has authority (subscription ended or transferred)',
+        }
+      }
+      
       return {
         allowed: true,
         reason: `Access granted via delegation`,
@@ -125,11 +143,23 @@ export async function canPerformAction(
         { expiresAt: { gt: new Date() } },
       ],
     },
+    include: {
+      grantor: true,
+    },
   })
 
   if (globalGrant) {
     const hasCapability = checkGrantCapability(globalGrant, action)
     if (hasCapability) {
+      // Chain of Trust: Verify grantor still has authority
+      const grantorValid = await validateGrantorChain(globalGrant.grantorId, assetId)
+      if (!grantorValid) {
+        return {
+          allowed: false,
+          reason: 'Grant chain broken: grantor no longer has authority (subscription ended or transferred)',
+        }
+      }
+      
       return {
         allowed: true,
         reason: 'Access granted via global delegation',
@@ -143,6 +173,39 @@ export async function canPerformAction(
     allowed: false,
     reason: 'No permission found for this action',
   }
+}
+
+/**
+ * Validate that a grantor still has authority for an asset
+ * Chain of Trust: Manager always valid, LP must have current subscription
+ */
+async function validateGrantorChain(
+  grantorId: string,
+  assetId: string
+): Promise<boolean> {
+  // Check if grantor is the asset manager (always valid)
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    select: { managerId: true },
+  })
+
+  if (!asset) return false
+  if (asset.managerId === grantorId) return true
+
+  // Check if grantor is an LP with a valid (temporal) subscription
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      assetId,
+      subscriberId: grantorId,
+      status: 'ACTIVE',
+      OR: [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ],
+    },
+  })
+
+  return !!subscription
 }
 
 /**
@@ -202,6 +265,10 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
     where: {
       subscriberId: orgId,
       status: 'ACTIVE',
+      OR: [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ],
     },
     select: { assetId: true },
   })
@@ -310,6 +377,10 @@ export async function getContextualRole(
       assetId,
       subscriberId: orgId,
       status: 'ACTIVE',
+      OR: [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ],
     },
   })
 
@@ -371,6 +442,10 @@ export async function getGrantorCapabilities(
       assetId,
       subscriberId: grantorId,
       status: 'ACTIVE',
+      OR: [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ],
     },
   })
 
@@ -508,6 +583,10 @@ export async function getDelegatableAssets(orgId: string): Promise<{
     where: {
       subscriberId: orgId,
       status: 'ACTIVE',
+      OR: [
+        { validTo: null },
+        { validTo: { gt: new Date() } },
+      ],
     },
     include: {
       asset: {

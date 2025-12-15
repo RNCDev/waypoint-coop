@@ -22,7 +22,7 @@ datasource db {
 model Organization {
   id        String   @id @default(cuid())
   name      String
-  type      OrgType? // Optional - informational only, not used for access control
+  type      String?  // Optional - informational only, not used for access control. Examples: 'GP', 'LP', 'FUND_ADMIN', 'AUDITOR', 'CONSULTANT', 'TAX_ADVISOR', 'PLATFORM_ADMIN'
   lei       String?  // Legal Entity Identifier for identity verification
   narrative String?  // Organization description/mission statement
   imageUrl  String?  // Legacy: external image URL for branding
@@ -52,7 +52,7 @@ model Organization {
 model Asset {
   id                            String    @id @default(cuid())
   name                          String
-  type                          AssetType
+  type                          String    // Examples: 'FIRM', 'FUND', 'FEEDER', 'SPV', 'PORTFOLIO_COMPANY'. Extensible for future types.
   managerId                     String
   requireGPApprovalForDelegations Boolean   @default(false)
   parentId                      String?
@@ -140,6 +140,7 @@ model AccessGrantAsset {
 // =============================================================================
 // Represents an LP's investment relationship to an Asset.
 // Creates implicit view rights for the subscriber.
+// Supports temporal tracking: validFrom/validTo enable ownership transfer history.
 
 model Subscription {
   id           String             @id @default(cuid())
@@ -148,6 +149,8 @@ model Subscription {
   status       SubscriptionStatus @default(ACTIVE)
   accessLevel  AccessLevel        @default(FULL)
   commitment   Float?             // Commitment amount in USD
+  validFrom    DateTime           @default(now()) // When subscription became active
+  validTo      DateTime?          // When subscription ended (null = currently active)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
@@ -155,10 +158,12 @@ model Subscription {
   asset      Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
   subscriber Organization @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
 
-  @@unique([assetId, subscriberId])
+  // Note: No unique constraint - allows historical records of same LP holding same asset at different times
   @@index([assetId])
   @@index([subscriberId])
   @@index([status])
+  @@index([assetId, subscriberId, validFrom])
+  @@index([validTo])
 }
 
 // =============================================================================
@@ -267,24 +272,8 @@ model AuditLog {
 // =============================================================================
 // ENUMS
 // =============================================================================
-
-enum OrgType {
-  GP             // General Partner / Asset Manager
-  LP             // Limited Partner / Investor
-  FUND_ADMIN     // Fund Administrator
-  AUDITOR        // Audit firm
-  CONSULTANT     // Investment Consultant
-  TAX_ADVISOR    // Tax Advisor
-  PLATFORM_ADMIN // Waypoint Platform Admin
-}
-
-enum AssetType {
-  FIRM              // Asset Management Firm
-  FUND              // Main Fund vehicle
-  FEEDER            // Feeder Fund
-  SPV               // Special Purpose Vehicle
-  PORTFOLIO_COMPANY // Portfolio Company
-}
+// Note: OrgType and AssetType removed - now using String for extensibility.
+// Remaining enums represent governance states, not extensible entity types.
 
 enum GrantStatus {
   ACTIVE           // Grant is currently in effect
