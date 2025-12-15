@@ -34,7 +34,6 @@ import {
 } from '@/components/ui/select'
 import { Building2, Users, Plus, Shield, FolderOpen } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
-import { AssetType } from '@prisma/client'
 
 interface Organization {
   id: string
@@ -65,7 +64,7 @@ interface User {
 interface Asset {
   id: string
   name: string
-  type: AssetType
+  type: string // Changed from AssetType enum to string
   vintage: number | null
   createdAt: string
   manager: {
@@ -108,7 +107,7 @@ export default function RegistryPage() {
   })
   const [newAsset, setNewAsset] = useState({
     name: '',
-    type: 'FUND' as AssetType,
+    type: 'FUND', // Now a string instead of enum
     vintage: '',
     requireGPApprovalForDelegations: false,
   })
@@ -220,7 +219,7 @@ export default function RegistryPage() {
     return colors[type] || ''
   }
 
-  const getAssetTypeColor = (type: AssetType) => {
+  const getAssetTypeColor = (type: string) => {
     const colors: Record<string, string> = {
       FUND: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
       PORTFOLIO: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -280,7 +279,7 @@ export default function RegistryPage() {
                       <Select
                         value={newAsset.type}
                         onValueChange={(v) =>
-                          setNewAsset((prev) => ({ ...prev, type: v as AssetType }))
+                          setNewAsset((prev) => ({ ...prev, type: v }))
                         }
                       >
                         <SelectTrigger>

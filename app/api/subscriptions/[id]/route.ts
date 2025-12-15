@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// PATCH /api/subscriptions/[id] - Update subscription status
+// PATCH /api/subscriptions/[id] - Update subscription status or close subscription (set validTo)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const { status } = await request.json()
+    const body = await request.json()
+    const { status, validTo } = body
 
-    if (!status || !['ACTIVE', 'PENDING', 'CLOSED'].includes(status)) {
+    // Validate inputs
+    if (status && !['ACTIVE', 'PENDING', 'CLOSED'].includes(status)) {
       return NextResponse.json(
         { error: 'Valid status (ACTIVE, PENDING, CLOSED) is required' },
         { status: 400 }
@@ -36,9 +38,22 @@ export async function PATCH(
       )
     }
 
+    // Build update data
+    const updateData: any = {}
+    if (status) {
+      updateData.status = status as 'ACTIVE' | 'PENDING' | 'CLOSED'
+    }
+    if (validTo !== undefined) {
+      // Setting validTo closes the subscription (for LP transfers)
+      updateData.validTo = validTo ? new Date(validTo) : null
+      if (validTo) {
+        updateData.status = 'CLOSED' // Auto-set status when closing
+      }
+    }
+
     const updated = await prisma.subscription.update({
       where: { id },
-      data: { status: status as 'ACTIVE' | 'PENDING' | 'CLOSED' },
+      data: updateData,
       include: {
         asset: {
           include: {
@@ -50,15 +65,17 @@ export async function PATCH(
     })
 
     // Create audit log
+    const action = validTo ? 'TRANSFER' : (status === 'ACTIVE' ? 'APPROVE' : status === 'CLOSED' ? 'REVOKE' : 'UPDATE')
     await prisma.auditLog.create({
       data: {
-        action: status === 'ACTIVE' ? 'APPROVE' : status === 'CLOSED' ? 'REVOKE' : 'UPDATE',
+        action,
         entityType: 'Subscription',
         entityId: updated.id,
         organizationId: subscription.asset.managerId,
         details: {
           previousStatus: subscription.status,
-          newStatus: status,
+          newStatus: updated.status,
+          validTo: updated.validTo,
           asset: subscription.asset.name,
           subscriber: subscription.subscriber.name,
         },

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { OrgType, UserRole } from '@prisma/client'
+import { UserRole } from '@prisma/client'
 
 /**
  * Demo persona for the persona switcher
@@ -14,7 +14,7 @@ export interface Persona {
   userNarrative?: string
   organizationId: string
   organizationName: string
-  organizationType: OrgType
+  organizationType: string // Changed from OrgType enum to string
   description: string
 }
 
@@ -30,7 +30,7 @@ export const DEMO_PERSONAS: Persona[] = [
     userNarrative: 'Platform Operations Lead at Waypoint. Passionate about building infrastructure that makes private markets more accessible and transparent.',
     organizationId: 'org_waypoint',
     organizationName: 'Waypoint Cooperative',
-    organizationType: OrgType.PLATFORM_ADMIN,
+    organizationType: 'PLATFORM_ADMIN',
     description: 'Platform Admin - Manages registry, audit logs, and IAM',
   },
   {
@@ -41,7 +41,7 @@ export const DEMO_PERSONAS: Persona[] = [
     userNarrative: 'Partner at Kleiner Perkins focused on enterprise software and fintech investments.',
     organizationId: 'org_kp',
     organizationName: 'Kleiner Perkins',
-    organizationType: OrgType.GP,
+    organizationType: 'GP',
     description: 'Asset Manager - Manages subscriptions, grants, publishes data',
   },
   {
@@ -52,7 +52,7 @@ export const DEMO_PERSONAS: Persona[] = [
     userNarrative: 'Senior Fund Administrator managing reporting and investor communications for top-tier VC funds.',
     organizationId: 'org_genii',
     organizationName: 'Genii Admin Services',
-    organizationType: OrgType.FUND_ADMIN,
+    organizationType: 'FUND_ADMIN',
     description: 'Fund Admin Delegate - Publishes data on behalf of GPs',
   },
   {
@@ -63,7 +63,7 @@ export const DEMO_PERSONAS: Persona[] = [
     userNarrative: 'Private Markets Investment Officer overseeing venture capital and private equity allocations for Ohio public employees.',
     organizationId: 'org_ohio',
     organizationName: 'State of Ohio Pension',
-    organizationType: OrgType.LP,
+    organizationType: 'LP',
     description: 'Limited Partner - Views history, manages access grants',
   },
   {
@@ -74,7 +74,7 @@ export const DEMO_PERSONAS: Persona[] = [
     userNarrative: 'Senior Auditor specializing in private equity fund audits and SEC compliance reviews.',
     organizationId: 'org_deloitte',
     organizationName: 'Deloitte',
-    organizationType: OrgType.AUDITOR,
+    organizationType: 'AUDITOR',
     description: 'Auditor - Views delegated data for audit purposes',
   },
 ]
@@ -95,7 +95,7 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
   const baseItems: NavItem[] = []
 
   switch (persona.organizationType) {
-    case OrgType.PLATFORM_ADMIN:
+    case 'PLATFORM_ADMIN':
       return [
         { label: 'Dashboard', href: '/' },
         { label: 'Registry', href: '/registry' },
@@ -103,7 +103,7 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
         { label: 'IAM', href: '/settings/iam' },
       ]
 
-    case OrgType.GP:
+    case 'GP':
       return [
         { label: 'Dashboard', href: '/' },
         { label: 'Registry', href: '/registry' },
@@ -114,7 +114,7 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
         { label: 'IAM', href: '/settings/iam' },
       ]
 
-    case OrgType.FUND_ADMIN:
+    case 'FUND_ADMIN':
       return [
         { label: 'Dashboard', href: '/' },
         { label: 'Subscriptions', href: '/subscriptions' },
@@ -124,7 +124,7 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
         { label: 'IAM', href: '/settings/iam' },
       ]
 
-    case OrgType.LP:
+    case 'LP':
       return [
         { label: 'Dashboard', href: '/' },
         { label: 'Subscriptions', href: '/subscriptions' },
@@ -133,9 +133,9 @@ export function getNavItemsForPersona(persona: Persona): NavItem[] {
         { label: 'IAM', href: '/settings/iam' },
       ]
 
-    case OrgType.AUDITOR:
-    case OrgType.CONSULTANT:
-    case OrgType.TAX_ADVISOR:
+    case 'AUDITOR':
+    case 'CONSULTANT':
+    case 'TAX_ADVISOR':
       return [
         { label: 'Dashboard', href: '/' },
         { label: 'Access Grants', href: '/access-grants' },
@@ -164,9 +164,9 @@ export interface PermissionFlags {
 /**
  * Get permission flags based on organization type
  */
-export function getPermissionFlags(orgType: OrgType): PermissionFlags {
+export function getPermissionFlags(orgType: string): PermissionFlags {
   switch (orgType) {
-    case OrgType.PLATFORM_ADMIN:
+    case 'PLATFORM_ADMIN':
       return {
         canPublish: false,
         canViewHistory: true,
@@ -177,7 +177,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
         canManageIAM: true,
       }
 
-    case OrgType.GP:
+    case 'GP':
       return {
         canPublish: true,
         canViewHistory: true,
@@ -188,7 +188,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
         canManageIAM: true,
       }
 
-    case OrgType.FUND_ADMIN:
+    case 'FUND_ADMIN':
       return {
         canPublish: true, // Delegated
         canViewHistory: true,
@@ -199,7 +199,7 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
         canManageIAM: true,
       }
 
-    case OrgType.LP:
+    case 'LP':
       return {
         canPublish: false,
         canViewHistory: true,
@@ -210,9 +210,9 @@ export function getPermissionFlags(orgType: OrgType): PermissionFlags {
         canManageIAM: true,
       }
 
-    case OrgType.AUDITOR:
-    case OrgType.CONSULTANT:
-    case OrgType.TAX_ADVISOR:
+    case 'AUDITOR':
+    case 'CONSULTANT':
+    case 'TAX_ADVISOR':
       return {
         canPublish: false,
         canViewHistory: true, // Delegated view
