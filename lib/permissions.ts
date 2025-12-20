@@ -95,15 +95,28 @@ export async function canPerformAction(
   }
 
   // 3. Check for active Access Grant with required capability
-  // Chain of Trust: Validate grantor's authority to ensure delegation is still valid
+  // Includes Legacy (single-asset), Multi-Asset, and Global grants
   const grant = await prisma.accessGrant.findFirst({
     where: {
       granteeId: orgId,
-      assetId,
       status: 'ACTIVE',
       OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
+        { assetId }, // Legacy single-asset grant
+        { grantAssets: { some: { assetId } } }, // Multi-asset grant
+        {
+          AND: [
+            { assetId: null },
+            { grantAssets: { none: {} } }, // Global grant (must have no specific assets)
+          ],
+        },
+      ],
+      AND: [
+        {
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
       ],
     },
     include: {
@@ -125,46 +138,11 @@ export async function canPerformAction(
       
       return {
         allowed: true,
-        reason: `Access granted via delegation`,
+        reason: grant.assetId === null 
+          ? 'Access granted via delegation (Global or Multi-Asset)' 
+          : 'Access granted via delegation (Single Asset)',
         via: 'grant',
         grantId: grant.id,
-      }
-    }
-  }
-
-  // 4. Check for global grants (assetId = null means all assets)
-  const globalGrant = await prisma.accessGrant.findFirst({
-    where: {
-      granteeId: orgId,
-      assetId: null,
-      status: 'ACTIVE',
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    },
-    include: {
-      grantor: true,
-    },
-  })
-
-  if (globalGrant) {
-    const hasCapability = checkGrantCapability(globalGrant, action)
-    if (hasCapability) {
-      // Chain of Trust: Verify grantor still has authority
-      const grantorValid = await validateGrantorChain(globalGrant.grantorId, assetId)
-      if (!grantorValid) {
-        return {
-          allowed: false,
-          reason: 'Grant chain broken: grantor no longer has authority (subscription ended or transferred)',
-        }
-      }
-      
-      return {
-        allowed: true,
-        reason: 'Access granted via global delegation',
-        via: 'grant',
-        grantId: globalGrant.id,
       }
     }
   }
@@ -299,12 +277,13 @@ export async function getAccessibleAssets(orgId: string): Promise<string[]> {
     if (g.assetId) accessibleAssetIds.add(g.assetId)
   })
   
-  // Also check for global grants (assetId = null)
+  // Also check for global grants (assetId = null AND no specific assets)
   const globalGrants = await prisma.accessGrant.findMany({
     where: {
       granteeId: orgId,
       status: 'ACTIVE',
       assetId: null,
+      grantAssets: { none: {} }, // True global grant
       OR: [
         { canViewData: true },
         { canPublish: true },
@@ -386,7 +365,7 @@ export async function getContextualRole(
 
   if (subscription) return 'subscriber'
 
-  // Check both legacy single-asset grants and multi-asset grants
+  // Check legacy single-asset, multi-asset, and global grants
   const grant = await prisma.accessGrant.findFirst({
     where: {
       granteeId: orgId,
@@ -394,7 +373,12 @@ export async function getContextualRole(
       OR: [
         { assetId }, // Legacy single-asset grant
         { grantAssets: { some: { assetId } } }, // Multi-asset grant
-        { assetId: null }, // Global grant
+        { 
+          AND: [
+            { assetId: null }, // Global grant
+            { grantAssets: { none: {} } }
+          ]
+        },
       ],
     },
   })
@@ -466,7 +450,12 @@ export async function getGrantorCapabilities(
       OR: [
         { assetId },
         { grantAssets: { some: { assetId } } },
-        { assetId: null },
+        { 
+          AND: [
+            { assetId: null },
+            { grantAssets: { none: {} } }
+          ]
+        },
       ],
       AND: [
         {

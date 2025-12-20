@@ -45,19 +45,16 @@ export function PersonaSwitcher() {
     <div className="flex items-center gap-1.5">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all hover:border-primary/50 group">
+          <button className="flex items-center gap-3 px-1.5 py-1.5 pr-3 rounded-full border border-primary/50 bg-primary/10 hover:bg-primary/20 hover:border-primary hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.5)] transition-all duration-300 group">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-                <User className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
+                <User className="w-4 h-4" />
               </div>
               <div className="text-left hidden sm:block">
-                <div className="text-sm font-medium leading-tight text-primary">{currentPersona.userName}</div>
-                <div className="text-xs text-muted-foreground font-light leading-tight">
-                  {currentPersona.organizationName}
-                </div>
+                <div className="text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors">{currentPersona.userName}</div>
               </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-primary group-hover:translate-y-0.5 transition-transform" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-y-0.5 transition-all" />
           </button>
         </DropdownMenuTrigger>
 

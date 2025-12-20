@@ -42,9 +42,10 @@ export function Navbar() {
               </div>
             </div>
 
-            {/* Right Side - Persona Switcher and Logo */}
-            <div className="flex items-center gap-4">
+            {/* Right Side - Persona Switcher */}
+            <div className="flex items-center justify-end gap-4">
               <PersonaSwitcher />
+              {/* Logo hidden for demo
               <div className="h-80 w-32 overflow-hidden relative flex items-center justify-center">
                 <div className="scale-[1.25] origin-center -translate-x-0 translate-y-8">
                   <Image 
@@ -57,6 +58,7 @@ export function Navbar() {
                   />
                 </div>
               </div>
+              */}
             </div>
           </div>
 

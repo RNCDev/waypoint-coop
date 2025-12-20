@@ -91,8 +91,10 @@ interface AccessGrant {
   granteeId: string;      // Org ID receiving the right (Admin, Consultant, Auditor)
   
   // Scope of Access
-  assetId?: string;       // Specific asset, or null for global grants
+  assetId?: string;       // Legacy: Specific asset (or null for global if no grantAssets)
   // Multi-asset support via AccessGrantAsset junction table
+  // If assetId is null AND AccessGrantAsset is empty -> Global Grant
+  // If assetId is null AND AccessGrantAsset has entries -> Multi-Asset Grant
   
   // Capabilities (Fine-Grained Flags)
   canPublish: boolean;              // Create & Broadcast Data Packets (GP-side only)

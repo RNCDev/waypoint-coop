@@ -30,6 +30,7 @@ Waypoint is a digital clearinghouse for private market data, enabling secure dat
 - **Unified Access Grants**: Single model for delegated capabilities:
   - **GP Grants**: Asset Managers delegate publishing and management to Fund Admins
   - **LP Grants**: Limited Partners delegate data access to service providers (auditors, analytics)
+  - **Multi-Asset Support**: Single grant can cover multiple assets via junction table
   - **Capability flags**: `canPublish`, `canViewData`, `canManageSubscriptions`, `canApproveDelegations`
 - **Correction Workflow**: Append-only correction mechanism maintaining full audit history (v1 -> v2)
 - **Identity Registry**: Platform Admin interface for managing Organizations and Users
