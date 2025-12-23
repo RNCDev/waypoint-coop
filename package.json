@@ -1,6 +1,6 @@
 {
   "name": "waypoint-coop",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-images": "tsx prisma/seed-images.ts",
     "db:studio": "prisma studio",
     "db:reset": "rm -f prisma/dev.db && npm run db:migrate && npm run db:seed"
   },

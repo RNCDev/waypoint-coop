@@ -227,7 +227,11 @@ waypoint-coop/
 │   └── utils.ts            # Helper functions
 ├── prisma/                 # Prisma schema and migrations
 │   ├── schema.prisma       # Database schema
-│   └── seed.ts             # Demo data seeding
+│   ├── seed.ts             # Demo data seeding
+│   ├── seed-images.ts      # Image upload script
+│   └── seed-images/        # Image files directory
+│       ├── organizations/  # Organization logos
+│       └── users/          # User profile pictures
 ├── store/                  # Zustand stores
 │   └── auth-store.ts       # Persona switching
 └── reference/              # Documentation
@@ -245,6 +249,7 @@ waypoint-coop/
 | `npm run db:generate` | Generate Prisma client |
 | `npm run db:migrate` | Run database migrations |
 | `npm run db:seed` | Seed database with demo data |
+| `npm run db:seed-images` | Upload images for organizations and users |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run db:reset` | Reset database and reseed |
 
