@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { PersonaSwitcher } from './persona-switcher'
+import { ThemeToggle } from './theme-toggle'
 import { cn } from '@/lib/utils'
 import { Home } from 'lucide-react'
 
@@ -42,8 +43,9 @@ export function Navbar() {
               </div>
             </div>
 
-            {/* Right Side - Persona Switcher */}
-            <div className="flex items-center justify-end gap-4">
+            {/* Right Side - Theme Toggle & Persona Switcher */}
+            <div className="flex items-center justify-end gap-2">
+              <ThemeToggle />
               <PersonaSwitcher />
               {/* Logo hidden for demo
               <div className="h-80 w-32 overflow-hidden relative flex items-center justify-center">

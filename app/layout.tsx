@@ -3,6 +3,7 @@ import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Footer } from '@/components/shared/footer'
 import { DemoModeProvider } from '@/components/shared/demo-mode-provider'
+import { ThemeProvider } from '@/components/shared/theme-provider'
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
@@ -37,14 +38,21 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} font-sans font-light antialiased min-h-screen flex flex-col`}
       >
-        <DemoModeProvider>
-          {children}
-          <Footer />
-        </DemoModeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <DemoModeProvider>
+            {children}
+            <Footer />
+          </DemoModeProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
